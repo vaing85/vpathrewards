@@ -1,0 +1,153 @@
+/* Global Game Viewport Fix - Ensures all games fit within window */
+
+/* Apply to all game containers - CRITICAL for viewport fit */
+.game-container,
+.roulette-game-container,
+.classicslots-game-container,
+.colorwheel-game-container,
+.bigsix-game-container,
+.coinflip-game-container,
+.instantwin-game-container,
+.quickwin-game-container,
+.match3-game-container,
+.moneywheel-game-container,
+.craps-game-container,
+.card-game-container,
+.standard-game-container,
+[class*="game-container"],
+[class*="-game-container"] {
+  box-sizing: border-box !important;
+  width: 100% !important;
+  height: 100vh !important;
+  max-height: 100vh !important;
+  min-height: 100vh !important;
+  overflow: hidden !important;
+  position: relative !important;
+}
+
+/* Ensure all child elements use border-box */
+.game-container *,
+.roulette-game-container *,
+.classicslots-game-container *,
+.colorwheel-game-container *,
+.bigsix-game-container *,
+.coinflip-game-container *,
+.instantwin-game-container *,
+.quickwin-game-container *,
+.match3-game-container *,
+.moneywheel-game-container *,
+.craps-game-container *,
+.card-game-container *,
+.standard-game-container *,
+[class*="game-container"] *,
+[class*="-game-container"] * {
+  box-sizing: border-box;
+}
+
+/* Ensure headers don't cause overflow */
+.game-header,
+.roulette-header,
+.classicslots-header,
+.colorwheel-header,
+.bigsix-header,
+.coinflip-header,
+.instantwin-header,
+.quickwin-header,
+.match3-header,
+.moneywheel-header,
+.craps-header,
+.standard-game-header,
+[class*="header"] {
+  flex-shrink: 0 !important;
+  box-sizing: border-box !important;
+}
+
+/* Ensure main content areas are flexible and don't overflow */
+.game-container > *:not(.game-header):not([class*="header"]),
+.roulette-game-container > *:not([class*="header"]),
+.classicslots-game-container > *:not([class*="header"]),
+.colorwheel-game-container > *:not([class*="header"]),
+.bigsix-game-container > *:not([class*="header"]),
+.coinflip-game-container > *:not([class*="header"]),
+.instantwin-game-container > *:not([class*="header"]),
+.quickwin-game-container > *:not([class*="header"]),
+.match3-game-container > *:not([class*="header"]),
+.moneywheel-game-container > *:not([class*="header"]),
+.craps-game-container > *:not([class*="header"]),
+.card-game-container > *:not([class*="header"]),
+.standard-game-container > *:not([class*="header"]),
+[class*="game-container"] > *:not([class*="header"]),
+[class*="-game-container"] > *:not([class*="header"]) {
+  flex: 1 1 auto !important;
+  min-height: 0 !important;
+  overflow: hidden !important;
+}
+
+/* Fix for games with table layouts */
+.table-layout,
+.blackjack-table,
+.texas-holdem-table,
+.paigow-table,
+.dragontiger-table,
+[class*="-table"] {
+  flex: 1 1 auto !important;
+  min-height: 0 !important;
+  overflow: hidden !important;
+  box-sizing: border-box !important;
+}
+
+/* Ensure betting columns don't overflow */
+.betting-column,
+.right-column,
+.standard-right-column,
+[class*="-column"] {
+  box-sizing: border-box !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+}
+
+/* Ensure game areas fit properly */
+.game-area,
+.slot-machine,
+.bingo-game,
+.roulette-table,
+.table-felt,
+[class*="game-area"],
+[class*="-game"] {
+  box-sizing: border-box !important;
+  max-width: 100% !important;
+}
+
+/* Responsive fixes */
+@media (max-width: 768px) {
+  .game-container,
+  .roulette-game-container,
+  .classicslots-game-container,
+  .colorwheel-game-container,
+  .bigsix-game-container,
+  .coinflip-game-container,
+  .instantwin-game-container,
+  .quickwin-game-container,
+  .match3-game-container,
+  .moneywheel-game-container,
+  .craps-game-container,
+  [class*="game-container"],
+  [class*="-game-container"] {
+    padding: 5px !important;
+  }
+  
+  .game-header,
+  .roulette-header,
+  [class*="header"] {
+    padding: 8px 10px !important;
+    font-size: 18px !important;
+  }
+}
+
+/* Prevent body scroll when game is active */
+body.game-active {
+  overflow: hidden !important;
+  height: 100vh !important;
+  max-height: 100vh !important;
+}
+

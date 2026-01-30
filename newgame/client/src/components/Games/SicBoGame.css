@@ -1,0 +1,720 @@
+.sicbo-game-container {
+  min-height: 100vh;
+  max-height: 100vh;
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+  display: flex;
+  flex-direction: column;
+  color: #fff;
+  overflow: hidden;
+  box-sizing: border-box;
+  width: 100%;
+  height: 100vh;
+  padding: 0;
+}
+
+.sicbo-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 15px;
+  background: rgba(0, 0, 0, 0.3);
+  border-bottom: 2px solid rgba(255, 255, 255, 0.1);
+  flex-shrink: 0;
+}
+
+.back-btn {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #fff;
+  padding: 8px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+  transition: all 0.3s ease;
+}
+
+.back-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+  transform: translateX(-2px);
+}
+
+.sicbo-header h1 {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 700;
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+}
+
+.balance-display {
+  font-size: 16px;
+  font-weight: 600;
+  color: #4ade80;
+  text-shadow: 0 0 10px rgba(74, 222, 128, 0.5);
+}
+
+.sicbo-game {
+  max-width: 100%;
+  width: 100%;
+  padding: 15px;
+  gap: 15px;
+  height: calc(100vh - 120px);
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.sicbo-game-layout {
+  display: flex;
+  gap: 15px;
+  flex: 1;
+  min-height: 0;
+  overflow: visible;
+}
+
+.sicbo-board {
+  flex: 1;
+  min-width: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-bottom: 80px;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.sicbo-controls {
+  flex: 0 0 600px;
+  min-width: 600px;
+  max-width: 600px;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  padding: 20px;
+}
+
+.controls-row {
+  display: flex;
+  gap: 15px;
+  flex: 1;
+  min-height: 0;
+  overflow: visible;
+}
+
+.dice-area {
+  text-align: center;
+  width: 100%;
+}
+
+.dice-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.dice {
+  width: 100px;
+  height: 100px;
+  background: white;
+  border-radius: 15px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-size: 64px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+  transition: transform 0.1s;
+}
+
+.dice.rolling {
+  animation: roll 0.1s linear infinite;
+}
+
+@keyframes roll {
+  0% { transform: rotate(0deg); }
+  25% { transform: rotate(90deg); }
+  50% { transform: rotate(180deg); }
+  75% { transform: rotate(270deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.betting-section {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 8px;
+  padding: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+  flex: 1;
+  min-width: 0;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  overflow-y: auto;
+  max-height: 100%;
+}
+
+.betting-section h3 {
+  margin: 0 0 8px 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: #fff;
+  text-align: center;
+  padding-bottom: 6px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.bet-type-section {
+  margin-bottom: 8px;
+}
+
+.bet-amount-section {
+  margin-bottom: 8px;
+}
+
+.bet-type-section label,
+.bet-amount-section label {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  margin-bottom: 4px;
+  color: #d1d5db;
+}
+
+.bet-type-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  max-height: 180px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.bet-type-btn {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 6px;
+  padding: 6px 8px;
+  margin-bottom: 4px;
+  color: #fff;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  text-align: left;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.bet-type-btn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.3);
+  transform: translateX(4px);
+}
+
+.bet-type-btn.active {
+  background: rgba(74, 222, 128, 0.2);
+  border-color: #4ade80;
+  box-shadow: 0 0 20px rgba(74, 222, 128, 0.3);
+}
+
+.bet-type-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.bet-type-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2px;
+  padding: 0;
+}
+
+.bet-type-name {
+  font-weight: 600;
+  font-size: 11px;
+  line-height: 1.2;
+  margin: 0;
+  padding: 0;
+}
+
+.bet-type-payout {
+  font-size: 10px;
+  color: #4ade80;
+  font-weight: 700;
+  line-height: 1.2;
+  margin: 0;
+  padding: 0;
+}
+
+.bet-type-desc {
+  font-size: 10px;
+  color: #9ca3af;
+  line-height: 1.2;
+  padding: 0;
+  margin: 0;
+}
+
+.bet-options {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 4px;
+  margin-bottom: 8px;
+}
+
+.bet-option-btn {
+  padding: 6px 4px;
+  font-size: 11px;
+  font-weight: 600;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.bet-option-btn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.2);
+  border-color: rgba(255, 255, 255, 0.5);
+  transform: translateY(-2px);
+}
+
+.bet-option-btn.active {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border-color: #667eea;
+  box-shadow: 0 0 20px rgba(102, 126, 234, 0.5);
+}
+
+.bet-option-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.bet-amount-controls {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  justify-content: center;
+}
+
+.bet-adjust-btn {
+  width: 24px;
+  height: 24px;
+  border-radius: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.bet-adjust-btn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.2);
+  border-color: rgba(255, 255, 255, 0.4);
+  transform: scale(1.1);
+}
+
+.bet-adjust-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.bet-input {
+  flex: 1;
+  max-width: 70px;
+  padding: 4px 6px;
+  border-radius: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  text-align: center;
+  transition: all 0.3s ease;
+}
+
+.bet-input:focus {
+  outline: none;
+  border-color: #4ade80;
+  background: rgba(255, 255, 255, 0.15);
+  box-shadow: 0 0 10px rgba(74, 222, 128, 0.3);
+}
+
+.bet-input:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.roll-btn {
+  width: 100%;
+  padding: 8px 12px;
+  border-radius: 6px;
+  border: none;
+  background: linear-gradient(135deg, #4ade80 0%, #22c55e 100%);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  margin-top: 4px;
+}
+
+.roll-btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(74, 222, 128, 0.6);
+}
+
+.roll-btn:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.roll-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.game-buttons-container {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+  margin-top: 4px;
+}
+
+.btn-new-game-controls {
+  width: 100%;
+  padding: 8px 12px;
+  font-size: 13px;
+  border-radius: 6px;
+  border: none;
+  background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+  color: #fff;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.btn-new-game-controls:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(34, 197, 94, 0.6);
+}
+
+.rules-section {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 12px;
+  padding: 15px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.rules-section h3 {
+  margin: 0 0 12px 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: #fff;
+  text-align: center;
+  padding-bottom: 8px;
+  border-bottom: 2px solid rgba(255, 255, 255, 0.1);
+}
+
+.rules-content {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.rules-objective {
+  margin-bottom: 10px;
+}
+
+.rules-objective p {
+  font-size: 12px;
+  line-height: 1.5;
+  color: #222;
+  margin: 0;
+  font-weight: 500;
+}
+
+.rules-tabs {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.tab-panel ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.tab-panel li {
+  font-size: 11px;
+  line-height: 1.6;
+  color: #d1d5db;
+  margin-bottom: 6px;
+  padding-left: 15px;
+  position: relative;
+}
+
+.tab-panel li:before {
+  content: '•';
+  position: absolute;
+  left: 0;
+  color: #4ade80;
+  font-weight: bold;
+}
+
+.result-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  animation: fadeIn 0.3s ease;
+}
+
+.result-overlay.closing {
+  animation: fadeOut 0.3s ease;
+}
+
+.result {
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+  border-radius: 20px;
+  padding: 40px;
+  text-align: center;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+  position: relative;
+  max-width: 400px;
+  width: 90%;
+  animation: slideIn 0.3s ease;
+}
+
+.result.closing {
+  animation: slideOut 0.3s ease;
+}
+
+.result.win {
+  border: 3px solid #4ade80;
+}
+
+.result.lose {
+  border: 3px solid #ef4444;
+}
+
+.result-close-btn {
+  position: absolute;
+  top: 15px;
+  right: 15px;
+  background: rgba(255, 255, 255, 0.1);
+  border: none;
+  color: #fff;
+  font-size: 24px;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
+}
+
+.result-close-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+  transform: rotate(90deg);
+}
+
+.result-timer {
+  position: absolute;
+  top: 15px;
+  left: 15px;
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.timer-countdown {
+  font-weight: 600;
+}
+
+.result-icon {
+  font-size: 64px;
+  margin-bottom: 20px;
+  animation: bounce 0.6s ease;
+}
+
+.win-icon {
+  animation: iconBounce 0.6s ease;
+}
+
+.lose-icon {
+  animation: shake 0.6s ease;
+}
+
+.result h2 {
+  margin: 0 0 20px 0;
+  font-size: 28px;
+  font-weight: 700;
+}
+
+.win-amount {
+  font-size: 24px;
+  font-weight: 700;
+  color: #4ade80;
+  margin: 10px 0;
+  text-shadow: 0 0 20px rgba(74, 222, 128, 0.8);
+}
+
+.lose-amount {
+  font-size: 24px;
+  font-weight: 700;
+  color: #ef4444;
+  margin: 10px 0;
+  text-shadow: 0 0 20px rgba(239, 68, 68, 0.8);
+}
+
+.multiplier-display {
+  font-size: 18px;
+  color: #ffd700;
+  margin-top: 10px;
+  font-weight: 600;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes fadeOut {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+@keyframes slideIn {
+  from {
+    transform: translateY(-50px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes slideOut {
+  from {
+    transform: translateY(0);
+    opacity: 1;
+  }
+  to {
+    transform: translateY(-50px);
+    opacity: 0;
+  }
+}
+
+@keyframes bounce {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+@keyframes iconBounce {
+  0%, 100% {
+    transform: translateY(0) scale(1);
+  }
+  25% {
+    transform: translateY(-15px) scale(1.1);
+  }
+  50% {
+    transform: translateY(0) scale(1);
+  }
+  75% {
+    transform: translateY(-10px) scale(1.05);
+  }
+}
+
+@keyframes shake {
+  0%, 100% {
+    transform: translateX(0);
+  }
+  25% {
+    transform: translateX(-5px);
+  }
+  75% {
+    transform: translateX(5px);
+  }
+}
+
+/* Mobile Responsive */
+@media (max-width: 1024px) {
+  .sicbo-game-layout {
+    flex-direction: column;
+  }
+
+  .sicbo-controls {
+    flex: 1;
+    max-width: 100%;
+    min-width: 0;
+  }
+
+  .controls-row {
+    flex-direction: column;
+  }
+}
+
+@media (max-width: 768px) {
+  .sicbo-header {
+    padding: 15px 20px;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  .sicbo-header h1 {
+    font-size: 24px;
+  }
+
+  .balance-display {
+    font-size: 16px;
+  }
+
+  .sicbo-game {
+    padding: 20px;
+  }
+
+  .dice {
+    width: 80px;
+    height: 80px;
+    font-size: 48px;
+  }
+
+  .dice-container {
+    gap: 15px;
+  }
+}

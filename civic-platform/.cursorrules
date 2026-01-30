@@ -1,0 +1,69 @@
+# Civic Platform Development Rules
+
+## Code Style
+- Use TypeScript for all new code
+- Follow NestJS best practices for backend
+- Follow Next.js 14 App Router patterns for frontend
+- Use functional components with hooks
+- Prefer composition over inheritance
+
+## File Naming
+- Components: PascalCase (e.g., `UserProfile.tsx`)
+- Utilities: camelCase (e.g., `formatDate.ts`)
+- Constants: UPPER_SNAKE_CASE (e.g., `API_BASE_URL.ts`)
+- Types: PascalCase with `.types.ts` suffix (e.g., `user.types.ts`)
+
+## Project Structure
+- Keep modules self-contained
+- Share code through `packages/shared`
+- Use feature-based folder structure
+- Separate concerns (UI, logic, data)
+
+## GraphQL
+- Use descriptive query/mutation names
+- Include all necessary fields
+- Handle errors gracefully
+- Use fragments for reusable fields
+
+## Database
+- All queries must be tenant-scoped
+- Use Prisma for all database operations
+- Add indexes for frequently queried fields
+- Use transactions for multi-step operations
+
+## Security
+- Never expose sensitive data in logs
+- Validate all user inputs
+- Use parameterized queries (Prisma handles this)
+- Check permissions before operations
+- Log security-relevant events
+
+## Testing
+- Write tests for critical paths
+- Test error cases
+- Mock external dependencies
+- Keep tests simple and focused
+
+## Documentation
+- Document complex logic
+- Add JSDoc comments for public APIs
+- Keep README files updated
+- Document API changes
+
+## Git Workflow
+- Use descriptive commit messages
+- Create feature branches
+- Review code before merging
+- Keep commits focused and atomic
+
+## Performance
+- Optimize database queries
+- Use pagination for lists
+- Cache when appropriate
+- Monitor query performance
+
+## Error Handling
+- Provide user-friendly error messages
+- Log errors with context
+- Handle edge cases
+- Fail gracefully

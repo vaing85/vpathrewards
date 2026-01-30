@@ -1,0 +1,779 @@
+.scratch-game-container {
+  /* Viewport properties handled by GameViewportFix.css */
+  padding: 10px;
+  color: white;
+  display: flex;
+  flex-direction: column;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.scratch-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+  padding: 10px 15px;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 10px;
+  flex-shrink: 0;
+}
+
+.scratch-header h1 {
+  font-size: 24px;
+  margin: 0;
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+}
+
+.balance-display {
+  font-size: 18px;
+  font-weight: bold;
+  color: #ffd700;
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+}
+
+.back-btn {
+  padding: 8px 16px;
+  background: rgba(255, 255, 255, 0.2);
+  border: 2px solid white;
+  border-radius: 8px;
+  color: white;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.back-btn:hover {
+  background: rgba(255, 255, 255, 0.3);
+  transform: translateX(-2px);
+}
+
+.scratch-game {
+  max-width: 100%;
+  margin: 0 auto;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 20px;
+  padding: 15px;
+  backdrop-filter: blur(10px);
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+.scratch-game-layout {
+  display: flex;
+  gap: 20px;
+  flex: 1;
+  min-height: 0;
+  overflow: visible;
+  height: 100%;
+}
+
+.scratch-board {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 0;
+  overflow: visible;
+}
+
+.scratch-controls {
+  flex: 0 0 600px;
+  min-width: 600px;
+  max-width: 600px;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  padding-right: 5px;
+}
+
+.controls-row {
+  display: flex;
+  gap: 15px;
+  flex: 1;
+  min-height: 0;
+  overflow: visible;
+}
+
+.betting-section,
+.rules-section {
+  flex: 1;
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 15px;
+  padding: 15px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.betting-section h3,
+.rules-section h3 {
+  margin: 0 0 12px 0;
+  font-size: 18px;
+  color: #333;
+  border-bottom: 2px solid #667eea;
+  padding-bottom: 8px;
+}
+
+.rules-content {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.rules-objective {
+  padding: 10px;
+  background: rgba(102, 126, 234, 0.1);
+  border-radius: 8px;
+  border-left: 4px solid #667eea;
+}
+
+.rules-objective p {
+  margin: 0;
+  color: #222;
+  font-size: 14px;
+  line-height: 1.6;
+  font-weight: 500;
+}
+
+.scratch-start {
+  text-align: center;
+}
+
+.bet-control {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+  margin-bottom: 25px;
+  width: 100%;
+}
+
+.selected-bet-display {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 24px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  border: 2px solid rgba(255, 255, 255, 0.2);
+}
+
+.bet-label {
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 16px;
+}
+
+.bet-amount {
+  font-weight: 700;
+  color: #ffd700;
+  font-size: 24px;
+  text-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+}
+
+.bet-options {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+  margin-bottom: 10px;
+  padding: 10px;
+  background: rgba(102, 126, 234, 0.05);
+  border-radius: 8px;
+  border: 1px solid rgba(102, 126, 234, 0.2);
+}
+
+.bet-option-btn {
+  padding: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  border: 2px solid #ddd;
+  border-radius: 6px;
+  background: white;
+  color: #333;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.bet-option-btn:hover:not(:disabled) {
+  background: #f0f0f0;
+  border-color: #667eea;
+  transform: translateY(-2px);
+}
+
+.bet-option-btn.active {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border-color: #667eea;
+}
+
+.bet-option-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.bet-amount-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  justify-content: center;
+  margin-top: 10px;
+}
+
+.bet-adjust-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  border: 2px solid #ddd;
+  background: white;
+  color: #333;
+  font-size: 24px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.3s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.bet-adjust-btn:hover:not(:disabled) {
+  background: #f0f0f0;
+  border-color: #667eea;
+  transform: scale(1.1);
+}
+
+.bet-adjust-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.game-buttons-container {
+  display: flex;
+  gap: 15px;
+  justify-content: center;
+  margin-top: 20px;
+}
+
+.bet-input {
+  width: 150px;
+  padding: 12px;
+  border: 2px solid white;
+  border-radius: 5px;
+  font-size: 18px;
+  text-align: center;
+}
+
+.scratch-card {
+  margin-bottom: 30px;
+}
+
+.card-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  max-width: 350px;
+  margin: 0 auto;
+}
+
+.card-cell {
+  aspect-ratio: 1;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 8px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-size: 36px;
+  cursor: pointer;
+  transition: all 0.3s;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  position: relative;
+  overflow: hidden;
+}
+
+.card-cell::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: repeating-linear-gradient(
+    45deg,
+    transparent,
+    transparent 10px,
+    rgba(255, 255, 255, 0.1) 10px,
+    rgba(255, 255, 255, 0.1) 20px
+  );
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+
+.card-cell:hover:not(.scratched):not(.scratching)::before {
+  opacity: 1;
+}
+
+.card-cell.scratching {
+  animation: scratchReveal 0.2s ease-out;
+  background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+}
+
+.card-cell.scratching::before {
+  opacity: 0;
+}
+
+.gift-icon,
+.revealed-symbol,
+.scratch-effect {
+  position: relative;
+  z-index: 2;
+  display: inline-block;
+  transition: all 0.3s;
+}
+
+.revealed-symbol {
+  animation: symbolReveal 0.4s ease-out;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
+}
+
+.scratch-effect {
+  animation: sparkle 0.2s ease-out;
+  font-size: 36px;
+}
+
+@keyframes scratchReveal {
+  0% {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    transform: scale(1);
+  }
+  50% {
+    background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+    transform: scale(1.1);
+  }
+  100% {
+    background: white;
+    transform: scale(1);
+  }
+}
+
+@keyframes symbolReveal {
+  0% {
+    transform: scale(0) rotate(-180deg);
+    opacity: 0;
+  }
+  50% {
+    transform: scale(1.2) rotate(0deg);
+  }
+  100% {
+    transform: scale(1) rotate(0deg);
+    opacity: 1;
+  }
+}
+
+@keyframes sparkle {
+  0%, 100% {
+    transform: scale(0.8);
+    opacity: 0.5;
+  }
+  50% {
+    transform: scale(1.2);
+    opacity: 1;
+  }
+}
+
+.card-cell:hover:not(.scratched) {
+  transform: scale(1.05);
+  box-shadow: 0 6px 15px rgba(0, 0, 0, 0.4);
+}
+
+.card-cell.scratched {
+  background: white;
+  border-color: #667eea;
+  cursor: default;
+  animation: reveal 0.3s;
+}
+
+@keyframes reveal {
+  from {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.scratch-info {
+  text-align: center;
+  color: white;
+  margin-bottom: 20px;
+}
+
+.scratch-info p {
+  margin: 5px 0;
+  font-size: 16px;
+}
+
+.btn-auto-scratch {
+  margin-top: 15px;
+  padding: 10px 20px;
+  background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+  color: #1a1a2e;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 15px rgba(251, 191, 36, 0.4);
+}
+
+.btn-auto-scratch:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(251, 191, 36, 0.6);
+}
+
+.btn-auto-scratch:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.btn-auto-scratch:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.game-complete-actions {
+  display: flex;
+  gap: 15px;
+  justify-content: center;
+  margin-top: 20px;
+}
+
+.game-complete-actions .btn {
+  min-width: 120px;
+}
+
+/* Result Overlay */
+.result-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.85);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  animation: fadeIn 0.3s ease;
+  backdrop-filter: blur(5px);
+  pointer-events: auto;
+}
+
+.result-overlay > * {
+  pointer-events: auto;
+}
+
+.result-overlay.closing {
+  animation: fadeOut 0.3s ease;
+}
+
+.result-modal {
+  background: linear-gradient(135deg, #1f2937 0%, #111827 100%);
+  border-radius: 20px;
+  padding: 40px;
+  text-align: center;
+  max-width: 450px;
+  width: 90%;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+  border: 3px solid rgba(255, 255, 255, 0.1);
+  position: relative;
+  animation: slideIn 0.3s ease;
+  z-index: 1001;
+  pointer-events: auto;
+}
+
+.result-modal.closing {
+  animation: slideOut 0.3s ease;
+}
+
+.result-modal.win {
+  border-color: #4ade80;
+  box-shadow: 0 0 40px rgba(74, 222, 128, 0.5);
+  background: linear-gradient(135deg, #064e3b 0%, #065f46 50%, #047857 100%);
+}
+
+.result-modal.lose {
+  border-color: #ef4444;
+  box-shadow: 0 0 40px rgba(239, 68, 68, 0.5);
+  background: linear-gradient(135deg, #7f1d1d 0%, #991b1b 50%, #b91c1c 100%);
+}
+
+.result-close-btn {
+  position: absolute;
+  top: 15px;
+  right: 15px;
+  background: rgba(255, 255, 255, 0.1);
+  border: none;
+  color: #fff;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  font-size: 20px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1003;
+  pointer-events: auto;
+}
+
+.result-close-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+  transform: rotate(90deg);
+}
+
+.result-icon {
+  font-size: 80px;
+  margin-bottom: 20px;
+  animation: iconBounce 0.6s ease;
+  filter: drop-shadow(0 0 20px rgba(255, 255, 255, 0.5));
+}
+
+.win-icon {
+  animation: winCelebrate 0.8s ease;
+  display: inline-block;
+}
+
+.lose-icon {
+  animation: loseShake 0.6s ease;
+  display: inline-block;
+}
+
+.result-modal h2 {
+  margin: 0 0 15px 0;
+  font-size: 32px;
+  font-weight: 700;
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+}
+
+.result-modal.win h2 {
+  color: #4ade80;
+  text-shadow: 0 0 20px rgba(74, 222, 128, 0.8);
+}
+
+.result-modal.lose h2 {
+  color: #fca5a5;
+  text-shadow: 0 0 20px rgba(239, 68, 68, 0.8);
+}
+
+.match-type {
+  font-size: 20px;
+  font-weight: 600;
+  color: #ffd700;
+  margin: 10px 0;
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+}
+
+.win-amount {
+  font-size: 36px;
+  font-weight: 700;
+  color: #4ade80;
+  margin: 15px 0;
+  text-shadow: 0 0 20px rgba(74, 222, 128, 0.8);
+  animation: amountGlow 1.5s ease-in-out infinite;
+}
+
+.lose-amount {
+  font-size: 28px;
+  font-weight: 600;
+  color: #fca5a5;
+  margin: 15px 0;
+  text-shadow: 0 0 10px rgba(239, 68, 68, 0.5);
+}
+
+.result-detail {
+  font-size: 16px;
+  color: rgba(255, 255, 255, 0.8);
+  margin: 10px 0;
+}
+
+.result-actions {
+  display: flex;
+  gap: 15px;
+  justify-content: center;
+  margin-top: 25px;
+  position: relative;
+  z-index: 1002;
+  pointer-events: auto;
+}
+
+.btn-rebet,
+.btn-new-card {
+  padding: 12px 24px;
+  border: none;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  min-width: 140px;
+  position: relative;
+  z-index: 1002;
+  pointer-events: auto;
+}
+
+.btn-rebet {
+  background: linear-gradient(135deg, #4ade80 0%, #22c55e 100%);
+  color: #fff;
+  box-shadow: 0 4px 15px rgba(74, 222, 128, 0.4);
+}
+
+.btn-rebet:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(74, 222, 128, 0.6);
+}
+
+.btn-new-card {
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+}
+
+.btn-new-card:hover {
+  background: rgba(255, 255, 255, 0.2);
+  border-color: rgba(255, 255, 255, 0.5);
+  transform: translateY(-2px);
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes fadeOut {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-50px) scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes slideOut {
+  from {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-50px) scale(0.9);
+  }
+}
+
+@keyframes iconBounce {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.2); }
+}
+
+@keyframes winCelebrate {
+  0%, 100% { transform: scale(1) rotate(0deg); }
+  25% { transform: scale(1.2) rotate(-10deg); }
+  75% { transform: scale(1.2) rotate(10deg); }
+}
+
+@keyframes loseShake {
+  0%, 100% { transform: translateX(0); }
+  10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
+  20%, 40%, 60%, 80% { transform: translateX(5px); }
+}
+
+@keyframes amountGlow {
+  0%, 100% {
+    text-shadow: 0 0 20px rgba(74, 222, 128, 0.8);
+  }
+  50% {
+    text-shadow: 0 0 30px rgba(74, 222, 128, 1), 0 0 40px rgba(74, 222, 128, 0.6);
+  }
+}
+
+/* Confetti Effect */
+.confetti-container {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 9999;
+  overflow: hidden;
+}
+
+.confetti {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  top: -10px;
+  opacity: 1;
+  animation: confettiFall linear forwards;
+}
+
+@keyframes confettiFall {
+  0% {
+    transform: translateY(0) rotate(0deg);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(100vh) rotate(720deg);
+    opacity: 0;
+  }
+}
+
+@media (max-width: 768px) {
+  .card-grid {
+    max-width: 300px;
+    gap: 8px;
+  }
+  
+  .card-cell {
+    font-size: 36px;
+  }
+  
+  .scratch-game-layout {
+    flex-direction: column;
+  }
+  
+  .scratch-board {
+    width: 100%;
+  }
+  
+  .scratch-controls {
+    width: 100%;
+    min-width: auto;
+    max-width: 100%;
+    flex: 1;
+  }
+  
+  .controls-row {
+    flex-direction: column;
+  }
+}
+

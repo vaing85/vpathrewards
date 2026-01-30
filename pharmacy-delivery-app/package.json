@@ -1,0 +1,20 @@
+{
+  "name": "pharmacy-delivery-app",
+  "version": "1.0.0",
+  "description": "Last mile delivery app for pharmacy",
+  "main": "server/index.js",
+  "scripts": {
+    "dev": "concurrently \"npm run server\" \"npm run client\"",
+    "server": "cd server && nodemon index.js",
+    "client": "cd client && npm start",
+    "install-all": "npm install && cd server && npm install && cd ../client && npm install"
+  },
+  "keywords": ["pharmacy", "delivery", "e-commerce"],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "concurrently": "^8.2.2",
+    "nodemon": "^3.0.2"
+  }
+}
+

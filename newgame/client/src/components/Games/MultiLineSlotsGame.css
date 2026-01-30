@@ -1,0 +1,346 @@
+/* Multi-Line Slots specific styles */
+.classicslots-game-container .left-column {
+  display: flex;
+  flex-direction: column;
+  gap: 6px !important;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  flex: 1;
+}
+
+.classicslots-game-container .game-area {
+  flex-shrink: 1;
+  flex-grow: 0;
+  min-height: 0;
+  max-height: 40vh;
+  overflow: visible;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 6px;
+}
+
+.classicslots-game-container .slot-table {
+  max-width: 100% !important;
+  width: 100% !important;
+  padding: 6px 5px !important;
+  min-height: auto !important;
+  max-height: 100% !important;
+  overflow: visible !important;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+}
+
+.classicslots-game-container .slot-machine {
+  width: 100% !important;
+  max-width: 100% !important;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  overflow: visible;
+  box-sizing: border-box;
+}
+
+.multiline-reels-container {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  max-width: 100%;
+  padding: 6px 4px;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  overflow: visible;
+  box-sizing: border-box;
+}
+
+.reels-row {
+  display: flex;
+  gap: 5px;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  flex-wrap: nowrap;
+}
+
+.multiline-reels-container .reel {
+  width: 55px;
+  height: 55px;
+  min-width: 55px;
+  min-height: 55px;
+  max-width: 55px;
+  max-height: 55px;
+  background: linear-gradient(135deg, #fff 0%, #f3f4f6 100%);
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 
+    0 3px 6px rgba(0, 0, 0, 0.3),
+    inset 0 2px 4px rgba(255, 255, 255, 0.8);
+  border: 1px solid #e5e7eb;
+  position: relative;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.multiline-reels-container .reel .symbol {
+  font-size: 28px;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
+  transition: transform 0.2s ease;
+  display: block;
+  line-height: 1;
+}
+
+.multiline-reels-container .reel.spinning {
+  animation: reelSpin 0.1s infinite;
+}
+
+.multiline-reels-container .reel.spinning .symbol {
+  animation: symbolBounce 0.1s infinite;
+}
+
+/* Payline indicators (optional visual enhancement) */
+.payline-indicator {
+  position: absolute;
+  width: 100%;
+  height: 3px;
+  background: rgba(74, 222, 128, 0.6);
+  box-shadow: 0 0 10px rgba(74, 222, 128, 0.8);
+  z-index: 5;
+  pointer-events: none;
+}
+
+/* Betting Section Overrides */
+.classicslots-game-container .betting-section {
+  background: rgba(255, 255, 255, 0.05) !important;
+  border-radius: 6px !important;
+  padding: 8px !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  backdrop-filter: blur(10px) !important;
+  flex-shrink: 0 !important;
+  margin-top: 0 !important;
+  margin-bottom: 0 !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+  order: 2;
+}
+
+.classicslots-game-container .betting-section h3 {
+  margin: 0 0 6px 0 !important;
+  font-size: 13px !important;
+  padding-bottom: 4px !important;
+}
+
+.classicslots-game-container .bet-amount-section {
+  margin-bottom: 6px !important;
+}
+
+.classicslots-game-container .bet-amount-section label {
+  font-size: 12px !important;
+  margin-bottom: 4px !important;
+}
+
+.classicslots-game-container .bet-amount-controls {
+  gap: 6px !important;
+}
+
+.classicslots-game-container .bet-input {
+  max-width: 90px !important;
+  font-size: 14px !important;
+  padding: 6px !important;
+}
+
+.classicslots-game-container .bet-adjust-btn {
+  width: 32px !important;
+  height: 32px !important;
+  font-size: 18px !important;
+}
+
+.classicslots-game-container .spin-btn {
+  padding: 10px !important;
+  font-size: 14px !important;
+  margin-top: 6px !important;
+}
+
+/* Paylines Selection */
+.paylines-section {
+  margin-bottom: 6px;
+}
+
+.paylines-section label {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  margin-bottom: 4px;
+  color: #d1d5db;
+}
+
+.paylines-buttons {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 4px;
+}
+
+.payline-btn {
+  padding: 6px 4px;
+  border-radius: 5px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.payline-btn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.2);
+  border-color: rgba(255, 255, 255, 0.4);
+  transform: translateY(-2px);
+}
+
+.payline-btn.active {
+  background: linear-gradient(135deg, #4ade80 0%, #22c55e 100%);
+  border-color: #4ade80;
+  color: #fff;
+  box-shadow: 0 0 15px rgba(74, 222, 128, 0.5);
+}
+
+.payline-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+/* Total Bet Display */
+.total-bet-display {
+  margin: 6px 0;
+  padding: 6px;
+  background: rgba(74, 222, 128, 0.1);
+  border-radius: 5px;
+  border: 1px solid rgba(74, 222, 128, 0.3);
+  text-align: center;
+}
+
+.total-bet-label {
+  font-size: 10px;
+  color: #9ca3af;
+  margin-bottom: 2px;
+}
+
+.total-bet-amount {
+  font-size: 16px;
+  font-weight: 700;
+  color: #4ade80;
+  text-shadow: 0 0 10px rgba(74, 222, 128, 0.5);
+  margin-bottom: 2px;
+}
+
+.total-bet-breakdown {
+  font-size: 9px;
+  color: #d1d5db;
+}
+
+/* Ensure proper spacing and no overlap */
+.classicslots-game-container .result-display {
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px solid rgba(255, 255, 255, 0.2);
+  width: 100%;
+}
+
+.classicslots-game-container .outcome {
+  font-size: 14px;
+  padding: 4px 12px;
+}
+
+/* Force game-area to not take all space */
+.classicslots-game-container .left-column .game-area {
+  flex: 0 0 auto;
+  max-height: 38vh;
+}
+
+@media (max-width: 1024px) {
+  .classicslots-game-container .game-area {
+    max-height: 40vh;
+  }
+
+  .classicslots-game-container .slot-table {
+    padding: 8px 6px !important;
+  }
+
+  .multiline-reels-container {
+    padding: 6px 4px;
+    gap: 4px;
+  }
+
+  .multiline-reels-container .reel {
+    width: 50px;
+    height: 50px;
+    min-width: 50px;
+    min-height: 50px;
+    max-width: 50px;
+    max-height: 50px;
+  }
+
+  .multiline-reels-container .reel .symbol {
+    font-size: 26px;
+  }
+
+  .reels-row {
+    gap: 4px;
+  }
+}
+
+@media (max-width: 768px) {
+  .classicslots-game-container .game-area {
+    max-height: 35vh;
+  }
+
+  .multiline-reels-container {
+    padding: 5px 3px;
+    gap: 3px;
+  }
+
+  .multiline-reels-container .reel {
+    width: 45px;
+    height: 45px;
+    min-width: 45px;
+    min-height: 45px;
+    max-width: 45px;
+    max-height: 45px;
+  }
+
+  .multiline-reels-container .reel .symbol {
+    font-size: 22px;
+  }
+
+  .reels-row {
+    gap: 3px;
+  }
+
+  .paylines-buttons {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 3px;
+  }
+
+  .payline-btn {
+    font-size: 9px;
+    padding: 5px 3px;
+  }
+
+  .total-bet-amount {
+    font-size: 14px;
+  }
+}
+

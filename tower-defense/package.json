@@ -1,0 +1,11 @@
+{
+  "name": "tower-defense",
+  "private": true,
+  "scripts": {
+    "start": "serve . -p 3333",
+    "serve": "serve . -p 3333"
+  },
+  "devDependencies": {
+    "serve": "^14.2.0"
+  }
+}

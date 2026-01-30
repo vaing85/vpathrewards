@@ -1,0 +1,93 @@
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    #f0f0f0 25%,
+    #e0e0e0 50%,
+    #f0f0f0 75%
+  );
+  background-size: 200% 100%;
+  animation: loading 1.5s ease-in-out infinite;
+  border-radius: 4px;
+}
+
+.skeleton.text {
+  height: 1em;
+  border-radius: 4px;
+}
+
+.skeleton.box {
+  border-radius: 8px;
+}
+
+.skeleton.image {
+  border-radius: 8px;
+}
+
+.skeleton.header {
+  border-radius: 8px;
+}
+
+.skeleton-card {
+  background: #fff;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  margin-bottom: 20px;
+}
+
+.skeleton-card-content {
+  padding: 16px;
+}
+
+.skeleton-game-container {
+  padding: 20px;
+  min-height: 100vh;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.skeleton-game-layout {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 20px;
+}
+
+.skeleton-game-main,
+.skeleton-game-sidebar {
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+  border-radius: 16px;
+  padding: 24px;
+}
+
+@keyframes loading {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+/* Dark theme support */
+@media (prefers-color-scheme: dark) {
+  .skeleton {
+    background: linear-gradient(
+      90deg,
+      #2a2a2a 25%,
+      #3a3a3a 50%,
+      #2a2a2a 75%
+    );
+    background-size: 200% 100%;
+  }
+
+  .skeleton-card {
+    background: #1a1a1a;
+  }
+}
+
+@media (max-width: 768px) {
+  .skeleton-game-layout {
+    grid-template-columns: 1fr;
+  }
+}
+

@@ -1,0 +1,20 @@
+{
+  "name": "newgame",
+  "version": "1.0.0",
+  "description": "Casino Game Platform with Table Games, Slots, Bingo, and Dashboards",
+  "main": "server/index.js",
+  "scripts": {
+    "dev": "concurrently \"npm run server\" \"npm run client\"",
+    "server": "cd server && npm run dev",
+    "client": "cd client && npm start",
+    "install-all": "npm install && cd server && npm install && cd ../client && npm install",
+    "build": "cd client && npm run build"
+  },
+  "keywords": ["casino", "games", "slots", "bingo", "blackjack"],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}
+

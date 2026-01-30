@@ -1,0 +1,235 @@
+// Multi-tenant DB schema for Civic Platform
+// All models are tenant-scoped for data isolation
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  // Prisma v7: connection URL is configured in prisma.config.ts
+}
+
+model Tenant {
+  id        String   @id @default(cuid())
+  name      String
+  slug      String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  users         User[]
+  roles         Role[]
+  auditLogs     AuditLog[]
+  citations     Citation[]
+  violationTypes ViolationType[]
+  violations     Violation[]
+  cases          Case[]
+  hearings       Hearing[]
+  payments       Payment[]
+  documents      Document[]
+
+  @@map("tenants")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String
+  name      String
+  password  String
+  tenantId  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  userRoles UserRole[]
+  auditLogs AuditLog[]
+
+  @@unique([email, tenantId])
+  @@map("users")
+}
+
+model Role {
+  id        String   @id @default(cuid())
+  name      String
+  tenantId  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  userRoles UserRole[]
+
+  @@unique([name, tenantId])
+  @@map("roles")
+}
+
+model UserRole {
+  id        String   @id @default(cuid())
+  userId    String
+  roleId    String
+  createdAt DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role      Role     @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, roleId])
+  @@map("user_roles")
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  userId    String?
+  tenantId  String?
+  action    String
+  resource  String
+  metadata  String? // Stored as JSON string for SQLite compatibility
+  createdAt DateTime @default(now())
+
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  tenant    Tenant?  @relation(fields: [tenantId], references: [id], onDelete: SetNull)
+
+  @@map("audit_logs")
+}
+
+model Citation {
+  id            String   @id @default(cuid())
+  tenantId      String
+  citationNumber String  @unique
+  violatorName  String
+  violatorEmail String?
+  violatorPhone String?
+  address       String
+  violationType String
+  violationDate DateTime
+  issueDate     DateTime @default(now())
+  status        String   @default("PENDING") // PENDING, ISSUED, PAID, DISPUTED, DISMISSED, OVERDUE
+  amount        Float
+  dueDate       DateTime
+  paidDate      DateTime?
+  notes         String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  tenant        Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  violations    Violation[]
+  cases         Case[]
+  payments      Payment[]
+
+  @@unique([citationNumber, tenantId])
+  @@map("citations")
+}
+
+model ViolationType {
+  id          String   @id @default(cuid())
+  tenantId   String
+  code        String
+  name        String
+  description String
+  baseFine    Float
+  points      Int?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([code, tenantId])
+  @@map("violation_types")
+}
+
+model Violation {
+  id            String   @id @default(cuid())
+  tenantId      String
+  citationId    String
+  violationCode String
+  description   String
+  fineAmount    Float
+  points        Int?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  tenant        Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  citation      Citation @relation(fields: [citationId], references: [id], onDelete: Cascade)
+
+  @@map("violations")
+}
+
+model Case {
+  id            String   @id @default(cuid())
+  tenantId      String
+  caseNumber    String   @unique
+  citationId    String?
+  caseType      String   @default("DISPUTE") // DISPUTE, APPEAL, ENFORCEMENT, OTHER
+  status        String   @default("OPEN") // OPEN, IN_PROGRESS, SCHEDULED, CLOSED, DISMISSED
+  description   String
+  openedDate    DateTime @default(now())
+  closedDate    DateTime?
+  assignedTo    String?  // User ID
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  tenant        Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  citation      Citation? @relation(fields: [citationId], references: [id], onDelete: SetNull)
+  hearings      Hearing[]
+
+  @@unique([caseNumber, tenantId])
+  @@map("cases")
+}
+
+model Hearing {
+  id            String   @id @default(cuid())
+  tenantId      String
+  caseId        String
+  hearingType   String
+  scheduledDate DateTime
+  location      String
+  status        String   @default("SCHEDULED") // SCHEDULED, IN_PROGRESS, COMPLETED, CANCELLED, POSTPONED
+  notes         String?
+  outcome       String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  tenant        Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  case          Case     @relation(fields: [caseId], references: [id], onDelete: Cascade)
+
+  @@map("hearings")
+}
+
+model Payment {
+  id            String   @id @default(cuid())
+  tenantId      String
+  citationId    String
+  amount        Float
+  paymentMethod String   @default("CASH") // CASH, CHECK, CREDIT_CARD, DEBIT_CARD, ONLINE, OTHER
+  transactionId String?
+  status        String   @default("PENDING") // PENDING, COMPLETED, FAILED, REFUNDED
+  paidDate      DateTime @default(now())
+  notes         String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  tenant        Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  citation      Citation @relation(fields: [citationId], references: [id], onDelete: Cascade)
+
+  @@map("payments")
+}
+
+model Document {
+  id            String   @id @default(cuid())
+  tenantId      String
+  entityType    String   // 'Citation' | 'Case'
+  entityId      String
+  fileName      String
+  filePath      String
+  fileType      String
+  fileSize      Int
+  uploadedBy    String   // User ID
+  uploadedAt    DateTime @default(now())
+  description   String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  tenant        Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@map("documents")
+}
+

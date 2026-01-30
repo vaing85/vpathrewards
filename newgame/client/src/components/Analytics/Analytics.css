@@ -1,0 +1,809 @@
+.analytics-container {
+  padding: 0;
+  background: transparent;
+  color: white;
+  box-sizing: border-box;
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 100% !important;
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  gap: 20px;
+}
+
+.analytics-header {
+  margin-bottom: 0;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.analytics-header h2 {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 600;
+  color: #667eea;
+  text-align: left;
+  width: 100%;
+  display: block;
+}
+
+.analytics-filters {
+  display: flex;
+  gap: 15px;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  background: rgba(255, 255, 255, 0.1);
+  padding: 15px;
+  border-radius: 8px;
+  backdrop-filter: blur(10px);
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.filter-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 150px;
+  flex: 0 0 auto;
+}
+
+.filter-group label {
+  font-size: 14px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.filter-select,
+.filter-input {
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.filter-select:hover,
+.filter-input:hover {
+  background: rgba(255, 255, 255, 0.15);
+  border-color: rgba(255, 255, 255, 0.5);
+}
+
+.filter-select:focus,
+.filter-input:focus {
+  outline: none;
+  border-color: white;
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.filter-select option {
+  background: #667eea;
+  color: white;
+}
+
+.filter-input::placeholder {
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.analytics-filters .btn {
+  padding: 10px 20px;
+  border-radius: 8px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  white-space: nowrap;
+  flex-shrink: 0;
+  height: fit-content;
+}
+
+.analytics-filters .btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+  border-color: rgba(255, 255, 255, 0.5);
+  transform: translateY(-2px);
+}
+
+.analytics-filters .btn-secondary {
+  background: rgba(239, 68, 68, 0.3);
+  border-color: rgba(239, 68, 68, 0.5);
+}
+
+.analytics-filters .btn-secondary:hover {
+  background: rgba(239, 68, 68, 0.4);
+  border-color: rgba(239, 68, 68, 0.7);
+}
+
+/* Financial Summary Cards */
+.financial-summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 15px;
+  margin-bottom: 0;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.summary-card {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  padding: 20px;
+  text-align: center;
+  backdrop-filter: blur(10px);
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.summary-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+}
+
+.summary-label {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.8);
+  font-weight: 500;
+  margin-bottom: 10px;
+  text-transform: uppercase;
+}
+
+.summary-value {
+  font-size: 24px;
+  font-weight: 700;
+  margin-bottom: 8px;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.3);
+  color: white;
+}
+
+.summary-value.positive {
+  color: #4ade80;
+}
+
+.summary-value.negative {
+  color: #ef4444;
+}
+
+.summary-count {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+/* Chart Sections */
+.chart-section {
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 8px;
+  padding: 30px 15px;
+  margin-bottom: 20px;
+  backdrop-filter: blur(10px);
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 100% !important;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  min-height: 800px;
+}
+
+.chart-section h3 {
+  margin: 0 0 25px 0;
+  font-size: 22px;
+  font-weight: 600;
+  color: #667eea;
+  text-align: left;
+  width: 100%;
+  display: block;
+}
+
+.chart-section h4 {
+  margin: 0 0 20px 0;
+  font-size: 18px;
+  font-weight: 600;
+  text-align: left;
+  width: 100%;
+  display: block;
+  color: #333;
+}
+
+/* Chart Containers */
+.chart-container-large {
+  width: 100% !important;
+  height: 750px !important;
+  min-height: 750px !important;
+  max-height: 750px !important;
+  min-width: 0;
+  max-width: 100% !important;
+  margin: 0;
+  padding: 0;
+  position: relative;
+  display: block !important;
+  box-sizing: border-box;
+  overflow: visible !important;
+}
+
+.chart-container-medium {
+  width: 100% !important;
+  height: 500px !important;
+  min-height: 500px !important;
+  max-height: 500px !important;
+  min-width: 0;
+  max-width: 100% !important;
+  margin: 0;
+  padding: 0;
+  position: relative;
+  display: block !important;
+  box-sizing: border-box;
+  flex: 1 1 auto;
+}
+
+.charts-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 30px;
+  width: 100%;
+  box-sizing: border-box;
+  align-items: stretch;
+  margin: 0;
+  padding: 0;
+}
+
+@media (max-width: 1200px) {
+  .charts-row {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+}
+
+.chart-container {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  box-sizing: border-box;
+  align-items: stretch;
+  min-width: 0;
+  height: 100%;
+}
+
+.chart-container h4 {
+  margin: 0 0 15px 0;
+  text-align: left;
+  width: 100%;
+  flex-shrink: 0;
+}
+
+/* Recharts Styling */
+.recharts-responsive-container {
+  width: 100% !important;
+  height: 100% !important;
+  position: relative !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+  display: block !important;
+}
+
+.chart-container-large .recharts-responsive-container {
+  width: 100% !important;
+  height: 750px !important;
+  min-height: 750px !important;
+  max-width: 100% !important;
+  display: block !important;
+  margin: 0;
+  position: relative;
+}
+
+.chart-container-medium .recharts-responsive-container {
+  width: 100% !important;
+  height: 500px !important;
+  min-height: 500px !important;
+  max-width: 100% !important;
+  display: block !important;
+  margin: 0;
+  position: relative;
+}
+
+.recharts-wrapper {
+  width: 100% !important;
+  height: 100% !important;
+  position: relative !important;
+  max-width: 100% !important;
+}
+
+.recharts-surface {
+  width: 100% !important;
+  height: 100% !important;
+  max-width: 100% !important;
+  overflow: visible !important;
+  display: block !important;
+}
+
+.chart-container-large svg,
+.chart-container-medium svg {
+  display: block !important;
+  width: 100% !important;
+  height: 100% !important;
+  max-width: 100% !important;
+  overflow: visible !important;
+  visibility: visible !important;
+}
+
+.chart-container-large .recharts-wrapper,
+.chart-container-medium .recharts-wrapper {
+  width: 100% !important;
+  height: 100% !important;
+  display: block !important;
+  position: relative !important;
+}
+
+.chart-container-large .recharts-surface,
+.chart-container-medium .recharts-surface {
+  width: 100% !important;
+  height: 100% !important;
+  display: block !important;
+  visibility: visible !important;
+  position: relative !important;
+}
+
+/* Ensure line paths are visible */
+.chart-container-large .recharts-line,
+.chart-container-medium .recharts-line {
+  stroke-width: 3 !important;
+  visibility: visible !important;
+  display: block !important;
+}
+
+.chart-container-large .recharts-line-curve,
+.chart-container-medium .recharts-line-curve {
+  stroke-width: 3 !important;
+  visibility: visible !important;
+  display: block !important;
+}
+
+.recharts-cartesian-axis line {
+  stroke: #666 !important;
+}
+
+.recharts-cartesian-axis-tick line {
+  stroke: #666 !important;
+}
+
+.chart-container-large svg,
+.chart-container-medium svg {
+  display: block !important;
+  width: 100% !important;
+  height: 100% !important;
+  max-width: 100% !important;
+  overflow: visible !important;
+}
+
+.recharts-legend-wrapper {
+  width: 100% !important;
+  position: relative !important;
+  padding-top: 10px !important;
+  margin-top: 10px !important;
+}
+
+.recharts-legend-item-text {
+  color: #333 !important;
+  fill: #333 !important;
+  font-size: 14px !important;
+}
+
+.recharts-cartesian-axis-tick-value {
+  fill: #333 !important;
+  font-size: 12px !important;
+}
+
+.recharts-text {
+  fill: #333 !important;
+  font-size: 12px !important;
+}
+
+/* Ensure chart container doesn't hide content */
+.chart-container-large,
+.chart-container-medium {
+  overflow: visible !important;
+}
+
+.chart-section {
+  overflow: visible !important;
+}
+
+/* No Data State */
+.no-data {
+  text-align: center;
+  padding: 60px 20px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 8px;
+  border: 2px dashed rgba(255, 255, 255, 0.3);
+  margin: 20px 0;
+  min-height: 250px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.no-data-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  max-width: 400px;
+}
+
+.no-data-icon {
+  font-size: 64px;
+  margin-bottom: 10px;
+  opacity: 0.8;
+}
+
+.no-data-title {
+  font-size: 20px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.95);
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.3);
+  line-height: 1.4;
+}
+
+.no-data-subtitle {
+  font-size: 16px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.8);
+  line-height: 1.4;
+}
+
+.no-data-hint {
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.6);
+  margin-top: 8px;
+  font-style: italic;
+  line-height: 1.4;
+}
+
+.loading {
+  text-align: center;
+  padding: 60px 20px;
+  font-size: 18px;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+/* Game Stats Table */
+.game-stats-table {
+  overflow-x: auto;
+  width: 100%;
+  box-sizing: border-box;
+  margin-top: 25px;
+  min-height: 300px;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(102, 126, 234, 0.3) transparent;
+  position: relative;
+}
+
+.game-stats-table::-webkit-scrollbar {
+  height: 8px;
+}
+
+.game-stats-table::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.05);
+  border-radius: 4px;
+}
+
+.game-stats-table::-webkit-scrollbar-thumb {
+  background: rgba(102, 126, 234, 0.4);
+  border-radius: 4px;
+}
+
+.game-stats-table::-webkit-scrollbar-thumb:hover {
+  background: rgba(102, 126, 234, 0.6);
+}
+
+.game-stats-table table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  table-layout: fixed;
+  min-width: 900px;
+  margin: 0;
+  background: #ffffff;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08), 0 2px 4px rgba(0, 0, 0, 0.04);
+  animation: fadeInTable 0.4s ease-in-out;
+}
+
+@keyframes fadeInTable {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.game-stats-table thead {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  position: relative;
+}
+
+.game-stats-table thead::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+}
+
+.game-stats-table th {
+  padding: 18px 16px;
+  font-weight: 700;
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #ffffff;
+  border-bottom: none;
+  vertical-align: middle;
+  box-sizing: border-box;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  white-space: nowrap;
+  background: transparent;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+  transition: background-color 0.2s ease;
+}
+
+.game-stats-table th:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.game-stats-table td {
+  padding: 16px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+  color: #2d3748;
+  font-size: 14px;
+  vertical-align: middle;
+  box-sizing: border-box;
+  word-wrap: break-word;
+  background: #ffffff;
+  transition: all 0.2s ease;
+  font-weight: 500;
+}
+
+.game-stats-table tbody tr {
+  transition: all 0.2s ease;
+  animation: fadeInRow 0.3s ease-in-out;
+  animation-fill-mode: both;
+}
+
+@keyframes fadeInRow {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.game-stats-table tbody tr:nth-child(1) { animation-delay: 0.05s; }
+.game-stats-table tbody tr:nth-child(2) { animation-delay: 0.1s; }
+.game-stats-table tbody tr:nth-child(3) { animation-delay: 0.15s; }
+.game-stats-table tbody tr:nth-child(4) { animation-delay: 0.2s; }
+.game-stats-table tbody tr:nth-child(5) { animation-delay: 0.25s; }
+.game-stats-table tbody tr:nth-child(6) { animation-delay: 0.3s; }
+.game-stats-table tbody tr:nth-child(7) { animation-delay: 0.35s; }
+.game-stats-table tbody tr:nth-child(8) { animation-delay: 0.4s; }
+.game-stats-table tbody tr:nth-child(9) { animation-delay: 0.45s; }
+.game-stats-table tbody tr:nth-child(10) { animation-delay: 0.5s; }
+.game-stats-table tbody tr:nth-child(n+11) { animation-delay: 0.55s; }
+
+.game-stats-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.game-stats-table tbody tr:hover {
+  background: linear-gradient(90deg, rgba(102, 126, 234, 0.08) 0%, rgba(102, 126, 234, 0.05) 100%) !important;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.1);
+}
+
+.game-stats-table tbody tr:hover td {
+  color: #1a202c;
+  font-weight: 600;
+}
+
+.game-stats-table td.positive {
+  color: #10b981;
+  font-weight: 700;
+  font-size: 15px;
+}
+
+.game-stats-table td.positive::before {
+  content: '↑ ';
+  font-size: 12px;
+  opacity: 0.8;
+}
+
+.game-stats-table td.negative {
+  color: #ef4444;
+  font-weight: 700;
+  font-size: 15px;
+}
+
+.game-stats-table td.negative::before {
+  content: '↓ ';
+  font-size: 12px;
+  opacity: 0.8;
+}
+
+/* Column width and alignment */
+.game-stats-table th:first-child,
+.game-stats-table td:first-child {
+  padding-left: 20px;
+  width: 22% !important;
+  text-align: left !important;
+  min-width: 180px;
+  font-weight: 600;
+  color: #667eea;
+}
+
+.game-stats-table td:first-child {
+  color: #4a5568;
+  font-weight: 600;
+}
+
+.game-stats-table th:nth-child(2),
+.game-stats-table td:nth-child(2) {
+  width: 16% !important;
+  text-align: right !important;
+  padding-right: 20px;
+  font-family: 'Courier New', monospace;
+}
+
+.game-stats-table th:nth-child(3),
+.game-stats-table td:nth-child(3) {
+  width: 16% !important;
+  text-align: right !important;
+  padding-right: 20px;
+  font-family: 'Courier New', monospace;
+}
+
+.game-stats-table th:nth-child(4),
+.game-stats-table td:nth-child(4) {
+  width: 16% !important;
+  text-align: right !important;
+  padding-right: 20px;
+  font-family: 'Courier New', monospace;
+  font-weight: 700;
+}
+
+.game-stats-table th:nth-child(5),
+.game-stats-table td:nth-child(5) {
+  width: 15% !important;
+  text-align: right !important;
+  padding-right: 20px;
+  font-family: 'Courier New', monospace;
+}
+
+.game-stats-table th:nth-child(6),
+.game-stats-table td:nth-child(6) {
+  width: 15% !important;
+  text-align: right !important;
+  padding-right: 20px;
+  font-family: 'Courier New', monospace;
+}
+
+/* Totals Row Styling */
+.game-stats-table tbody tr.totals-row {
+  background: linear-gradient(135deg, rgba(102, 126, 234, 0.12) 0%, rgba(118, 75, 162, 0.08) 100%) !important;
+  border-top: 3px solid rgba(102, 126, 234, 0.4);
+  font-weight: 700;
+}
+
+.game-stats-table tbody tr.totals-row:hover {
+  background: linear-gradient(135deg, rgba(102, 126, 234, 0.18) 0%, rgba(118, 75, 162, 0.12) 100%) !important;
+  transform: none;
+  box-shadow: none;
+}
+
+.game-stats-table tbody tr.totals-row td {
+  background: transparent;
+  color: #1a202c;
+  font-size: 15px;
+  padding-top: 18px;
+  padding-bottom: 18px;
+  border-top: 2px solid rgba(102, 126, 234, 0.2);
+  border-bottom: none;
+}
+
+.game-stats-table tbody tr.totals-row td:first-child {
+  color: #667eea;
+  font-size: 16px;
+  font-weight: 800;
+}
+
+.game-stats-table tbody tr.totals-row td strong {
+  font-weight: 800;
+  letter-spacing: 0.3px;
+}
+
+@media (max-width: 1024px) {
+  .charts-row {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 768px) {
+  .analytics-container {
+    padding: 15px;
+  }
+
+  .analytics-header h2 {
+    font-size: 24px;
+  }
+
+  .analytics-filters {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .filter-group {
+    min-width: 100%;
+  }
+
+  .financial-summary {
+    grid-template-columns: 1fr;
+  }
+
+  .game-stats-table {
+    font-size: 12px;
+    margin-top: 15px;
+  }
+
+  .game-stats-table table {
+    min-width: 700px;
+    border-radius: 8px;
+  }
+
+  .game-stats-table th {
+    padding: 12px 10px;
+    font-size: 11px;
+  }
+
+  .game-stats-table td {
+    padding: 12px 10px;
+    font-size: 12px;
+  }
+
+  .game-stats-table th:first-child,
+  .game-stats-table td:first-child {
+    padding-left: 12px;
+    min-width: 120px;
+  }
+
+  .game-stats-table th:nth-child(2),
+  .game-stats-table td:nth-child(2),
+  .game-stats-table th:nth-child(3),
+  .game-stats-table td:nth-child(3),
+  .game-stats-table th:nth-child(4),
+  .game-stats-table td:nth-child(4),
+  .game-stats-table th:nth-child(5),
+  .game-stats-table td:nth-child(5),
+  .game-stats-table th:nth-child(6),
+  .game-stats-table td:nth-child(6) {
+    padding-right: 12px;
+  }
+}

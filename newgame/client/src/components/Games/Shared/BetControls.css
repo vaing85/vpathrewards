@@ -1,0 +1,206 @@
+.bet-controls-container {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+}
+
+.bet-display {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.bet-label {
+  font-size: 14px;
+  color: #d1d5db;
+  font-weight: 500;
+}
+
+.bet-amount {
+  font-size: 18px;
+  font-weight: 700;
+  color: #4ade80;
+  text-shadow: 0 0 10px rgba(74, 222, 128, 0.5);
+}
+
+.bet-options {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.bet-option-btn {
+  flex: 1;
+  min-width: 60px;
+  padding: 10px 16px;
+  background: rgba(0, 0, 0, 0.4);
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  border-radius: 8px;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.bet-option-btn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.4);
+  transform: translateY(-2px);
+}
+
+.bet-option-btn.active {
+  background: linear-gradient(135deg, #4ade80 0%, #22c55e 100%);
+  border-color: #4ade80;
+  box-shadow: 0 0 15px rgba(74, 222, 128, 0.4);
+}
+
+.bet-option-btn:disabled,
+.bet-option-btn.disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.bet-amount-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(0, 0, 0, 0.3);
+  padding: 8px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.bet-adjust-btn {
+  width: 36px;
+  height: 36px;
+  background: rgba(255, 255, 255, 0.1);
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  border-radius: 6px;
+  color: #fff;
+  font-size: 20px;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.bet-adjust-btn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.2);
+  border-color: rgba(255, 255, 255, 0.4);
+  transform: scale(1.1);
+}
+
+.bet-adjust-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.bet-adjust-btn.plus {
+  background: rgba(74, 222, 128, 0.2);
+  border-color: rgba(74, 222, 128, 0.4);
+}
+
+.bet-adjust-btn.plus:hover:not(:disabled) {
+  background: rgba(74, 222, 128, 0.3);
+  border-color: rgba(74, 222, 128, 0.6);
+}
+
+.bet-adjust-btn.minus {
+  background: rgba(239, 68, 68, 0.2);
+  border-color: rgba(239, 68, 68, 0.4);
+}
+
+.bet-adjust-btn.minus:hover:not(:disabled) {
+  background: rgba(239, 68, 68, 0.3);
+  border-color: rgba(239, 68, 68, 0.6);
+}
+
+.bet-input {
+  flex: 1;
+  padding: 8px 12px;
+  background: rgba(0, 0, 0, 0.5);
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  border-radius: 6px;
+  color: #fff;
+  font-size: 16px;
+  font-weight: 600;
+  text-align: center;
+  transition: all 0.2s ease;
+}
+
+.bet-input:focus {
+  outline: none;
+  border-color: #4ade80;
+  box-shadow: 0 0 10px rgba(74, 222, 128, 0.3);
+}
+
+.bet-input:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Remove number input arrows */
+.bet-input::-webkit-outer-spin-button,
+.bet-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.bet-input[type=number] {
+  -moz-appearance: textfield;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .bet-controls-container {
+    gap: 10px;
+  }
+
+  .bet-display {
+    padding: 6px 10px;
+  }
+
+  .bet-label {
+    font-size: 12px;
+  }
+
+  .bet-amount {
+    font-size: 16px;
+  }
+
+  .bet-options {
+    gap: 6px;
+  }
+
+  .bet-option-btn {
+    min-width: 50px;
+    padding: 8px 12px;
+    font-size: 12px;
+  }
+
+  .bet-amount-controls {
+    padding: 6px;
+    gap: 6px;
+  }
+
+  .bet-adjust-btn {
+    width: 32px;
+    height: 32px;
+    font-size: 18px;
+  }
+
+  .bet-input {
+    padding: 6px 10px;
+    font-size: 14px;
+  }
+}
+

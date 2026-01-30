@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+  <title>Tower Defense – Guinea Pig</title>
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <div id="app">
+    <div class="panels-wrap">
+    <aside class="side-panel panel-left" role="complementary" aria-label="Game state and controls">
+      <header class="hud hud-header" role="banner">
+        <div class="hud-stats" role="group" aria-label="Game stats">
+          <div class="stat-card stat-lives" aria-label="Lives">
+            <span class="stat-label">Lives</span>
+            <span class="stat-value" id="lives" aria-live="polite">20</span>
+          </div>
+          <div class="stat-card stat-gold" aria-label="Gold">
+            <span class="stat-label">Gold</span>
+            <span class="stat-value" id="gold" aria-live="polite">120</span>
+          </div>
+          <div class="stat-card stat-wave" aria-label="Current wave">
+            <span class="stat-label">Wave</span>
+            <span class="stat-value" id="wave" aria-live="polite">0</span>
+          </div>
+          <div class="stat-card stat-best" aria-label="Best wave reached">
+            <span class="stat-label">Best</span>
+            <span class="stat-value" id="best" aria-live="polite">0</span>
+          </div>
+          <div class="stat-card stat-win" aria-label="Win at wave">
+            <span class="stat-label">Win at</span>
+            <span class="stat-value" id="win-wave">10</span>
+          </div>
+        </div>
+        <div id="difficulty" class="difficulty-bar" role="group" aria-label="Difficulty">
+          <span class="difficulty-label" id="diff-label">Difficulty</span>
+          <div class="difficulty-pills" role="radiogroup" aria-labelledby="diff-label">
+            <button type="button" id="diff-easy" class="btn-pill" role="radio" aria-checked="false" aria-label="Easy difficulty">Easy</button>
+            <button type="button" id="diff-normal" class="btn-pill selected" role="radio" aria-checked="true" aria-label="Normal difficulty">Normal</button>
+            <button type="button" id="diff-hard" class="btn-pill" role="radio" aria-checked="false" aria-label="Hard difficulty">Hard</button>
+          </div>
+        </div>
+        <div id="game-mode" class="difficulty-bar mode-bar" role="group" aria-label="Game mode">
+          <span class="difficulty-label" id="mode-label">Mode</span>
+          <div class="difficulty-pills mode-pills" role="radiogroup" aria-labelledby="mode-label">
+            <button type="button" id="mode-standard" class="btn-pill" role="radio" aria-checked="true" aria-label="Standard mode">Standard</button>
+            <button type="button" id="mode-endless" class="btn-pill" role="radio" aria-checked="false" aria-label="Endless mode">Endless</button>
+          </div>
+        </div>
+        <div id="game-speed" class="difficulty-bar speed-bar" role="group" aria-label="Game speed">
+          <span class="difficulty-label" id="speed-label">Speed</span>
+          <div class="difficulty-pills speed-pills" role="radiogroup" aria-labelledby="speed-label">
+            <button type="button" id="speed-1" class="btn-pill" role="radio" aria-checked="false" aria-label="1x speed">1×</button>
+            <button type="button" id="speed-2" class="btn-pill selected" role="radio" aria-checked="true" aria-label="2x speed">2×</button>
+            <button type="button" id="speed-3" class="btn-pill" role="radio" aria-checked="false" aria-label="3x speed">3×</button>
+          </div>
+        </div>
+        <nav class="controls-nav" aria-label="Game actions">
+          <div class="controls-row-trio">
+            <button type="button" id="btn-pause" class="btn btn-pause" aria-label="Pause game">❚❚ Pause</button>
+            <button type="button" id="btn-mute" class="btn btn-mute" aria-label="Mute sound">🔊</button>
+            <button type="button" id="btn-fullscreen" class="btn btn-fullscreen" aria-label="Toggle fullscreen">⛶</button>
+          </div>
+          <div class="volume-row" role="group" aria-label="Volume">
+            <label for="volume-slider" class="volume-label">Volume</label>
+            <input type="range" id="volume-slider" class="volume-slider" min="0" max="100" value="70" aria-valuemin="0" aria-valuemax="100" aria-valuenow="70" aria-label="Volume level">
+          </div>
+          <div class="controls-row">
+            <button type="button" id="btn-wave" class="btn btn-wave" aria-label="Start next wave">▶ Start Wave</button>
+          </div>
+          <div id="next-wave-preview" class="next-wave-preview" role="status" aria-live="polite" aria-label="Next wave preview"></div>
+        </nav>
+      </header>
+      <footer class="hud hud-footer side-panel-footer">
+        <button type="button" id="btn-new-game" class="btn btn-new-game" aria-label="Start a new game">New game</button>
+      </footer>
+    </aside>
+    <main class="game-main">
+      <div class="canvas-wrap">
+        <canvas id="canvas" width="640" height="480" aria-label="Game board: place towers and watch enemies move along the path"></canvas>
+      </div>
+      <div id="message" class="message message-over-board hidden" role="status" aria-live="polite" aria-atomic="true"></div>
+      <div id="game-over-summary" class="game-over-summary hidden" role="status" aria-live="polite"></div>
+      <button type="button" id="btn-play-again" class="btn btn-play-again hidden">Play again</button>
+    </main>
+    <aside class="side-panel panel-right" role="complementary" aria-label="Build towers and records">
+      <div class="action-row" aria-label="Choose tower to build">
+        <span class="tower-picker-label">Build</span>
+        <div id="tower-picker" class="tower-picker" role="group"></div>
+      </div>
+      <div id="tower-actions" class="tower-actions-panel hidden" aria-label="Selected tower actions">
+        <button type="button" id="btn-upgrade" class="btn btn-upgrade">↑ Upgrade</button>
+        <button type="button" id="btn-sell" class="btn btn-sell">✕ Sell</button>
+      </div>
+      <div class="lifetime-stats" role="group" aria-label="Lifetime stats">
+        <span class="stat-inline">Kills <strong id="stat-kills">0</strong></span>
+        <span class="stat-inline">Towers <strong id="stat-towers">0</strong></span>
+        <span class="stat-inline">Games <strong id="stat-games">0</strong></span>
+        <span class="stat-inline">Wins <strong id="stat-wins">0</strong></span>
+      </div>
+      <section id="leaderboard" class="leaderboard" role="region" aria-label="Best waves by difficulty and mode">
+        <h3 class="leaderboard-title">Best waves</h3>
+        <div class="leaderboard-rows">
+          <div class="leaderboard-row"><span class="leaderboard-diff">Easy</span> <span id="lb-easy-std" class="leaderboard-val">0</span> <span id="lb-easy-end" class="leaderboard-val">0</span></div>
+          <div class="leaderboard-row"><span class="leaderboard-diff">Normal</span> <span id="lb-normal-std" class="leaderboard-val">0</span> <span id="lb-normal-end" class="leaderboard-val">0</span></div>
+          <div class="leaderboard-row"><span class="leaderboard-diff">Hard</span> <span id="lb-hard-std" class="leaderboard-val">0</span> <span id="lb-hard-end" class="leaderboard-val">0</span></div>
+        </div>
+        <p class="leaderboard-hint">Std · End</p>
+      </section>
+      <footer class="hud hud-footer side-panel-footer control-panel-footer">
+        <p class="hint">Choose difficulty → Build towers → Start waves. Reach the target wave to win.</p>
+        <p class="hint hint-keys"><kbd>Space</kbd> Start wave · <kbd>P</kbd> Pause</p>
+      </footer>
+    </aside>
+    </div>
+    <div id="first-time-tooltip" class="first-time-tooltip hidden" role="dialog" aria-labelledby="tooltip-title" aria-modal="true">
+      <div class="tooltip-card">
+        <h2 id="tooltip-title" class="tooltip-title">How to play</h2>
+        <p class="tooltip-text">Tap a tower type under <strong>Build</strong>, then tap a green tile on the board to place it. Tap <strong>Start Wave</strong> to send enemies. Survive all waves to win.</p>
+        <button type="button" id="tooltip-got-it" class="btn btn-wave tooltip-got-it">Got it</button>
+      </div>
+    </div>
+  </div>
+  <script src="js/game.js"></script>
+</body>
+</html>

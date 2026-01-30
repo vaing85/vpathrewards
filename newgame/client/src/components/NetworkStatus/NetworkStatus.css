@@ -1,0 +1,70 @@
+.network-status {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 10000;
+  padding: 12px 20px;
+  text-align: center;
+  font-weight: 500;
+  font-size: 14px;
+  animation: slideDown 0.3s ease-out;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.network-status.offline {
+  background: #ef4444;
+  color: white;
+}
+
+.network-status.online.reconnected {
+  background: #10b981;
+  color: white;
+  animation: slideDown 0.3s ease-out, fadeOut 3s ease-in forwards;
+}
+
+.network-status-content {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.network-icon {
+  font-size: 16px;
+}
+
+.network-message {
+  flex: 1;
+}
+
+@keyframes slideDown {
+  from {
+    transform: translateY(-100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes fadeOut {
+  0%, 70% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-100%);
+  }
+}
+
+/* Dark mode support */
+[data-theme="dark"] .network-status.offline {
+  background: #dc2626;
+}
+
+[data-theme="dark"] .network-status.online.reconnected {
+  background: #059669;
+}
+

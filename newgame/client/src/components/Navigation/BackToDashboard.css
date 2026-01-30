@@ -1,0 +1,73 @@
+.back-to-dashboard-btn {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+
+.back-to-dashboard-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+  background: linear-gradient(135deg, #764ba2 0%, #667eea 100%);
+}
+
+.back-to-dashboard-btn:active {
+  transform: translateY(0);
+}
+
+.back-to-dashboard-link {
+  background: transparent;
+  color: var(--text-primary, #667eea);
+  border: none;
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 16px;
+}
+
+.back-to-dashboard-link:hover {
+  background: rgba(102, 126, 234, 0.1);
+  color: var(--text-primary, #764ba2);
+}
+
+/* Dark theme support */
+[data-theme="dark"] .back-to-dashboard-btn {
+  background: linear-gradient(135deg, #764ba2 0%, #667eea 100%);
+}
+
+[data-theme="dark"] .back-to-dashboard-link {
+  color: var(--text-primary, #a78bfa);
+}
+
+[data-theme="dark"] .back-to-dashboard-link:hover {
+  background: rgba(167, 139, 250, 0.1);
+  color: var(--text-primary, #c4b5fd);
+}
+
+/* Mobile responsive */
+@media (max-width: 768px) {
+  .back-to-dashboard-btn,
+  .back-to-dashboard-link {
+    font-size: 13px;
+    padding: 8px 16px;
+    margin-bottom: 16px;
+  }
+}
+

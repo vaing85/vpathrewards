@@ -1,0 +1,60 @@
+# Sensitive / system
+.ssh/
+.gitconfig
+*.pub
+NTUSER.*
+ntuser.*
+AppData/
+Application Data/
+Local Settings/
+My Documents/
+NetHood/
+PrintHood/
+Recent/
+SendTo/
+Start Menu/
+Templates/
+Cookies/
+Documents/My Music/
+Documents/My Pictures/
+Documents/My Videos/
+
+# Nested repos (each has its own remote)
+apps/
+
+# Tooling / caches (large or machine-specific)
+.cargo/
+.rustup/
+.cursor/
+.docker/
+.expo/
+.config/
+.qt_material/
+go/
+node_modules/
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Personal / cloud
+OneDrive/
+CrossDevice/
+Downloads/
+Music/
+Videos/
+Favorites/
+Links/
+Contacts/
+Searches/
+Saved Games/
+
+# Large binaries / installers
+*.tar.gz
+*.zip
+*.exe
+*.msi
+
+# Windows
+desktop.ini
+Thumbs.db
