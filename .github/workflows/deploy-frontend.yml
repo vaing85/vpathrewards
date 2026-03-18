@@ -41,7 +41,7 @@ jobs:
       - name: Build
         working-directory: frontend
         env:
-          VITE_API_URL: https://api.vpathrewards.store/api
+          VITE_API_URL: https://vpathrewards-production.up.railway.app/api
         run: npm run build
 
       - name: Setup Pages
