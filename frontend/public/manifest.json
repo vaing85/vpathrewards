@@ -1,0 +1,18 @@
+{
+  "name": "V PATHing Rewards",
+  "short_name": "V PATHing",
+  "description": "Earn rewards on every purchase at your favorite stores",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#2563eb",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/vite.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
