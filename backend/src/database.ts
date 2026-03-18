@@ -366,36 +366,7 @@ export const initDatabase = async () => {
       console.log('Default admin created: admin@cashback.com / admin123');
     }
 
-    // Sample merchants & offers
-    const { count } = await dbGet('SELECT COUNT(*) as count FROM merchants');
-    if (Number(count) === 0) {
-      await pool.query(`
-        INSERT INTO merchants (name, description, logo_url, website_url, category) VALUES
-          ('Amazon',   'Shop millions of products',  'https://logo.clearbit.com/amazon.com',  'https://amazon.com',  'E-commerce'),
-          ('Target',   'Expect more. Pay less.',      'https://logo.clearbit.com/target.com',  'https://target.com',  'Retail'),
-          ('Best Buy', 'Electronics and tech',        'https://logo.clearbit.com/bestbuy.com', 'https://bestbuy.com', 'Electronics'),
-          ('Walmart',  'Save money. Live better.',    'https://logo.clearbit.com/walmart.com', 'https://walmart.com', 'Retail'),
-          ('Nike',     'Just do it',                  'https://logo.clearbit.com/nike.com',    'https://nike.com',    'Fashion')
-      `);
-
-      const merchants = await dbAll('SELECT id FROM merchants');
-      const rates = [2.5, 3.0, 4.0, 5.0, 6.0];
-      for (const merchant of merchants) {
-        const rate = rates[Math.floor(Math.random() * rates.length)];
-        await dbRun(
-          'INSERT INTO offers (merchant_id, title, description, cashback_rate, terms, affiliate_link) VALUES (?, ?, ?, ?, ?, ?)',
-          [
-            merchant.id,
-            `${rate}% Cashback`,
-            `Get ${rate}% cashback on all purchases`,
-            rate,
-            'Valid for 30 days. Minimum purchase $10.',
-            `https://example.com/affiliate/${merchant.id}`,
-          ]
-        );
-      }
-      console.log('Sample data seeded');
-    }
+    // No sample data seeded — merchants and offers are added via the admin panel
 
     console.log('Database initialised successfully');
   } catch (error) {

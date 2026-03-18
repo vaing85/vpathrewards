@@ -20,6 +20,9 @@ import ReferralDashboard from './pages/ReferralDashboard';
 import Favorites from './pages/Favorites';
 import SubscriptionSuccess from './pages/SubscriptionSuccess';
 import SubscriptionCancel from './pages/SubscriptionCancel';
+import TermsOfService from './pages/TermsOfService';
+import PrivacyPolicy from './pages/PrivacyPolicy';
+import Footer from './components/Footer';
 
 // Phase 4: Code splitting – lazy load admin and heavy chart page
 const AdminLogin = lazy(() => import('./pages/admin/AdminLogin'));
@@ -48,9 +51,12 @@ function App() {
           <Routes>
             {/* Public Routes */}
             <Route path="/" element={
-              <div className="min-h-screen bg-gray-50">
+              <div className="min-h-screen bg-gray-50 flex flex-col">
                 <Navbar />
-                <Home />
+                <div className="flex-1">
+                  <Home />
+                </div>
+                <Footer />
               </div>
             } />
             <Route path="/login" element={
@@ -145,7 +151,25 @@ function App() {
                 </Suspense>
               </div>
             } />
-            
+            <Route path="/terms" element={
+              <div className="min-h-screen bg-gray-50 flex flex-col">
+                <Navbar />
+                <div className="flex-1">
+                  <TermsOfService />
+                </div>
+                <Footer />
+              </div>
+            } />
+            <Route path="/privacy" element={
+              <div className="min-h-screen bg-gray-50 flex flex-col">
+                <Navbar />
+                <div className="flex-1">
+                  <PrivacyPolicy />
+                </div>
+                <Footer />
+              </div>
+            } />
+
             {/* Admin Routes (lazy loaded) */}
             <Route path="/admin/login" element={
               <Suspense fallback={<PageFallback />}>
