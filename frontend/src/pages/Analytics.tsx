@@ -351,7 +351,7 @@ const Analytics = () => {
                             </tr>
                           </thead>
                           <tbody className="bg-white divide-y divide-gray-200">
-                            {popular.merchants.map((merchant) => (
+                            {popular.merchants.map((merchant: any) => (
                               <tr key={merchant.id}>
                                 <td className="px-4 py-3">
                                   <Link to={`/merchants/${merchant.id}`} className="flex items-center space-x-2 hover:text-primary-600">
