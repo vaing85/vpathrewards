@@ -59,7 +59,8 @@ app.use(securityHeaders);
 
 // CORS configuration
 app.use(cors({
-  ...securityConfig.cors,
+  origin: securityConfig.cors.origin,
+  credentials: securityConfig.cors.credentials,
   methods: [...securityConfig.cors.methods],
   allowedHeaders: [...securityConfig.cors.allowedHeaders],
 }));
