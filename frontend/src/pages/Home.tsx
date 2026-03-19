@@ -301,29 +301,22 @@ const Home = () => {
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
             {[
-              { name: 'Expedia', logo: 'https://logo.clearbit.com/expedia.com', category: 'Travel' },
-              { name: 'Hotels.com', logo: 'https://logo.clearbit.com/hotels.com', category: 'Hotels' },
-              { name: 'Priceline', logo: 'https://logo.clearbit.com/priceline.com', category: 'Travel' },
-              { name: 'Enterprise', logo: 'https://logo.clearbit.com/enterprise.com', category: 'Car Rental' },
-              { name: 'Hertz', logo: 'https://logo.clearbit.com/hertz.com', category: 'Car Rental' },
-              { name: 'Budget', logo: 'https://logo.clearbit.com/budget.com', category: 'Car Rental' },
-              { name: 'Avis', logo: 'https://logo.clearbit.com/avis.com', category: 'Car Rental' },
-              { name: 'Booking.com', logo: 'https://logo.clearbit.com/booking.com', category: 'Hotels' },
-              { name: 'Travelocity', logo: 'https://logo.clearbit.com/travelocity.com', category: 'Travel' },
-              { name: 'Hilton', logo: 'https://logo.clearbit.com/hilton.com', category: 'Hotels' },
-              { name: 'Marriott', logo: 'https://logo.clearbit.com/marriott.com', category: 'Hotels' },
-              { name: 'Trivago', logo: 'https://logo.clearbit.com/trivago.com', category: 'Travel' },
+              { name: 'Expedia', icon: '✈️', category: 'Travel' },
+              { name: 'Hotels.com', icon: '🏨', category: 'Hotels' },
+              { name: 'Priceline', icon: '✈️', category: 'Travel' },
+              { name: 'Enterprise', icon: '🚗', category: 'Car Rental' },
+              { name: 'Hertz', icon: '🚗', category: 'Car Rental' },
+              { name: 'Budget', icon: '🚗', category: 'Car Rental' },
+              { name: 'Avis', icon: '🚗', category: 'Car Rental' },
+              { name: 'Booking.com', icon: '🏨', category: 'Hotels' },
+              { name: 'Travelocity', icon: '✈️', category: 'Travel' },
+              { name: 'Hilton', icon: '🏨', category: 'Hotels' },
+              { name: 'Marriott', icon: '🏨', category: 'Hotels' },
+              { name: 'Trivago', icon: '🔍', category: 'Travel' },
             ].map((brand) => (
-              <div key={brand.name} className="relative flex flex-col items-center bg-gray-50 rounded-xl p-4 border border-gray-100 hover:shadow-md transition-all group">
-                <div className="w-14 h-14 rounded-full bg-white border border-gray-200 flex items-center justify-center mb-3 shadow-sm overflow-hidden">
-                  <img
-                    src={brand.logo}
-                    alt={brand.name}
-                    className="w-10 h-10 object-contain"
-                    onError={(e) => {
-                      (e.target as HTMLImageElement).style.display = 'none';
-                    }}
-                  />
+              <div key={brand.name} className="flex flex-col items-center bg-gray-50 rounded-xl p-4 border border-gray-100 hover:shadow-md transition-all">
+                <div className="w-14 h-14 rounded-full bg-white border border-gray-200 flex items-center justify-center mb-3 shadow-sm text-2xl">
+                  {brand.icon}
                 </div>
                 <p className="text-sm font-semibold text-gray-700 text-center">{brand.name}</p>
                 <p className="text-xs text-gray-400 text-center">{brand.category}</p>
