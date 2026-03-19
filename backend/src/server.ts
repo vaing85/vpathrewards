@@ -31,6 +31,7 @@ import adminCashbackRoutes from './routes/admin/cashback';
 import adminJobsRoutes from './routes/admin/jobs';
 import subscriptionRoutes from './routes/subscriptions';
 import webhookRoutes from './routes/webhooks';
+import supportRoutes from './routes/support';
 import { errorHandler } from './middleware/errorHandler';
 
 const app = express();
@@ -93,6 +94,7 @@ app.use('/api/favorites', favoritesRoutes);
 app.use('/api/analytics', analyticsRoutes);
 app.use('/api/stats', statsRoutes);
 app.use('/api/subscriptions', subscriptionRoutes);
+app.use('/api/support', supportRoutes);
 
 // Admin routes with admin rate limiter
 app.use('/api/admin', adminLimiter);

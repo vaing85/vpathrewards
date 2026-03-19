@@ -23,6 +23,7 @@ import SubscriptionCancel from './pages/SubscriptionCancel';
 import TermsOfService from './pages/TermsOfService';
 import PrivacyPolicy from './pages/PrivacyPolicy';
 import Footer from './components/Footer';
+import ChatWidget from './components/ChatWidget';
 
 // Phase 4: Code splitting – lazy load admin and heavy chart page
 const AdminLogin = lazy(() => import('./pages/admin/AdminLogin'));
@@ -219,6 +220,7 @@ function App() {
               </AdminLayout>
             } />
           </Routes>
+          <ChatWidget />
         </Router>
       </AdminProvider>
     </AuthProvider>
