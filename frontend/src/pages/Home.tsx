@@ -280,7 +280,7 @@ const Home = () => {
           {loading ? (
             <div className="text-center py-12 text-gray-400">Loading merchants...</div>
           ) : trendingMerchants.length === 0 ? (
-            <div className="text-center py-12 text-gray-400">No trending merchants available</div>
+            <div className="text-center py-12 text-gray-400">Check back soon — new stores are being added!</div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {trendingMerchants.map((merchant) => (
@@ -288,6 +288,52 @@ const Home = () => {
               ))}
             </div>
           )}
+        </div>
+      </div>
+
+      {/* ── Coming Soon Partners ── */}
+      <div className="bg-white py-16">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-10">
+            <span className="bg-blue-100 text-blue-700 text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wide">Launching Soon</span>
+            <h2 className="text-3xl font-bold text-gray-800 mt-3">Our Upcoming Partners</h2>
+            <p className="text-gray-500 mt-2">Top travel & lifestyle brands coming to V PATHing Rewards</p>
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+            {[
+              { name: 'Expedia', logo: 'https://logo.clearbit.com/expedia.com', category: 'Travel' },
+              { name: 'Hotels.com', logo: 'https://logo.clearbit.com/hotels.com', category: 'Hotels' },
+              { name: 'Priceline', logo: 'https://logo.clearbit.com/priceline.com', category: 'Travel' },
+              { name: 'Enterprise', logo: 'https://logo.clearbit.com/enterprise.com', category: 'Car Rental' },
+              { name: 'Hertz', logo: 'https://logo.clearbit.com/hertz.com', category: 'Car Rental' },
+              { name: 'Budget', logo: 'https://logo.clearbit.com/budget.com', category: 'Car Rental' },
+              { name: 'Avis', logo: 'https://logo.clearbit.com/avis.com', category: 'Car Rental' },
+              { name: 'Booking.com', logo: 'https://logo.clearbit.com/booking.com', category: 'Hotels' },
+              { name: 'Travelocity', logo: 'https://logo.clearbit.com/travelocity.com', category: 'Travel' },
+              { name: 'Hilton', logo: 'https://logo.clearbit.com/hilton.com', category: 'Hotels' },
+              { name: 'Marriott', logo: 'https://logo.clearbit.com/marriott.com', category: 'Hotels' },
+              { name: 'Trivago', logo: 'https://logo.clearbit.com/trivago.com', category: 'Travel' },
+            ].map((brand) => (
+              <div key={brand.name} className="relative flex flex-col items-center bg-gray-50 rounded-xl p-4 border border-gray-100 hover:shadow-md transition-all group">
+                <div className="w-14 h-14 rounded-full bg-white border border-gray-200 flex items-center justify-center mb-3 shadow-sm overflow-hidden">
+                  <img
+                    src={brand.logo}
+                    alt={brand.name}
+                    className="w-10 h-10 object-contain"
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).style.display = 'none';
+                    }}
+                  />
+                </div>
+                <p className="text-sm font-semibold text-gray-700 text-center">{brand.name}</p>
+                <p className="text-xs text-gray-400 text-center">{brand.category}</p>
+                <span className="mt-2 bg-yellow-100 text-yellow-700 text-xs font-semibold px-2 py-0.5 rounded-full">Coming Soon</span>
+              </div>
+            ))}
+          </div>
+          <p className="text-center text-gray-400 text-sm mt-8">
+            More brands added every week. <Link to="/register" className="text-primary-600 hover:underline font-medium">Sign up free</Link> to get notified.
+          </p>
         </div>
       </div>
 
