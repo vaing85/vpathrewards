@@ -3,9 +3,16 @@ import Anthropic from '@anthropic-ai/sdk';
 
 const router = Router();
 
-const client = new Anthropic({
-  apiKey: process.env.ANTHROPIC_API_KEY,
-});
+// Initialize lazily so dotenv has time to load
+let client: Anthropic | null = null;
+function getClient(): Anthropic {
+  if (!client) {
+    client = new Anthropic({
+      apiKey: process.env.ANTHROPIC_API_KEY,
+    });
+  }
+  return client;
+}
 
 const SYSTEM_PROMPT = `You are a friendly and helpful support assistant for V PATHing Rewards (vpathrewards.store), a cashback and loyalty rewards platform operated by V PATHing Enterprise LLC.
 
@@ -84,7 +91,7 @@ router.post('/chat', async (req: Request, res: Response) => {
       { role: 'user', content: message.trim() },
     ];
 
-    const response = await client.messages.create({
+    const response = await getClient().messages.create({
       model: 'claude-haiku-4-5',
       max_tokens: 512,
       system: SYSTEM_PROMPT,
