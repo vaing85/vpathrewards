@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import apiClient from '../api/client';
 import { useAuth } from '../context/AuthContext';
@@ -45,6 +45,55 @@ interface Review {
   comment?: string;
   created_at: string;
 }
+
+// Groups banners by "WxH" key
+function groupBannersBySize(banners: Banner[]): Banner[][] {
+  const map = new Map<string, Banner[]>();
+  for (const b of banners) {
+    const key = `${b.width}x${b.height}`;
+    if (!map.has(key)) map.set(key, []);
+    map.get(key)!.push(b);
+  }
+  return Array.from(map.values());
+}
+
+// Rotates through a list of same-size banners every 15s
+const RotatingBanner = ({ group, merchantName }: { group: Banner[]; merchantName: string }) => {
+  const [index, setIndex] = useState(0);
+  const [fade, setFade] = useState(true);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  useEffect(() => {
+    if (group.length <= 1) return;
+    timerRef.current = setInterval(() => {
+      setFade(false);
+      setTimeout(() => {
+        setIndex((i) => (i + 1) % group.length);
+        setFade(true);
+      }, 300);
+    }, 15000);
+    return () => { if (timerRef.current) clearInterval(timerRef.current); };
+  }, [group.length]);
+
+  const banner = group[index];
+  return (
+    <a
+      href={banner.click_url}
+      target="_blank"
+      rel="noopener noreferrer sponsored"
+      style={{ display: 'block', transition: 'opacity 0.3s', opacity: fade ? 1 : 0 }}
+    >
+      <img
+        src={banner.image_url}
+        alt={banner.alt_text || merchantName}
+        width={banner.width}
+        height={banner.height}
+        className="rounded shadow-sm"
+        style={{ maxWidth: '100%' }}
+      />
+    </a>
+  );
+};
 
 const MerchantDetail = () => {
   const { id } = useParams<{ id: string }>();
@@ -105,9 +154,9 @@ const MerchantDetail = () => {
     );
   }
 
-  // Separate banners by orientation for sidebar placement
-  const sidebarBanners = banners.filter(b => b.width <= 300);
-  const wideBanners = banners.filter(b => b.width > 300);
+  // Group banners by size, then split into sidebar (≤300px wide) and wide
+  const sidebarGroups = groupBannersBySize(banners.filter(b => b.width <= 300));
+  const wideGroups = groupBannersBySize(banners.filter(b => b.width > 300));
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -165,25 +214,16 @@ const MerchantDetail = () => {
         </div>
       </div>
 
-      {/* Wide banners (leaderboard style) */}
-      {wideBanners.length > 0 && (
+      {/* Wide banners — one slot per size, rotating */}
+      {wideGroups.length > 0 && (
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6">
           <div className="flex flex-wrap gap-4 justify-center">
-            {wideBanners.map((banner) => (
-              <a
-                key={banner.id}
-                href={banner.click_url}
-                target="_blank"
-                rel="noopener noreferrer sponsored"
-              >
-                <img
-                  src={banner.image_url}
-                  alt={banner.alt_text || merchant.name}
-                  width={banner.width}
-                  height={banner.height}
-                  className="rounded shadow-sm"
-                />
-              </a>
+            {wideGroups.map((group) => (
+              <RotatingBanner
+                key={`${group[0].width}x${group[0].height}`}
+                group={group}
+                merchantName={merchant.name}
+              />
             ))}
           </div>
         </div>
@@ -191,7 +231,7 @@ const MerchantDetail = () => {
 
       {/* Main content + sidebar */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className={`flex gap-8 ${sidebarBanners.length > 0 ? 'flex-col lg:flex-row' : ''}`}>
+        <div className={`flex gap-8 ${sidebarGroups.length > 0 ? 'flex-col lg:flex-row' : ''}`}>
 
           {/* Offers + Reviews */}
           <div className="flex-1 min-w-0">
@@ -300,27 +340,17 @@ const MerchantDetail = () => {
             </div>
           </div>
 
-          {/* Sidebar banners */}
-          {sidebarBanners.length > 0 && (
+          {/* Sidebar banners — one slot per size, rotating */}
+          {sidebarGroups.length > 0 && (
             <div className="lg:w-64 shrink-0">
               <div className="sticky top-6 space-y-4">
                 <p className="text-xs text-gray-400 uppercase tracking-wide">Sponsored</p>
-                {sidebarBanners.map((banner) => (
-                  <a
-                    key={banner.id}
-                    href={banner.click_url}
-                    target="_blank"
-                    rel="noopener noreferrer sponsored"
-                    className="block"
-                  >
-                    <img
-                      src={banner.image_url}
-                      alt={banner.alt_text || merchant.name}
-                      width={banner.width}
-                      height={banner.height}
-                      className="rounded shadow-sm w-full"
-                    />
-                  </a>
+                {sidebarGroups.map((group) => (
+                  <RotatingBanner
+                    key={`${group[0].width}x${group[0].height}`}
+                    group={group}
+                    merchantName={merchant.name}
+                  />
                 ))}
               </div>
             </div>
