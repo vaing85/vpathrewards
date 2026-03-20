@@ -285,6 +285,10 @@ export const initDatabase = async () => {
       )
     `);
 
+    // Password reset columns (added after initial schema; IF NOT EXISTS is safe to run repeatedly)
+    await client.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_token TEXT`);
+    await client.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_token_expires TIMESTAMPTZ`);
+
     // ---------------------------------------------------------------------------
     // Indexes
     // ---------------------------------------------------------------------------

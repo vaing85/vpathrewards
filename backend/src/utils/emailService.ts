@@ -388,13 +388,51 @@ const emailTemplates = {
         © ${new Date().getFullYear()} V PATHing Rewards. All rights reserved.
       `
     };
-  }
+  },
+
+  passwordReset: (name: string, resetUrl: string) => ({
+    subject: 'Reset your V PATHing Rewards password',
+    html: `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <meta charset="utf-8">
+          <style>
+            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+            .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+            .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+            .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }
+            .button { display: inline-block; padding: 14px 32px; background: #667eea; color: white; text-decoration: none; border-radius: 6px; margin: 20px 0; font-weight: bold; }
+            .note { font-size: 13px; color: #888; margin-top: 20px; }
+            .footer { text-align: center; margin-top: 30px; color: #666; font-size: 12px; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="header"><h1>Password Reset Request</h1></div>
+            <div class="content">
+              <h2>Hi ${name},</h2>
+              <p>We received a request to reset the password for your V PATHing Rewards account.</p>
+              <p style="text-align:center;">
+                <a href="${resetUrl}" class="button">Reset My Password</a>
+              </p>
+              <p class="note">This link expires in <strong>1 hour</strong>. If you didn't request a password reset, you can safely ignore this email — your password will not change.</p>
+            </div>
+            <div class="footer">
+              <p>© ${new Date().getFullYear()} V PATHing Rewards. All rights reserved.</p>
+            </div>
+          </div>
+        </body>
+      </html>
+    `,
+    text: `Hi ${name},\n\nReset your password here: ${resetUrl}\n\nThis link expires in 1 hour. If you didn't request this, ignore this email.\n\n© ${new Date().getFullYear()} V PATHing Rewards`
+  }),
 };
 
 // Send email function
 export const sendEmail = async (
   to: string,
-  template: 'welcome' | 'cashbackConfirmation' | 'withdrawalStatus' | 'newOfferAlert',
+  template: 'welcome' | 'cashbackConfirmation' | 'withdrawalStatus' | 'newOfferAlert' | 'passwordReset',
   data: any
 ): Promise<boolean> => {
   try {
@@ -434,6 +472,9 @@ export const sendEmail = async (
           data.cashbackRate,
           data.offerId
         );
+        break;
+      case 'passwordReset':
+        emailContent = emailTemplates.passwordReset(data.name, data.resetUrl);
         break;
       default:
         throw new Error('Invalid email template');

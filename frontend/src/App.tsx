@@ -22,6 +22,9 @@ import SubscriptionSuccess from './pages/SubscriptionSuccess';
 import SubscriptionCancel from './pages/SubscriptionCancel';
 import TermsOfService from './pages/TermsOfService';
 import PrivacyPolicy from './pages/PrivacyPolicy';
+import ForgotPassword from './pages/ForgotPassword';
+import ResetPassword from './pages/ResetPassword';
+import NotFound from './pages/NotFound';
 import Footer from './components/Footer';
 import ChatWidget from './components/ChatWidget';
 
@@ -171,6 +174,19 @@ function App() {
               </div>
             } />
 
+            <Route path="/forgot-password" element={
+              <div className="min-h-screen bg-gray-50">
+                <Navbar />
+                <ForgotPassword />
+              </div>
+            } />
+            <Route path="/reset-password" element={
+              <div className="min-h-screen bg-gray-50">
+                <Navbar />
+                <ResetPassword />
+              </div>
+            } />
+
             {/* Admin Routes (lazy loaded) */}
             <Route path="/admin/login" element={
               <Suspense fallback={<PageFallback />}>
@@ -218,6 +234,13 @@ function App() {
                   <AdminAnalytics />
                 </Suspense>
               </AdminLayout>
+            } />
+            {/* 404 catch-all */}
+            <Route path="*" element={
+              <div className="min-h-screen bg-gray-50">
+                <Navbar />
+                <NotFound />
+              </div>
             } />
           </Routes>
           <ChatWidget />
