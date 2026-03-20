@@ -159,4 +159,46 @@ router.put('/notifications', authenticateToken, async (req: AuthRequest, res) =>
   }
 });
 
+// Delete account — requires password confirmation
+router.delete('/', authenticateToken, async (req: AuthRequest, res: express.Response) => {
+  try {
+    const { password } = req.body;
+    if (!password) {
+      return res.status(400).json({ error: 'Password is required to delete your account' });
+    }
+
+    const user = await dbGet('SELECT * FROM users WHERE id = ?', [req.userId]) as any;
+    if (!user) return res.status(404).json({ error: 'User not found' });
+
+    // Prevent admin accounts from being self-deleted
+    if (user.is_admin === 1) {
+      return res.status(403).json({ error: 'Admin accounts cannot be deleted this way' });
+    }
+
+    const validPassword = await bcrypt.compare(password, user.password);
+    if (!validPassword) {
+      return res.status(401).json({ error: 'Incorrect password' });
+    }
+
+    // Delete all related data then the user
+    await dbRun('DELETE FROM cashback_goals      WHERE user_id = ?', [req.userId]);
+    await dbRun('DELETE FROM subscriptions        WHERE user_id = ?', [req.userId]);
+    await dbRun('DELETE FROM merchant_reviews     WHERE user_id = ?', [req.userId]);
+    await dbRun('DELETE FROM user_favorites       WHERE user_id = ?', [req.userId]);
+    await dbRun('DELETE FROM referral_earnings    WHERE referrer_id = ? OR referred_id = ?', [req.userId, req.userId]);
+    await dbRun('DELETE FROM referral_relationships WHERE referrer_id = ? OR referred_id = ?', [req.userId, req.userId]);
+    await dbRun('DELETE FROM user_referral_codes  WHERE user_id = ?', [req.userId]);
+    await dbRun('DELETE FROM affiliate_clicks     WHERE user_id = ?', [req.userId]);
+    await dbRun('DELETE FROM conversions          WHERE user_id = ?', [req.userId]);
+    await dbRun('DELETE FROM cashback_transactions WHERE user_id = ?', [req.userId]);
+    await dbRun('DELETE FROM withdrawals          WHERE user_id = ?', [req.userId]);
+    await dbRun('DELETE FROM users                WHERE id = ?', [req.userId]);
+
+    res.json({ message: 'Account deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting account:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 export default router;
