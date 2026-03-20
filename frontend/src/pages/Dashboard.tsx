@@ -139,7 +139,7 @@ const Dashboard = () => {
           ) : transactions.length === 0 ? (
             <div className="text-center py-12">
               <p className="text-gray-500 mb-3">No transactions yet.</p>
-              <Link to="/" className="text-primary-600 hover:text-primary-700 text-sm font-medium">Browse offers to start earning →</Link>
+              <Link to="/search" className="text-primary-600 hover:text-primary-700 text-sm font-medium">Browse offers to start earning →</Link>
             </div>
           ) : (
             <div className="divide-y divide-gray-100">
