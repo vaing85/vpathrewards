@@ -92,6 +92,9 @@ const Navbar = () => {
                 <Link to="/dashboard" className="text-gray-700 hover:text-primary-600">
                   Dashboard
                 </Link>
+                <Link to="/withdrawals" className="text-gray-700 hover:text-primary-600">
+                  Withdrawals
+                </Link>
                 <Link to="/referrals" className="text-gray-700 hover:text-primary-600">
                   Referrals
                 </Link>
@@ -187,6 +190,13 @@ const Navbar = () => {
                     onClick={() => setMobileMenuOpen(false)}
                   >
                     Dashboard
+                  </Link>
+                  <Link
+                    to="/withdrawals"
+                    className="block px-3 py-2 text-gray-700 hover:bg-gray-50 rounded-lg"
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    Withdrawals
                   </Link>
                   <Link
                     to="/referrals"
