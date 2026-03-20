@@ -39,6 +39,9 @@ import { errorHandler } from './middleware/errorHandler';
 const app = express();
 const PORT = appConfig.port;
 
+// Trust Railway's proxy (fixes rate limiter X-Forwarded-For warning)
+app.set('trust proxy', 1);
+
 // Security middleware (apply before other middleware)
 app.use(helmet({
   contentSecurityPolicy: {
