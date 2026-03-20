@@ -165,14 +165,11 @@ const SearchResults = () => {
           </nav>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 sm:gap-6">
-          {/* Filters Sidebar */}
-          <div className="lg:col-span-1 order-2 lg:order-1">
-            <Filters onFilterChange={handleFilterChange} onSortChange={handleSortChange} />
-          </div>
+        {/* Filters Bar */}
+        <Filters onFilterChange={handleFilterChange} onSortChange={handleSortChange} />
 
-          {/* Results */}
-          <div className="lg:col-span-3 order-1 lg:order-2">
+        {/* Results */}
+        <div>
             {loading ? (
               <div className="text-center py-12">Loading...</div>
             ) : (
@@ -291,7 +288,6 @@ const SearchResults = () => {
                 )}
               </>
             )}
-          </div>
         </div>
       </div>
     </div>
