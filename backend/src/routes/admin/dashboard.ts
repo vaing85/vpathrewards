@@ -30,17 +30,25 @@ router.get('/', authenticateAdmin, async (req, res) => {
     const [
       totalCashbackPaid,
       totalCashbackPending,
+      totalRevenue,
       recentTransactions
     ] = await Promise.all([
       dbGet('SELECT SUM(amount) as total FROM cashback_transactions WHERE status = ?', ['confirmed']) as Promise<{ total: number }>,
       dbGet('SELECT SUM(amount) as total FROM cashback_transactions WHERE status = ?', ['pending']) as Promise<{ total: number }>,
+      dbGet(`
+        SELECT SUM(ct.amount * (o.commission_rate - o.cashback_rate) / o.cashback_rate) as total
+        FROM cashback_transactions ct
+        JOIN offers o ON ct.offer_id = o.id
+        WHERE ct.status = 'confirmed' AND o.commission_rate > 0 AND o.cashback_rate > 0
+      `) as Promise<{ total: number }>,
       dbAll(`
-        SELECT 
+        SELECT
           ct.*,
           u.email as user_email,
           u.name as user_name,
           o.title as offer_title,
           o.cashback_rate,
+          o.commission_rate,
           m.name as merchant_name
         FROM cashback_transactions ct
         JOIN users u ON ct.user_id = u.id
@@ -53,16 +61,9 @@ router.get('/', authenticateAdmin, async (req, res) => {
 
     res.json({
       stats: {
-        users: {
-          total: totalUsers.count
-        },
-        merchants: {
-          total: totalMerchants.count
-        },
-        offers: {
-          total: totalOffers.count,
-          active: activeOffers.count
-        },
+        users: { total: totalUsers.count },
+        merchants: { total: totalMerchants.count },
+        offers: { total: totalOffers.count, active: activeOffers.count },
         transactions: {
           total: totalTransactions.count,
           pending: pendingTransactions.count,
@@ -71,7 +72,8 @@ router.get('/', authenticateAdmin, async (req, res) => {
         earnings: {
           total_user_earnings: totalEarnings.total || 0,
           total_cashback_paid: totalCashbackPaid.total || 0,
-          total_cashback_pending: totalCashbackPending.total || 0
+          total_cashback_pending: totalCashbackPending.total || 0,
+          total_your_revenue: totalRevenue.total || 0
         }
       },
       recent_transactions: recentTransactions || []
@@ -107,23 +109,23 @@ router.get('/stats', authenticateAdmin, async (req, res) => {
 
     const [
       totalCashbackPaid,
-      totalCashbackPending
+      totalCashbackPending,
+      totalRevenue
     ] = await Promise.all([
       dbGet('SELECT SUM(amount) as total FROM cashback_transactions WHERE status = ?', ['confirmed']) as Promise<{ total: number }>,
-      dbGet('SELECT SUM(amount) as total FROM cashback_transactions WHERE status = ?', ['pending']) as Promise<{ total: number }>
+      dbGet('SELECT SUM(amount) as total FROM cashback_transactions WHERE status = ?', ['pending']) as Promise<{ total: number }>,
+      dbGet(`
+        SELECT SUM(ct.amount * (o.commission_rate - o.cashback_rate) / o.cashback_rate) as total
+        FROM cashback_transactions ct
+        JOIN offers o ON ct.offer_id = o.id
+        WHERE ct.status = 'confirmed' AND o.commission_rate > 0 AND o.cashback_rate > 0
+      `) as Promise<{ total: number }>
     ]);
 
     res.json({
-      users: {
-        total: totalUsers.count
-      },
-      merchants: {
-        total: totalMerchants.count
-      },
-      offers: {
-        total: totalOffers.count,
-        active: activeOffers.count
-      },
+      users: { total: totalUsers.count },
+      merchants: { total: totalMerchants.count },
+      offers: { total: totalOffers.count, active: activeOffers.count },
       transactions: {
         total: totalTransactions.count,
         pending: pendingTransactions.count,
@@ -132,7 +134,8 @@ router.get('/stats', authenticateAdmin, async (req, res) => {
       earnings: {
         total_user_earnings: totalEarnings.total || 0,
         total_cashback_paid: totalCashbackPaid.total || 0,
-        total_cashback_pending: totalCashbackPending.total || 0
+        total_cashback_pending: totalCashbackPending.total || 0,
+        total_your_revenue: totalRevenue.total || 0
       }
     });
   } catch (error) {

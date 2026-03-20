@@ -289,6 +289,9 @@ export const initDatabase = async () => {
     await client.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_token TEXT`);
     await client.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_token_expires TIMESTAMPTZ`);
 
+    // Commission rate column on offers (your CJ payout %; cashback_rate is what user earns)
+    await client.query(`ALTER TABLE offers ADD COLUMN IF NOT EXISTS commission_rate DOUBLE PRECISION DEFAULT 0`);
+
     // ---------------------------------------------------------------------------
     // Indexes
     // ---------------------------------------------------------------------------
