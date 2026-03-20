@@ -67,6 +67,12 @@ const AdminNavbar = () => {
               >
                 Analytics
               </Link>
+              <Link
+                to="/admin/settings"
+                className="px-3 py-2 rounded-md text-sm font-medium hover:bg-gray-700"
+              >
+                Settings
+              </Link>
             </div>
           </div>
           
