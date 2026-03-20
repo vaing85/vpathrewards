@@ -103,12 +103,16 @@ router.put('/:id/confirm', authenticateAdmin, async (req: AdminRequest, res) => 
       return res.status(400).json({ error: 'Transaction is already confirmed' });
     }
     
-    // Update transaction status
+    // Update transaction status and credit user earnings
     await dbRun(
       'UPDATE cashback_transactions SET status = ? WHERE id = ?',
       ['confirmed', req.params.id]
     );
-    
+    await dbRun(
+      'UPDATE users SET total_earnings = total_earnings + ? WHERE id = ?',
+      [transaction.amount, transaction.user_id]
+    );
+
     // Confirm referral earnings for this transaction (async)
     confirmReferralEarning(parseInt(req.params.id)).catch(err => {
       console.error('Error confirming referral earning:', err);
@@ -200,6 +204,79 @@ router.put('/:id/reject', authenticateAdmin, async (req: AdminRequest, res) => {
     res.json(updated);
   } catch (error) {
     console.error('Error rejecting cashback transaction:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// POST /api/admin/cashback/credit — manually credit cashback to a user
+router.post('/credit', authenticateAdmin, async (req: AdminRequest, res) => {
+  try {
+    const { user_email, merchant_id, amount, notes } = req.body;
+    if (!user_email || !merchant_id || !amount) {
+      return res.status(400).json({ error: 'user_email, merchant_id, and amount are required' });
+    }
+    const creditAmount = parseFloat(amount);
+    if (isNaN(creditAmount) || creditAmount <= 0) {
+      return res.status(400).json({ error: 'amount must be a positive number' });
+    }
+
+    const user = await dbGet('SELECT id, name, email FROM users WHERE email = ?', [user_email]) as any;
+    if (!user) return res.status(404).json({ error: 'User not found' });
+
+    const merchant = await dbGet('SELECT id, name FROM merchants WHERE id = ?', [merchant_id]) as any;
+    if (!merchant) return res.status(404).json({ error: 'Merchant not found' });
+
+    // Find any active offer for this merchant to associate the transaction
+    let offer = await dbGet('SELECT id, title FROM offers WHERE merchant_id = ? AND is_active = 1 LIMIT 1', [merchant_id]) as any;
+    if (!offer) {
+      // Fall back to any offer
+      offer = await dbGet('SELECT id, title FROM offers WHERE merchant_id = ? LIMIT 1', [merchant_id]) as any;
+    }
+    if (!offer) return res.status(400).json({ error: 'No offers found for this merchant. Create an offer first.' });
+
+    // Create confirmed cashback transaction
+    const result = await dbRun(
+      `INSERT INTO cashback_transactions (user_id, offer_id, amount, status, transaction_date, notes)
+       VALUES (?, ?, ?, 'confirmed', datetime('now'), ?)`,
+      [user.id, offer.id, creditAmount, notes || `Manual credit by admin`]
+    );
+
+    // Update user total_earnings
+    await dbRun(
+      'UPDATE users SET total_earnings = total_earnings + ? WHERE id = ?',
+      [creditAmount, user.id]
+    );
+
+    // Send email notification (async)
+    sendEmailToUser(
+      user.id,
+      user.email,
+      'cashbackConfirmation',
+      {
+        name: user.name,
+        amount: creditAmount,
+        merchantName: merchant.name,
+        offerTitle: offer.title,
+      },
+      'cashback'
+    ).catch(err => {
+      console.error('Failed to send manual credit email:', err);
+    });
+
+    const transaction = await dbGet(`
+      SELECT ct.*, u.name as user_name, u.email as user_email,
+             o.title as offer_title, o.cashback_rate,
+             m.name as merchant_name, m.logo_url as merchant_logo
+      FROM cashback_transactions ct
+      JOIN users u ON ct.user_id = u.id
+      JOIN offers o ON ct.offer_id = o.id
+      JOIN merchants m ON o.merchant_id = m.id
+      WHERE ct.id = ?
+    `, [(result as any).lastID]);
+
+    res.status(201).json(transaction);
+  } catch (error) {
+    console.error('Error crediting cashback:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });

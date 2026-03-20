@@ -56,6 +56,12 @@ const AdminNavbar = () => {
                 Banners
               </Link>
               <Link
+                to="/admin/cashback"
+                className="px-3 py-2 rounded-md text-sm font-medium hover:bg-gray-700"
+              >
+                Cashback
+              </Link>
+              <Link
                 to="/admin/analytics"
                 className="px-3 py-2 rounded-md text-sm font-medium hover:bg-gray-700"
               >
