@@ -28,6 +28,15 @@ interface Offer {
   end_date?: string;
 }
 
+interface Banner {
+  id: number;
+  image_url: string;
+  click_url: string;
+  width: number;
+  height: number;
+  alt_text?: string;
+}
+
 interface Review {
   id: number;
   user_id: number;
@@ -42,6 +51,7 @@ const MerchantDetail = () => {
   const { isAuthenticated } = useAuth();
   const [merchant, setMerchant] = useState<Merchant | null>(null);
   const [offers, setOffers] = useState<Offer[]>([]);
+  const [banners, setBanners] = useState<Banner[]>([]);
   const [reviews, setReviews] = useState<Review[]>([]);
   const [averageRating, setAverageRating] = useState<number | null>(null);
   const [reviewCount, setReviewCount] = useState(0);
@@ -61,12 +71,14 @@ const MerchantDetail = () => {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [merchantRes, offersRes] = await Promise.all([
+        const [merchantRes, offersRes, bannersRes] = await Promise.all([
           apiClient.get(`/merchants/${id}`),
           apiClient.get(`/merchants/${id}/offers`),
+          apiClient.get(`/merchants/${id}/banners`),
         ]);
         setMerchant(merchantRes.data);
         setOffers(offersRes.data);
+        setBanners(bannersRes.data || []);
         fetchReviews();
       } catch (error) {
         console.error('Error fetching merchant data:', error);
@@ -93,8 +105,13 @@ const MerchantDetail = () => {
     );
   }
 
+  // Separate banners by orientation for sidebar placement
+  const sidebarBanners = banners.filter(b => b.width <= 300);
+  const wideBanners = banners.filter(b => b.width > 300);
+
   return (
     <div className="min-h-screen bg-gray-50">
+      {/* Header */}
       <div className="bg-white shadow">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
           <div className="flex items-center space-x-6">
@@ -105,7 +122,7 @@ const MerchantDetail = () => {
                 className="w-24 h-24 object-contain rounded"
                 width={96}
                 height={96}
-                fallback="https://via.placeholder.com/96"
+                fallback=""
               />
             )}
             <div className="flex-1">
@@ -115,11 +132,23 @@ const MerchantDetail = () => {
                   {merchant.description && (
                     <p className="text-gray-600 text-lg">{merchant.description}</p>
                   )}
-                  {merchant.category && (
-                    <span className="inline-block mt-2 px-3 py-1 bg-primary-100 text-primary-700 rounded-full text-sm">
-                      {merchant.category}
-                    </span>
-                  )}
+                  <div className="flex items-center gap-3 mt-2">
+                    {merchant.category && (
+                      <span className="px-3 py-1 bg-primary-100 text-primary-700 rounded-full text-sm">
+                        {merchant.category}
+                      </span>
+                    )}
+                    {merchant.website_url && (
+                      <a
+                        href={merchant.website_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-sm text-primary-600 hover:underline"
+                      >
+                        Visit website →
+                      </a>
+                    )}
+                  </div>
                 </div>
                 <div className="flex items-center space-x-2">
                   <FavoriteButton merchantId={merchant.id} size="lg" />
@@ -136,103 +165,164 @@ const MerchantDetail = () => {
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <h2 className="text-2xl font-bold text-gray-800 mb-6">Available Offers</h2>
-        {offers.length === 0 ? (
-          <div className="bg-white rounded-lg shadow p-12 text-center">
-            <p className="text-gray-500">No active offers at this time.</p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {offers.map((offer) => (
-              <OfferCard key={offer.id} offer={offer} />
+      {/* Wide banners (leaderboard style) */}
+      {wideBanners.length > 0 && (
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6">
+          <div className="flex flex-wrap gap-4 justify-center">
+            {wideBanners.map((banner) => (
+              <a
+                key={banner.id}
+                href={banner.click_url}
+                target="_blank"
+                rel="noopener noreferrer sponsored"
+              >
+                <img
+                  src={banner.image_url}
+                  alt={banner.alt_text || merchant.name}
+                  width={banner.width}
+                  height={banner.height}
+                  className="rounded shadow-sm"
+                />
+              </a>
             ))}
           </div>
-        )}
+        </div>
+      )}
 
-        {/* Reviews section (Phase 3) */}
-        <div className="mt-12">
-          <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
-            <h2 className="text-2xl font-bold text-gray-800">Reviews</h2>
-            {averageRating != null && (
-              <div className="flex items-center gap-2">
-                <div className="flex text-amber-500">
-                  {[1, 2, 3, 4, 5].map((star) => (
-                    <span key={star} className={star <= Math.round(averageRating) ? '' : 'opacity-30'}>★</span>
-                  ))}
-                </div>
-                <span className="text-gray-600 font-medium">{averageRating.toFixed(1)}</span>
-                <span className="text-gray-500 text-sm">({reviewCount} {reviewCount === 1 ? 'review' : 'reviews'})</span>
+      {/* Main content + sidebar */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className={`flex gap-8 ${sidebarBanners.length > 0 ? 'flex-col lg:flex-row' : ''}`}>
+
+          {/* Offers + Reviews */}
+          <div className="flex-1 min-w-0">
+            <h2 className="text-2xl font-bold text-gray-800 mb-6">
+              Available Offers
+              <span className="ml-2 text-sm font-normal text-gray-500">({offers.length})</span>
+            </h2>
+
+            {offers.length === 0 ? (
+              <div className="bg-white rounded-lg shadow p-12 text-center">
+                <p className="text-gray-500">No active offers at this time.</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                {offers.map((offer) => (
+                  <OfferCard key={offer.id} offer={offer} />
+                ))}
               </div>
             )}
+
+            {/* Reviews */}
+            <div className="mt-12">
+              <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
+                <h2 className="text-2xl font-bold text-gray-800">Reviews</h2>
+                {averageRating != null && (
+                  <div className="flex items-center gap-2">
+                    <div className="flex text-amber-500">
+                      {[1, 2, 3, 4, 5].map((star) => (
+                        <span key={star} className={star <= Math.round(averageRating) ? '' : 'opacity-30'}>★</span>
+                      ))}
+                    </div>
+                    <span className="text-gray-600 font-medium">{averageRating.toFixed(1)}</span>
+                    <span className="text-gray-500 text-sm">({reviewCount} {reviewCount === 1 ? 'review' : 'reviews'})</span>
+                  </div>
+                )}
+              </div>
+
+              {isAuthenticated && (
+                <div className="bg-white rounded-lg shadow p-6 mb-6">
+                  <h3 className="font-semibold text-gray-800 mb-3">Leave a review</h3>
+                  <div className="flex flex-wrap gap-4 items-end">
+                    <div>
+                      <label className="block text-sm text-gray-600 mb-1">Rating</label>
+                      <select
+                        value={reviewForm.rating}
+                        onChange={(e) => setReviewForm({ ...reviewForm, rating: Number(e.target.value) })}
+                        className="border border-gray-300 rounded-md px-3 py-2"
+                      >
+                        {[5, 4, 3, 2, 1].map((r) => (
+                          <option key={r} value={r}>{r} ★</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="flex-1 min-w-[200px]">
+                      <label className="block text-sm text-gray-600 mb-1">Comment (optional)</label>
+                      <input
+                        type="text"
+                        value={reviewForm.comment}
+                        onChange={(e) => setReviewForm({ ...reviewForm, comment: e.target.value })}
+                        placeholder="Share your experience..."
+                        className="w-full border border-gray-300 rounded-md px-3 py-2"
+                      />
+                    </div>
+                    <button
+                      onClick={async () => {
+                        setSubmittingReview(true);
+                        try {
+                          await apiClient.post(`/merchants/${id}/reviews`, { rating: reviewForm.rating, comment: reviewForm.comment || undefined });
+                          fetchReviews();
+                          setReviewForm({ rating: 5, comment: '' });
+                        } catch (err) {
+                          console.error(err);
+                        } finally {
+                          setSubmittingReview(false);
+                        }
+                      }}
+                      disabled={submittingReview}
+                      className="bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 disabled:opacity-50"
+                    >
+                      {submittingReview ? 'Submitting...' : 'Submit'}
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {reviews.length === 0 ? (
+                <div className="bg-white rounded-lg shadow p-8 text-center text-gray-500">
+                  No reviews yet. {isAuthenticated ? 'Be the first to review!' : 'Log in to leave a review.'}
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {reviews.map((r) => (
+                    <div key={r.id} className="bg-white rounded-lg shadow p-4">
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium text-gray-800">{r.user_name}</span>
+                          <span className="text-amber-500">{'★'.repeat(r.rating)}{'☆'.repeat(5 - r.rating)}</span>
+                        </div>
+                        <span className="text-gray-400 text-sm">{new Date(r.created_at).toLocaleDateString()}</span>
+                      </div>
+                      {r.comment && <p className="text-gray-600 text-sm">{r.comment}</p>}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
 
-          {isAuthenticated && (
-            <div className="bg-white rounded-lg shadow p-6 mb-6">
-              <h3 className="font-semibold text-gray-800 mb-3">Leave a review</h3>
-              <div className="flex flex-wrap gap-4 items-end">
-                <div>
-                  <label className="block text-sm text-gray-600 mb-1">Rating</label>
-                  <select
-                    value={reviewForm.rating}
-                    onChange={(e) => setReviewForm({ ...reviewForm, rating: Number(e.target.value) })}
-                    className="border border-gray-300 rounded-md px-3 py-2"
+          {/* Sidebar banners */}
+          {sidebarBanners.length > 0 && (
+            <div className="lg:w-64 shrink-0">
+              <div className="sticky top-6 space-y-4">
+                <p className="text-xs text-gray-400 uppercase tracking-wide">Sponsored</p>
+                {sidebarBanners.map((banner) => (
+                  <a
+                    key={banner.id}
+                    href={banner.click_url}
+                    target="_blank"
+                    rel="noopener noreferrer sponsored"
+                    className="block"
                   >
-                    {[5, 4, 3, 2, 1].map((r) => (
-                      <option key={r} value={r}>{r} ★</option>
-                    ))}
-                  </select>
-                </div>
-                <div className="flex-1 min-w-[200px]">
-                  <label className="block text-sm text-gray-600 mb-1">Comment (optional)</label>
-                  <input
-                    type="text"
-                    value={reviewForm.comment}
-                    onChange={(e) => setReviewForm({ ...reviewForm, comment: e.target.value })}
-                    placeholder="Share your experience..."
-                    className="w-full border border-gray-300 rounded-md px-3 py-2"
-                  />
-                </div>
-                <button
-                  onClick={async () => {
-                    setSubmittingReview(true);
-                    try {
-                      await apiClient.post(`/merchants/${id}/reviews`, { rating: reviewForm.rating, comment: reviewForm.comment || undefined });
-                      fetchReviews();
-                      setReviewForm({ rating: 5, comment: '' });
-                    } catch (err) {
-                      console.error(err);
-                    } finally {
-                      setSubmittingReview(false);
-                    }
-                  }}
-                  disabled={submittingReview}
-                  className="bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 disabled:opacity-50"
-                >
-                  {submittingReview ? 'Submitting...' : 'Submit'}
-                </button>
+                    <img
+                      src={banner.image_url}
+                      alt={banner.alt_text || merchant.name}
+                      width={banner.width}
+                      height={banner.height}
+                      className="rounded shadow-sm w-full"
+                    />
+                  </a>
+                ))}
               </div>
-            </div>
-          )}
-
-          {reviews.length === 0 ? (
-            <div className="bg-white rounded-lg shadow p-8 text-center text-gray-500">
-              No reviews yet. {isAuthenticated ? 'Be the first to review!' : 'Log in to leave a review.'}
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {reviews.map((r) => (
-                <div key={r.id} className="bg-white rounded-lg shadow p-4">
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center gap-2">
-                      <span className="font-medium text-gray-800">{r.user_name}</span>
-                      <span className="text-amber-500">{'★'.repeat(r.rating)}{'☆'.repeat(5 - r.rating)}</span>
-                    </div>
-                    <span className="text-gray-400 text-sm">{new Date(r.created_at).toLocaleDateString()}</span>
-                  </div>
-                  {r.comment && <p className="text-gray-600 text-sm">{r.comment}</p>}
-                </div>
-              ))}
             </div>
           )}
         </div>

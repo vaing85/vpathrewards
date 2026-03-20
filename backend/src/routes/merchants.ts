@@ -74,4 +74,18 @@ router.get('/:id/offers', async (req, res) => {
   }
 });
 
+router.get('/:id/banners', async (req, res) => {
+  try {
+    const { dbAll } = await import('../database');
+    const banners = await dbAll(
+      'SELECT * FROM merchant_banners WHERE merchant_id = $1 AND is_active = 1 ORDER BY created_at DESC',
+      [req.params.id]
+    );
+    res.json(banners);
+  } catch (error) {
+    console.error('Error fetching banners:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 export default router;
