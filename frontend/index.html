@@ -16,6 +16,15 @@
       gtag('js', new Date());
       gtag('config', 'G-14XX2LM4M7');
     </script>
+    <!-- GitHub Pages SPA redirect handler -->
+    <script>
+      (function() {
+        var redirect = new URLSearchParams(window.location.search).get('redirect');
+        if (redirect) {
+          window.history.replaceState(null, '', redirect);
+        }
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>
