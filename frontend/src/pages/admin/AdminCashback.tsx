@@ -63,7 +63,7 @@ const AdminCashback = () => {
       .catch(() => {});
   }, []);
 
-  const confirm = async (id: number) => {
+  const handleConfirm = async (id: number) => {
     setActioningId(id);
     try {
       const res = await apiClient.put(`/admin/cashback/${id}/confirm`);
@@ -77,7 +77,7 @@ const AdminCashback = () => {
   };
 
   const reject = async (id: number) => {
-    if (!confirm(`Reject transaction #${id}?`)) return;
+    if (!window.confirm(`Reject transaction #${id}?`)) return;
     setActioningId(id);
     try {
       const res = await apiClient.put(`/admin/cashback/${id}/reject`);
@@ -282,7 +282,7 @@ const AdminCashback = () => {
                       {t.status === 'pending' && (
                         <div className="flex gap-2">
                           <button
-                            onClick={() => confirm(t.id)}
+                            onClick={() => handleConfirm(t.id)}
                             disabled={actioningId === t.id}
                             className="text-xs px-3 py-1 rounded-md bg-green-100 text-green-700 hover:bg-green-200 font-medium disabled:opacity-50 transition"
                           >
