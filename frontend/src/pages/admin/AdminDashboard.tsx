@@ -71,57 +71,46 @@ const AdminDashboard = () => {
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <h1 className="text-3xl font-bold text-gray-800 mb-8">Dashboard Overview</h1>
 
-        {/* Stats Grid */}
+        {/* Overview — 2 rows × 4 columns */}
         {stats && (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-            <div className="bg-white rounded-lg shadow p-6">
-              <div className="text-gray-600 text-sm mb-1">Total Users</div>
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+            {/* Row 1 — Site metrics */}
+            <div className="bg-white rounded-lg shadow p-5">
+              <div className="text-gray-500 text-xs uppercase tracking-wide mb-1">Users</div>
               <div className="text-3xl font-bold text-primary-600">{stats.users.total}</div>
             </div>
-            <div className="bg-white rounded-lg shadow p-6">
-              <div className="text-gray-600 text-sm mb-1">Merchants</div>
+            <div className="bg-white rounded-lg shadow p-5">
+              <div className="text-gray-500 text-xs uppercase tracking-wide mb-1">Merchants</div>
               <div className="text-3xl font-bold text-blue-600">{stats.merchants.total}</div>
             </div>
-            <div className="bg-white rounded-lg shadow p-6">
-              <div className="text-gray-600 text-sm mb-1">Active Offers</div>
-              <div className="text-3xl font-bold text-green-600">
-                {stats.offers.active} / {stats.offers.total}
+            <div className="bg-white rounded-lg shadow p-5">
+              <div className="text-gray-500 text-xs uppercase tracking-wide mb-1">Active Offers</div>
+              <div className="text-3xl font-bold text-indigo-600">{stats.offers.active}
+                <span className="text-sm font-normal text-gray-400"> / {stats.offers.total}</span>
               </div>
             </div>
-            <div className="bg-white rounded-lg shadow p-6">
-              <div className="text-gray-600 text-sm mb-1">Total Transactions</div>
+            <div className="bg-white rounded-lg shadow p-5">
+              <div className="text-gray-500 text-xs uppercase tracking-wide mb-1">Transactions</div>
               <div className="text-3xl font-bold text-purple-600">{stats.transactions.total}</div>
+              <div className="text-xs text-yellow-600 mt-0.5">{stats.transactions.pending} pending</div>
             </div>
-          </div>
-        )}
-
-        {/* Earnings Section */}
-        {stats && (
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-            <div className="bg-white rounded-lg shadow p-6 border-l-4 border-green-500">
-              <div className="text-gray-600 text-sm mb-1">Your Revenue</div>
-              <div className="text-2xl font-bold text-green-600">
-                ${(stats.earnings.total_your_revenue || 0).toFixed(2)}
-              </div>
-              <div className="text-xs text-gray-400 mt-1">Commission minus cashback paid</div>
+            {/* Row 2 — Financial metrics */}
+            <div className="bg-white rounded-lg shadow p-5 border-t-4 border-green-500">
+              <div className="text-gray-500 text-xs uppercase tracking-wide mb-1">Your Revenue</div>
+              <div className="text-3xl font-bold text-green-600">${(stats.earnings.total_your_revenue || 0).toFixed(2)}</div>
+              <div className="text-xs text-gray-400 mt-0.5">Commission − cashback</div>
             </div>
-            <div className="bg-white rounded-lg shadow p-6">
-              <div className="text-gray-600 text-sm mb-1">Total User Earnings</div>
-              <div className="text-2xl font-bold text-primary-600">
-                ${stats.earnings.total_user_earnings.toFixed(2)}
-              </div>
+            <div className="bg-white rounded-lg shadow p-5 border-t-4 border-primary-400">
+              <div className="text-gray-500 text-xs uppercase tracking-wide mb-1">User Earnings</div>
+              <div className="text-3xl font-bold text-primary-600">${stats.earnings.total_user_earnings.toFixed(2)}</div>
             </div>
-            <div className="bg-white rounded-lg shadow p-6">
-              <div className="text-gray-600 text-sm mb-1">Cashback Paid</div>
-              <div className="text-2xl font-bold text-blue-600">
-                ${stats.earnings.total_cashback_paid.toFixed(2)}
-              </div>
+            <div className="bg-white rounded-lg shadow p-5 border-t-4 border-blue-400">
+              <div className="text-gray-500 text-xs uppercase tracking-wide mb-1">Cashback Paid</div>
+              <div className="text-3xl font-bold text-blue-600">${stats.earnings.total_cashback_paid.toFixed(2)}</div>
             </div>
-            <div className="bg-white rounded-lg shadow p-6">
-              <div className="text-gray-600 text-sm mb-1">Cashback Pending</div>
-              <div className="text-2xl font-bold text-yellow-600">
-                ${stats.earnings.total_cashback_pending.toFixed(2)}
-              </div>
+            <div className="bg-white rounded-lg shadow p-5 border-t-4 border-yellow-400">
+              <div className="text-gray-500 text-xs uppercase tracking-wide mb-1">Cashback Pending</div>
+              <div className="text-3xl font-bold text-yellow-600">${stats.earnings.total_cashback_pending.toFixed(2)}</div>
             </div>
           </div>
         )}
