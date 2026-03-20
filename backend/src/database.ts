@@ -285,12 +285,6 @@ export const initDatabase = async () => {
       )
     `);
 
-    // Password reset columns (added after initial schema; IF NOT EXISTS is safe to run repeatedly)
-    await client.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_token TEXT`);
-    await client.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_token_expires TIMESTAMPTZ`);
-
-    // Commission rate column on offers (your CJ payout %; cashback_rate is what user earns)
-    await client.query(`ALTER TABLE offers ADD COLUMN IF NOT EXISTS commission_rate DOUBLE PRECISION DEFAULT 0`);
 
     // ---------------------------------------------------------------------------
     // Indexes
@@ -352,6 +346,25 @@ export const initDatabase = async () => {
 
     await client.query('COMMIT');
     console.log('Database schema initialised successfully');
+
+    // ---------------------------------------------------------------------------
+    // Column migrations — run outside transaction (PgBouncer DDL limitation)
+    // ---------------------------------------------------------------------------
+
+    const migrations = [
+      `ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_token TEXT`,
+      `ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_token_expires TIMESTAMPTZ`,
+      `ALTER TABLE offers ADD COLUMN IF NOT EXISTS commission_rate DOUBLE PRECISION DEFAULT 0`,
+    ];
+    for (const sql of migrations) {
+      try {
+        await client.query(sql);
+      } catch (e: any) {
+        if (!e.message?.includes('already exists')) {
+          console.warn('Migration warning:', e.message);
+        }
+      }
+    }
 
     // ---------------------------------------------------------------------------
     // Seed data (outside transaction so partial failures don't roll back schema)
