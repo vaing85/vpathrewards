@@ -64,7 +64,7 @@ const Filters = ({ onFilterChange, onSortChange }: FilterProps) => {
   return (
     <div className="bg-white rounded-lg shadow p-4 mb-6">
       {/* Mobile Toggle */}
-      <div className="md:hidden mb-4">
+      <div className="md:hidden mb-3">
         <button
           onClick={() => setIsOpen(!isOpen)}
           className="w-full flex items-center justify-between px-4 py-2 bg-gray-100 rounded-lg"
@@ -81,11 +81,11 @@ const Filters = ({ onFilterChange, onSortChange }: FilterProps) => {
         </button>
       </div>
 
-      {/* Filter Content */}
-      <div className={`${isOpen ? 'block' : 'hidden'} md:block space-y-4`}>
+      {/* Filter Content — horizontal row on md+ */}
+      <div className={`${isOpen ? 'flex' : 'hidden'} md:flex flex-wrap items-end gap-4`}>
         {/* Sort */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">Sort By</label>
+        <div className="flex-1 min-w-[150px]">
+          <label className="block text-sm font-medium text-gray-700 mb-1">Sort By</label>
           <select
             value={filters.sort}
             onChange={(e) => handleSortChange(e.target.value)}
@@ -100,8 +100,8 @@ const Filters = ({ onFilterChange, onSortChange }: FilterProps) => {
 
         {/* Category Filter */}
         {categories.length > 0 && (
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Category</label>
+          <div className="flex-1 min-w-[150px]">
+            <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
             <select
               value={filters.category}
               onChange={(e) => handleFilterChange('category', e.target.value)}
@@ -118,33 +118,32 @@ const Filters = ({ onFilterChange, onSortChange }: FilterProps) => {
         )}
 
         {/* Cashback Range */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">Cashback Rate</label>
-          <div className="grid grid-cols-2 gap-2">
-            <div>
-              <input
-                type="number"
-                placeholder="Min %"
-                min="0"
-                max="100"
-                step="0.1"
-                value={filters.minCashback}
-                onChange={(e) => handleFilterChange('minCashback', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-              />
-            </div>
-            <div>
-              <input
-                type="number"
-                placeholder="Max %"
-                min="0"
-                max="100"
-                step="0.1"
-                value={filters.maxCashback}
-                onChange={(e) => handleFilterChange('maxCashback', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-              />
-            </div>
+        <div className="flex items-end gap-2">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Min %</label>
+            <input
+              type="number"
+              placeholder="0"
+              min="0"
+              max="100"
+              step="0.1"
+              value={filters.minCashback}
+              onChange={(e) => handleFilterChange('minCashback', e.target.value)}
+              className="w-24 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Max %</label>
+            <input
+              type="number"
+              placeholder="100"
+              min="0"
+              max="100"
+              step="0.1"
+              value={filters.maxCashback}
+              onChange={(e) => handleFilterChange('maxCashback', e.target.value)}
+              className="w-24 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+            />
           </div>
         </div>
 
@@ -152,9 +151,9 @@ const Filters = ({ onFilterChange, onSortChange }: FilterProps) => {
         {hasActiveFilters && (
           <button
             onClick={clearFilters}
-            className="w-full px-4 py-2 text-sm text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md transition"
+            className="px-4 py-2 text-sm text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md transition self-end"
           >
-            Clear All Filters
+            Clear
           </button>
         )}
       </div>
