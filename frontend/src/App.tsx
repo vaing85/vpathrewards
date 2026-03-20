@@ -36,6 +36,7 @@ const AdminOffers = lazy(() => import('./pages/admin/AdminOffers'));
 const AdminUsers = lazy(() => import('./pages/admin/AdminUsers'));
 const AdminWithdrawals = lazy(() => import('./pages/admin/AdminWithdrawals'));
 const AdminAnalytics = lazy(() => import('./pages/admin/AdminAnalytics'));
+const AdminBanners = lazy(() => import('./pages/admin/AdminBanners'));
 const CashbackHistory = lazy(() => import('./pages/CashbackHistory'));
 
 function PageFallback() {
@@ -232,6 +233,13 @@ function App() {
               <AdminLayout>
                 <Suspense fallback={<PageFallback />}>
                   <AdminAnalytics />
+                </Suspense>
+              </AdminLayout>
+            } />
+            <Route path="/admin/banners" element={
+              <AdminLayout>
+                <Suspense fallback={<PageFallback />}>
+                  <AdminBanners />
                 </Suspense>
               </AdminLayout>
             } />

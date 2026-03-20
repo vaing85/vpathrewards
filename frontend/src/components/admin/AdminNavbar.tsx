@@ -50,6 +50,12 @@ const AdminNavbar = () => {
                 Withdrawals
               </Link>
               <Link
+                to="/admin/banners"
+                className="px-3 py-2 rounded-md text-sm font-medium hover:bg-gray-700"
+              >
+                Banners
+              </Link>
+              <Link
                 to="/admin/analytics"
                 className="px-3 py-2 rounded-md text-sm font-medium hover:bg-gray-700"
               >

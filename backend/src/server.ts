@@ -30,6 +30,7 @@ import adminWithdrawalRoutes from './routes/admin/withdrawals';
 import adminAnalyticsRoutes from './routes/admin/analytics';
 import adminCashbackRoutes from './routes/admin/cashback';
 import adminJobsRoutes from './routes/admin/jobs';
+import adminBannerRoutes from './routes/admin/banners';
 import subscriptionRoutes from './routes/subscriptions';
 import webhookRoutes from './routes/webhooks';
 import supportRoutes from './routes/support';
@@ -108,6 +109,7 @@ app.use('/api/admin/withdrawals', adminWithdrawalRoutes);
 app.use('/api/admin/analytics', adminAnalyticsRoutes);
 app.use('/api/admin/cashback', adminCashbackRoutes);
 app.use('/api/admin/jobs', adminJobsRoutes);
+app.use('/api/admin/banners', adminBannerRoutes);
 
 // Health check (Phase 4: includes DB check for deployment/monitoring)
 app.get('/api/health', async (req, res) => {
