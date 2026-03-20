@@ -11,6 +11,11 @@ const AdminSettings = () => {
   const [success, setSuccess]   = useState('');
   const [error, setError]       = useState('');
 
+  // Test email
+  const [testTo, setTestTo]         = useState('');
+  const [testSending, setTestSending] = useState(false);
+  const [testResult, setTestResult]   = useState<{ ok: boolean; msg: string } | null>(null);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(''); setSuccess('');
@@ -37,6 +42,20 @@ const AdminSettings = () => {
     }
   };
 
+  const handleTestEmail = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setTestResult(null);
+    setTestSending(true);
+    try {
+      const res = await apiClient.post('/admin/auth/test-email', { to: testTo });
+      setTestResult({ ok: true, msg: res.data.message + (res.data.from ? ` (from: ${res.data.from})` : '') });
+    } catch (err: any) {
+      setTestResult({ ok: false, msg: err.response?.data?.error || 'Failed to send test email.' });
+    } finally {
+      setTestSending(false);
+    }
+  };
+
   return (
     <div className="max-w-xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <h1 className="text-3xl font-bold text-gray-800 mb-8">Settings</h1>
@@ -49,6 +68,36 @@ const AdminSettings = () => {
           <div><span className="font-medium text-gray-700">Email:</span> {admin?.email}</div>
           <div><span className="font-medium text-gray-700">Role:</span> Administrator</div>
         </div>
+      </div>
+
+      {/* Test Email */}
+      <div className="bg-white rounded-lg shadow p-6 mb-6">
+        <h2 className="text-lg font-semibold text-gray-700 mb-1">Test Email</h2>
+        <p className="text-xs text-gray-500 mb-4">Send a test welcome email to verify Resend is configured correctly.</p>
+
+        {testResult && (
+          <div className={`mb-4 text-sm px-4 py-3 rounded-lg border ${testResult.ok ? 'bg-green-50 border-green-200 text-green-700' : 'bg-red-50 border-red-200 text-red-700'}`}>
+            {testResult.msg}
+          </div>
+        )}
+
+        <form onSubmit={handleTestEmail} className="flex gap-3">
+          <input
+            type="email"
+            required
+            value={testTo}
+            onChange={e => setTestTo(e.target.value)}
+            placeholder="Send test to..."
+            className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+          />
+          <button
+            type="submit"
+            disabled={testSending}
+            className="bg-gray-700 hover:bg-gray-800 text-white px-4 py-2 rounded-lg text-sm font-medium disabled:opacity-50 transition"
+          >
+            {testSending ? 'Sending...' : 'Send Test'}
+          </button>
+        </form>
       </div>
 
       {/* Change Password */}

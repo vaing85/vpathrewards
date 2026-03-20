@@ -4,6 +4,7 @@ import jwt from 'jsonwebtoken';
 import { dbGet, dbRun } from '../../database';
 import { securityConfig } from '../../config/securityConfig';
 import { authenticateAdmin, AdminRequest } from '../../middleware/adminAuth';
+import { sendEmail } from '../../utils/emailService';
 
 const router = express.Router();
 
@@ -73,6 +74,31 @@ router.post('/change-password', authenticateAdmin, async (req: AdminRequest, res
   } catch (error) {
     console.error('Change password error:', error);
     res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Test email — sends a welcome-style test to any address
+router.post('/test-email', authenticateAdmin, async (req: AdminRequest, res) => {
+  try {
+    const { to } = req.body;
+    if (!to) return res.status(400).json({ error: 'to email address is required' });
+
+    const apiKey = process.env.RESEND_API_KEY;
+    const fromAddr = process.env.RESEND_FROM || 'onboarding@resend.dev';
+
+    if (!apiKey) {
+      return res.status(500).json({ error: 'RESEND_API_KEY is not set in environment' });
+    }
+
+    const ok = await sendEmail(to, 'welcome', { name: 'Test User' });
+    if (ok) {
+      res.json({ message: `Test email sent to ${to}`, from: fromAddr });
+    } else {
+      res.status(500).json({ error: 'Resend returned an error — check server logs', from: fromAddr, apiKeySet: !!apiKey });
+    }
+  } catch (error: any) {
+    console.error('Test email error:', error);
+    res.status(500).json({ error: error.message || 'Internal server error' });
   }
 });
 
