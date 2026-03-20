@@ -10,6 +10,7 @@ interface Offer {
   title: string;
   description?: string;
   cashback_rate: number;
+  commission_rate: number;
   terms?: string;
   affiliate_link: string;
   is_active: number;
@@ -37,6 +38,7 @@ const AdminOffers = () => {
     title: '',
     description: '',
     cashback_rate: '',
+    commission_rate: '',
     terms: '',
     affiliate_link: '',
     is_active: true,
@@ -88,6 +90,7 @@ const AdminOffers = () => {
         title: offer.title,
         description: offer.description || '',
         cashback_rate: offer.cashback_rate.toString(),
+        commission_rate: offer.commission_rate?.toString() || '',
         terms: offer.terms || '',
         affiliate_link: offer.affiliate_link,
         is_active: offer.is_active === 1,
@@ -100,6 +103,7 @@ const AdminOffers = () => {
         title: '',
         description: '',
         cashback_rate: '',
+        commission_rate: '',
         terms: '',
         affiliate_link: '',
         is_active: true,
@@ -121,6 +125,7 @@ const AdminOffers = () => {
         ...formData,
         merchant_id: parseInt(formData.merchant_id),
         cashback_rate: parseFloat(formData.cashback_rate),
+        commission_rate: formData.commission_rate ? parseFloat(formData.commission_rate) : 0,
       };
       if (editingOffer) {
         await apiClient.put(`/admin/offers/${editingOffer.id}`, payload);
@@ -169,7 +174,9 @@ const AdminOffers = () => {
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Merchant</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Title</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Cashback</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">User Cashback</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Your Commission</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Margin</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
                 </tr>
@@ -183,6 +190,14 @@ const AdminOffers = () => {
                     <td className="px-6 py-4 text-sm text-gray-500">{offer.title}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-primary-600">
                       {offer.cashback_rate}%
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-blue-600">
+                      {offer.commission_rate ? `${offer.commission_rate}%` : '—'}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-green-600">
+                      {offer.commission_rate && offer.cashback_rate
+                        ? `${(offer.commission_rate - offer.cashback_rate).toFixed(1)}%`
+                        : '—'}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span
@@ -272,17 +287,36 @@ const AdminOffers = () => {
                       onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                     />
                   </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">Cashback Rate (%) *</label>
-                    <input
-                      type="number"
-                      step="0.1"
-                      required
-                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm"
-                      value={formData.cashback_rate}
-                      onChange={(e) => setFormData({ ...formData, cashback_rate: e.target.value })}
-                    />
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700">User Cashback (%) *</label>
+                      <input
+                        type="number"
+                        step="0.1"
+                        required
+                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm"
+                        value={formData.cashback_rate}
+                        onChange={(e) => setFormData({ ...formData, cashback_rate: e.target.value })}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700">CJ Commission (%)</label>
+                      <input
+                        type="number"
+                        step="0.1"
+                        min="0"
+                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm"
+                        value={formData.commission_rate}
+                        onChange={(e) => setFormData({ ...formData, commission_rate: e.target.value })}
+                        placeholder="e.g. 8"
+                      />
+                    </div>
                   </div>
+                  {formData.cashback_rate && formData.commission_rate && (
+                    <div className="text-xs text-green-700 bg-green-50 px-3 py-2 rounded-md">
+                      Your margin: {(parseFloat(formData.commission_rate) - parseFloat(formData.cashback_rate)).toFixed(1)}% per transaction
+                    </div>
+                  )}
                   <div>
                     <label className="block text-sm font-medium text-gray-700">Affiliate Link *</label>
                     <input
