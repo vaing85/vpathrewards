@@ -36,17 +36,17 @@ export const PLANS = {
     name: 'Gold',
     priceId: process.env.STRIPE_GOLD_PRICE_ID || '',
     amountCents: 999, // $9.99/month
-    cashbackBonus: 1.5, // +1.5%
-    description: '+1.5% bonus on all cashback',
-    features: ['+1.5% bonus cashback', 'All Silver features', 'Early access to new offers'],
+    cashbackBonus: 1.0, // +1%
+    description: '+1% bonus on all cashback',
+    features: ['+1% bonus cashback', 'All Silver features', 'Early access to new offers'],
   },
   platinum: {
     name: 'Platinum',
     priceId: process.env.STRIPE_PLATINUM_PRICE_ID || '',
     amountCents: 1999, // $19.99/month
-    cashbackBonus: 3.0, // +3%
-    description: '+3% bonus on all cashback',
-    features: ['+3% bonus cashback', 'All Gold features', 'Dedicated support', 'Exclusive platinum offers'],
+    cashbackBonus: 2.0, // +2%
+    description: '+2% bonus on all cashback',
+    features: ['+2% bonus cashback', 'All Gold features', 'Dedicated support', 'Exclusive platinum offers'],
   },
 } as const;
 
