@@ -175,6 +175,44 @@ router.put('/:id', authenticateAdmin, validateId, validateOffer, async (req: exp
 });
 
 // Delete offer
+// Bulk import offers from CSV
+router.post('/bulk', authenticateAdmin, async (req: express.Request, res: express.Response) => {
+  try {
+    const { offers } = req.body;
+    if (!Array.isArray(offers) || offers.length === 0) {
+      return res.status(400).json({ error: 'No offers provided' });
+    }
+
+    let imported = 0;
+    let skipped = 0;
+
+    for (const offer of offers) {
+      const { merchant_id, title, description, affiliate_link, cashback_rate, commission_rate } = offer;
+      if (!merchant_id || !title || !affiliate_link || cashback_rate === undefined) {
+        skipped++;
+        continue;
+      }
+      // Skip duplicates
+      const exists = await dbGet(
+        'SELECT id FROM offers WHERE merchant_id = ? AND title = ?',
+        [merchant_id, title]
+      );
+      if (exists) { skipped++; continue; }
+
+      await dbRun(
+        'INSERT INTO offers (merchant_id, title, description, affiliate_link, cashback_rate, commission_rate, is_active) VALUES (?, ?, ?, ?, ?, ?, 1)',
+        [merchant_id, title, description || '', affiliate_link, cashback_rate, commission_rate || 0]
+      );
+      imported++;
+    }
+
+    res.json({ imported, skipped });
+  } catch (error) {
+    console.error('Error bulk importing offers:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 router.delete('/:id', authenticateAdmin, async (req, res) => {
   try {
     const offer = await dbGet('SELECT * FROM offers WHERE id = ?', [req.params.id]);
