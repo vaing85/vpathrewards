@@ -40,7 +40,7 @@ const Navbar = () => {
         <div className="flex justify-between items-center h-16">
           {/* Logo */}
           <div className="flex items-center space-x-4">
-            <Link to="/" className="flex items-center space-x-2" onClick={() => setMobileMenuOpen(false)}>
+            <Link to={isAuthenticated ? '/dashboard' : '/'} className="flex items-center space-x-2" onClick={() => setMobileMenuOpen(false)}>
               <div className="bg-primary-600 text-white px-2 sm:px-3 py-1 rounded-lg font-bold text-lg sm:text-xl">
                 $$$
               </div>

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import apiClient from '../api/client';
 import { useAuth } from '../context/AuthContext';
 
@@ -13,9 +13,14 @@ interface Offer {
 
 const Home = () => {
   const { isAuthenticated } = useAuth();
+  const navigate = useNavigate();
   const [previewOffers, setPreviewOffers] = useState<Offer[]>([]);
 
   useEffect(() => {
+    if (isAuthenticated) {
+      navigate('/dashboard', { replace: true });
+      return;
+    }
     apiClient.get('/featured/offers', { params: { limit: 6 } })
       .then((r) => setPreviewOffers(r.data))
       .catch(() => {});
