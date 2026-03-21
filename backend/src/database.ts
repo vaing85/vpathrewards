@@ -424,6 +424,11 @@ export const initDatabase = async () => {
         { title: 'Hotels.com Rewards — Stay 10 Nights, Earn 1 Free', description: 'Stay 10 nights, earn 1 free night with Hotels.com Rewards. Plus unlock secret member prices.', affiliate_url: 'https://www.tkqlhce.com/click-101708885-12232878', cashback_rate: 2, commission_rate: 4 },
         { title: 'Student Discount — Save 10% with Verified ID', description: 'Students save 10% off hotel bookings with verified student ID.', affiliate_url: 'https://www.jdoqocy.com/click-101708885-13799334', cashback_rate: 2, commission_rate: 4 },
         { title: 'Save 10% or More with Member Prices', description: 'Sign up and unlock member-only prices — save 10% or more on hotels.', affiliate_url: 'https://www.kqzyfj.com/click-101708885-15612526', cashback_rate: 2, commission_rate: 4 },
+        { title: 'Hotels.com Evergreen — Best Hotel Deals', description: 'Browse and book the best hotel deals on Hotels.com. Great rates guaranteed.', affiliate_url: 'https://www.jdoqocy.com/click-101708885-15734399', cashback_rate: 2, commission_rate: 4 },
+        { title: 'Nature Destinations — Save on Outdoor Travel', description: 'Save on your next trip to the great outdoors. Free cancellations on most hotels.', affiliate_url: 'https://www.anrdoezrs.net/click-101708885-15087887', cashback_rate: 2, commission_rate: 4 },
+        { title: 'Hotels, Vacation Rentals, Resorts & More', description: 'Book the perfect hotel, vacation rental, resort or treehouse. Free cancellations on most hotels.', affiliate_url: 'https://www.jdoqocy.com/click-101708885-14035236', cashback_rate: 2, commission_rate: 4 },
+        { title: 'Hotels.com Best Hotel Deals Search', description: 'Search for the best hotel deals at Hotels.com.', affiliate_url: 'https://www.tkqlhce.com/click-101708885-10433860', cashback_rate: 2, commission_rate: 4 },
+        { title: 'Hotels.com US Homepage — Book Any Hotel', description: 'Book any hotel in the US with deep-link access to Hotels.com.', affiliate_url: 'https://www.jdoqocy.com/click-101708885-15042852', cashback_rate: 2, commission_rate: 4 },
       ]
     );
 
@@ -436,6 +441,8 @@ export const initDatabase = async () => {
         { title: 'List Your Vacation Property on Vrbo', description: 'Earn income by listing your vacation property on Vrbo. Join millions of hosts worldwide.', affiliate_url: 'https://www.anrdoezrs.net/click-101708885-10697642', cashback_rate: 1, commission_rate: 2 },
         { title: '7 Day Stays for Less — Weekly Discount', description: 'Get a discount by staying a full week. Save more with 7-day stay deals on Vrbo.', affiliate_url: 'https://www.anrdoezrs.net/click-101708885-14506917', cashback_rate: 1, commission_rate: 2 },
         { title: 'US Vacation Rentals Under $200 a Night', description: 'Find affordable vacation rentals across the United States for under $200 per night.', affiliate_url: 'https://www.anrdoezrs.net/click-101708885-15407788', cashback_rate: 1, commission_rate: 2 },
+        { title: 'Hilton Head, SC Vacation Rentals', description: 'Find the best vacation rentals in Hilton Head, South Carolina on Vrbo.', affiliate_url: 'https://www.jdoqocy.com/click-101708885-13217353', cashback_rate: 1, commission_rate: 2 },
+        { title: 'South Carolina Vacation Rentals', description: 'Find out what vacation rentals in South Carolina are available and renting for on Vrbo.', affiliate_url: 'https://www.kqzyfj.com/click-101708885-10790647', cashback_rate: 1, commission_rate: 2 },
       ]
     );
 
