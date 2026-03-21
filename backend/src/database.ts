@@ -386,7 +386,58 @@ export const initDatabase = async () => {
       console.log('Default admin created: admin@cashback.com / admin123');
     }
 
-    // No sample data seeded — merchants and offers are added via the admin panel
+    // ---------------------------------------------------------------------------
+    // Affiliate merchant + offer seeds (idempotent — skipped if already present)
+    // ---------------------------------------------------------------------------
+
+    const seedMerchantsOffers = async (
+      merchant: { name: string; description: string; website: string; category: string },
+      offers: { title: string; description: string; affiliate_url: string; cashback_rate: number; commission_rate: number }[]
+    ) => {
+      let m = await dbGet('SELECT id FROM merchants WHERE name = ?', [merchant.name]) as any;
+      if (!m) {
+        const r = await dbRun(
+          'INSERT INTO merchants (name, description, website, category, is_active) VALUES (?, ?, ?, ?, 1)',
+          [merchant.name, merchant.description, merchant.website, merchant.category]
+        );
+        m = { id: r.lastID };
+        console.log(`Seeded merchant: ${merchant.name}`);
+      }
+      for (const offer of offers) {
+        const exists = await dbGet('SELECT id FROM offers WHERE merchant_id = ? AND title = ?', [m.id, offer.title]);
+        if (!exists) {
+          await dbRun(
+            'INSERT INTO offers (merchant_id, title, description, affiliate_url, cashback_rate, commission_rate, is_active) VALUES (?, ?, ?, ?, ?, ?, 1)',
+            [m.id, offer.title, offer.description, offer.affiliate_url, offer.cashback_rate, offer.commission_rate]
+          );
+        }
+      }
+    };
+
+    // Hotels.com — 4% CJ commission on hotels, offering 2% cashback
+    await seedMerchantsOffers(
+      { name: 'Hotels.com', description: 'Book hotels and earn cash back on every stay.', website: 'https://www.hotels.com', category: 'Travel' },
+      [
+        { title: 'No Cancellation Fees — Book Now and Save', description: 'Save more with no Hotels.com cancellation fees on bookings.', affiliate_url: 'https://www.tkqlhce.com/click-101708885-10671873', cashback_rate: 2, commission_rate: 4 },
+        { title: 'Last Minute Hotel Deals — Book Now and Save', description: 'Book now and save with hotel discounts on last minute escapes.', affiliate_url: 'https://www.jdoqocy.com/click-101708885-13211632', cashback_rate: 2, commission_rate: 4 },
+        { title: 'Book Now and Save at Hotels.com', description: 'Find great hotel deals and book now at Hotels.com.', affiliate_url: 'https://www.dpbolvw.net/click-101708885-10772148', cashback_rate: 2, commission_rate: 4 },
+        { title: 'Hotels.com Rewards — Stay 10 Nights, Earn 1 Free', description: 'Stay 10 nights, earn 1 free night with Hotels.com Rewards. Plus unlock secret member prices.', affiliate_url: 'https://www.tkqlhce.com/click-101708885-12232878', cashback_rate: 2, commission_rate: 4 },
+        { title: 'Student Discount — Save 10% with Verified ID', description: 'Students save 10% off hotel bookings with verified student ID.', affiliate_url: 'https://www.jdoqocy.com/click-101708885-13799334', cashback_rate: 2, commission_rate: 4 },
+        { title: 'Save 10% or More with Member Prices', description: 'Sign up and unlock member-only prices — save 10% or more on hotels.', affiliate_url: 'https://www.kqzyfj.com/click-101708885-15612526', cashback_rate: 2, commission_rate: 4 },
+      ]
+    );
+
+    // Vrbo — 2% CJ commission, offering 1% cashback
+    await seedMerchantsOffers(
+      { name: 'Vrbo', description: 'Find unique vacation rentals and earn cash back on every booking.', website: 'https://www.vrbo.com', category: 'Travel' },
+      [
+        { title: 'Earn OneKeyCash on Hotels, Rentals, Flights & More', description: 'Earn OneKeyCash for every dollar spent on eligible hotels, vacation rentals, flights and more.', affiliate_url: 'https://www.dpbolvw.net/click-101708885-15583546', cashback_rate: 1, commission_rate: 2 },
+        { title: 'Find Your Perfect Vacation Rental — Vrbo', description: 'Browse thousands of vacation rentals and find the perfect home away from home.', affiliate_url: 'https://www.jdoqocy.com/click-101708885-10784831', cashback_rate: 1, commission_rate: 2 },
+        { title: 'List Your Vacation Property on Vrbo', description: 'Earn income by listing your vacation property on Vrbo. Join millions of hosts worldwide.', affiliate_url: 'https://www.anrdoezrs.net/click-101708885-10697642', cashback_rate: 1, commission_rate: 2 },
+        { title: '7 Day Stays for Less — Weekly Discount', description: 'Get a discount by staying a full week. Save more with 7-day stay deals on Vrbo.', affiliate_url: 'https://www.anrdoezrs.net/click-101708885-14506917', cashback_rate: 1, commission_rate: 2 },
+        { title: 'US Vacation Rentals Under $200 a Night', description: 'Find affordable vacation rentals across the United States for under $200 per night.', affiliate_url: 'https://www.anrdoezrs.net/click-101708885-15407788', cashback_rate: 1, commission_rate: 2 },
+      ]
+    );
 
     console.log('Database initialised successfully');
   } catch (error) {
