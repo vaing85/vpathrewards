@@ -24,6 +24,7 @@ import TermsOfService from './pages/TermsOfService';
 import PrivacyPolicy from './pages/PrivacyPolicy';
 import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
+import Travel from './pages/Travel';
 import NotFound from './pages/NotFound';
 import Footer from './components/Footer';
 import ChatWidget from './components/ChatWidget';
@@ -177,6 +178,12 @@ function App() {
               </div>
             } />
 
+            <Route path="/travel" element={
+              <div className="min-h-screen bg-gray-50">
+                <Navbar />
+                <Travel />
+              </div>
+            } />
             <Route path="/forgot-password" element={
               <div className="min-h-screen bg-gray-50">
                 <Navbar />
