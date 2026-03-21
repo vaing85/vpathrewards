@@ -56,13 +56,23 @@ const Navbar = () => {
               >
                 Categories
               </button>
-              {showCategories && categories.length > 0 && (
+              {showCategories && (
                 <div
                   onMouseEnter={() => setShowCategories(true)}
                   onMouseLeave={() => setShowCategories(false)}
                   className="absolute top-full left-0 mt-1 w-64 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-50"
                 >
-                  {categories.map((cat) => (
+                  {/* Featured: Travel */}
+                  <Link
+                    to="/travel"
+                    className="flex items-center gap-2 px-4 py-2 text-blue-700 hover:bg-blue-50 font-medium transition border-b border-gray-100"
+                    onClick={() => setShowCategories(false)}
+                  >
+                    <span>✈️</span>
+                    <span>Travel</span>
+                    <span className="ml-auto text-xs bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded">Featured</span>
+                  </Link>
+                  {categories.filter(c => c.category !== 'Travel').map((cat) => (
                     <Link
                       key={cat.category}
                       to={`/category/${encodeURIComponent(cat.category)}`}
