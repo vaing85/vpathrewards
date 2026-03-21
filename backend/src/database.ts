@@ -397,7 +397,7 @@ export const initDatabase = async () => {
       let m = await dbGet('SELECT id FROM merchants WHERE name = ?', [merchant.name]) as any;
       if (!m) {
         const r = await dbRun(
-          'INSERT INTO merchants (name, description, website, category, is_active) VALUES (?, ?, ?, ?, 1)',
+          'INSERT INTO merchants (name, description, website_url, category) VALUES (?, ?, ?, ?)',
           [merchant.name, merchant.description, merchant.website, merchant.category]
         );
         m = { id: r.lastID };
@@ -407,7 +407,7 @@ export const initDatabase = async () => {
         const exists = await dbGet('SELECT id FROM offers WHERE merchant_id = ? AND title = ?', [m.id, offer.title]);
         if (!exists) {
           await dbRun(
-            'INSERT INTO offers (merchant_id, title, description, affiliate_url, cashback_rate, commission_rate, is_active) VALUES (?, ?, ?, ?, ?, ?, 1)',
+            'INSERT INTO offers (merchant_id, title, description, affiliate_link, cashback_rate, commission_rate, is_active) VALUES (?, ?, ?, ?, ?, ?, 1)',
             [m.id, offer.title, offer.description, offer.affiliate_url, offer.cashback_rate, offer.commission_rate]
           );
         }
