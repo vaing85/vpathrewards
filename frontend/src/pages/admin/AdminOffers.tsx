@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAdmin } from '../../context/AdminContext';
 import apiClient from '../../api/client';
@@ -55,6 +55,7 @@ const AdminOffers = () => {
   const [pagination, setPagination] = useState<any>(null);
 
   // CSV import state
+  const csvFileRef = useRef<HTMLInputElement>(null);
   const [showCsvModal, setShowCsvModal] = useState(false);
   const [csvRows, setCsvRows] = useState<CsvRow[]>([]);
   const [csvMerchantId, setCsvMerchantId] = useState('');
@@ -181,6 +182,7 @@ const AdminOffers = () => {
   const handleCsvFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    setCsvRows([]); setCsvResult(null); setCsvMerchantId(''); setCsvCashback(''); setCsvCommission('');
     const reader = new FileReader();
     reader.onload = (ev) => {
       const text = ev.target?.result as string;
@@ -214,7 +216,7 @@ const AdminOffers = () => {
         }
         setCsvRows(rows);
       }
-      setCsvResult(null);
+      setShowCsvModal(true);
     };
     reader.readAsText(file);
     e.target.value = '';
@@ -254,8 +256,9 @@ const AdminOffers = () => {
         <div className="flex justify-between items-center mb-8">
           <h1 className="text-3xl font-bold text-gray-800">Offers</h1>
           <div className="flex gap-2">
+            <input ref={csvFileRef} type="file" accept=".csv" onChange={handleCsvFile} className="hidden" />
             <button
-              onClick={() => { setShowCsvModal(true); setCsvRows([]); setCsvResult(null); setCsvMerchantId(''); setCsvCashback(''); setCsvCommission(''); }}
+              onClick={() => csvFileRef.current?.click()}
               className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-medium"
             >
               ↑ Import CSV
@@ -359,7 +362,7 @@ const AdminOffers = () => {
               </div>
 
               {/* Step 1 — Settings */}
-              <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 mb-4">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
                 <div>
                   <label className="block text-xs font-medium text-gray-700 mb-1">Merchant *</label>
                   <select
@@ -378,10 +381,6 @@ const AdminOffers = () => {
                 <div>
                   <label className="block text-xs font-medium text-gray-700 mb-1">CJ Commission %</label>
                   <input type="number" step="0.1" min="0" className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" value={csvCommission} onChange={e => setCsvCommission(e.target.value)} placeholder="e.g. 4" />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Upload CSV File</label>
-                  <input type="file" accept=".csv" onChange={handleCsvFile} className="w-full text-sm text-gray-600 file:mr-2 file:py-1.5 file:px-3 file:rounded file:border-0 file:text-xs file:font-medium file:bg-green-50 file:text-green-700 hover:file:bg-green-100" />
                 </div>
               </div>
 
