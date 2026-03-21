@@ -23,6 +23,26 @@ interface Merchant {
   name: string;
 }
 
+interface CsvRow {
+  title: string;
+  description: string;
+  affiliate_link: string;
+  selected: boolean;
+}
+
+// Parse a CJ CSV line respecting quoted fields
+const parseCsvLine = (line: string): string[] => {
+  const cols: string[] = [];
+  let cur = '', inQ = false;
+  for (const ch of line) {
+    if (ch === '"') inQ = !inQ;
+    else if (ch === ',' && !inQ) { cols.push(cur); cur = ''; }
+    else cur += ch;
+  }
+  cols.push(cur);
+  return cols.map(c => c.replace(/^"|"$/g, '').trim());
+};
+
 const AdminOffers = () => {
   const { isAuthenticated } = useAdmin();
   const navigate = useNavigate();
@@ -33,6 +53,15 @@ const AdminOffers = () => {
   const [editingOffer, setEditingOffer] = useState<Offer | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [pagination, setPagination] = useState<any>(null);
+
+  // CSV import state
+  const [showCsvModal, setShowCsvModal] = useState(false);
+  const [csvRows, setCsvRows] = useState<CsvRow[]>([]);
+  const [csvMerchantId, setCsvMerchantId] = useState('');
+  const [csvCashback, setCsvCashback] = useState('');
+  const [csvCommission, setCsvCommission] = useState('');
+  const [csvImporting, setCsvImporting] = useState(false);
+  const [csvResult, setCsvResult] = useState<{ imported: number; skipped: number } | null>(null);
   const [formData, setFormData] = useState({
     merchant_id: '',
     title: '',
@@ -149,6 +178,74 @@ const AdminOffers = () => {
     }
   };
 
+  const handleCsvFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const text = ev.target?.result as string;
+      const lines = text.split('\n').filter(l => l.trim());
+      const header = parseCsvLine(lines[0]);
+      const nameIdx = header.findIndex(h => h === 'NAME');
+      const descIdx = header.findIndex(h => h === 'DESCRIPTION');
+      const urlIdx  = header.findIndex(h => h === 'CLICK URL');
+      const langIdx = header.findIndex(h => h === 'LANGUAGE');
+
+      // If it's a CJ CSV, filter English and map columns
+      if (nameIdx !== -1 && urlIdx !== -1) {
+        const rows: CsvRow[] = [];
+        for (let i = 1; i < lines.length; i++) {
+          const cols = parseCsvLine(lines[i]);
+          if (langIdx !== -1 && cols[langIdx] !== 'English') continue;
+          const title = cols[nameIdx] || '';
+          const desc  = descIdx !== -1 ? cols[descIdx] : '';
+          const url   = cols[urlIdx] || '';
+          if (!title || !url) continue;
+          rows.push({ title, description: desc, affiliate_link: url, selected: true });
+        }
+        setCsvRows(rows);
+      } else {
+        // Simple CSV: title, description, affiliate_link
+        const rows: CsvRow[] = [];
+        for (let i = 1; i < lines.length; i++) {
+          const cols = parseCsvLine(lines[i]);
+          if (!cols[0] || !cols[2]) continue;
+          rows.push({ title: cols[0], description: cols[1] || '', affiliate_link: cols[2], selected: true });
+        }
+        setCsvRows(rows);
+      }
+      setCsvResult(null);
+    };
+    reader.readAsText(file);
+    e.target.value = '';
+  };
+
+  const handleCsvImport = async () => {
+    const selected = csvRows.filter(r => r.selected);
+    if (!csvMerchantId || !csvCashback || selected.length === 0) return;
+    setCsvImporting(true);
+    try {
+      const payload = selected.map(r => ({
+        merchant_id: parseInt(csvMerchantId),
+        title: r.title,
+        description: r.description,
+        affiliate_link: r.affiliate_link,
+        cashback_rate: parseFloat(csvCashback),
+        commission_rate: csvCommission ? parseFloat(csvCommission) : 0,
+      }));
+      const res = await apiClient.post('/admin/offers/bulk', { offers: payload });
+      setCsvResult(res.data);
+      fetchData();
+    } catch (err: any) {
+      alert(err.response?.data?.error || 'Import failed');
+    } finally {
+      setCsvImporting(false);
+    }
+  };
+
+  const toggleAll = (checked: boolean) =>
+    setCsvRows(rows => rows.map(r => ({ ...r, selected: checked })));
+
   if (!isAuthenticated) return null;
 
   return (
@@ -156,12 +253,20 @@ const AdminOffers = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="flex justify-between items-center mb-8">
           <h1 className="text-3xl font-bold text-gray-800">Offers</h1>
-          <button
-            onClick={() => handleOpenModal()}
-            className="bg-primary-600 hover:bg-primary-700 text-white px-4 py-2 rounded-lg"
-          >
-            + Add Offer
-          </button>
+          <div className="flex gap-2">
+            <button
+              onClick={() => { setShowCsvModal(true); setCsvRows([]); setCsvResult(null); setCsvMerchantId(''); setCsvCashback(''); setCsvCommission(''); }}
+              className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-medium"
+            >
+              ↑ Import CSV
+            </button>
+            <button
+              onClick={() => handleOpenModal()}
+              className="bg-primary-600 hover:bg-primary-700 text-white px-4 py-2 rounded-lg"
+            >
+              + Add Offer
+            </button>
+          </div>
         </div>
 
         {loading ? (
@@ -241,6 +346,110 @@ const AdminOffers = () => {
                 />
               </div>
             )}
+          </div>
+        )}
+
+        {/* CSV Import Modal */}
+        {showCsvModal && (
+          <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+            <div className="relative top-8 mx-auto p-6 border max-w-4xl shadow-lg rounded-lg bg-white mb-8">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-lg font-bold text-gray-900">Import Offers from CSV</h3>
+                <button onClick={() => setShowCsvModal(false)} className="text-gray-400 hover:text-gray-600 text-xl font-bold">×</button>
+              </div>
+
+              {/* Step 1 — Settings */}
+              <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 mb-4">
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">Merchant *</label>
+                  <select
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                    value={csvMerchantId}
+                    onChange={e => setCsvMerchantId(e.target.value)}
+                  >
+                    <option value="">Select merchant</option>
+                    {merchants.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">User Cashback % *</label>
+                  <input type="number" step="0.1" min="0" className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" value={csvCashback} onChange={e => setCsvCashback(e.target.value)} placeholder="e.g. 2" />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">CJ Commission %</label>
+                  <input type="number" step="0.1" min="0" className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" value={csvCommission} onChange={e => setCsvCommission(e.target.value)} placeholder="e.g. 4" />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">Upload CSV File</label>
+                  <input type="file" accept=".csv" onChange={handleCsvFile} className="w-full text-sm text-gray-600 file:mr-2 file:py-1.5 file:px-3 file:rounded file:border-0 file:text-xs file:font-medium file:bg-green-50 file:text-green-700 hover:file:bg-green-100" />
+                </div>
+              </div>
+
+              {csvCashback && csvCommission && parseFloat(csvCommission) > 0 && (
+                <div className="text-xs text-green-700 bg-green-50 px-3 py-2 rounded-md mb-3 inline-block">
+                  Your margin: {(parseFloat(csvCommission) - parseFloat(csvCashback)).toFixed(1)}% per transaction
+                </div>
+              )}
+
+              {/* Step 2 — Preview */}
+              {csvRows.length > 0 && (
+                <>
+                  <div className="flex items-center justify-between mb-2">
+                    <p className="text-sm text-gray-600">{csvRows.filter(r => r.selected).length} of {csvRows.length} offers selected</p>
+                    <div className="flex gap-2 text-xs">
+                      <button onClick={() => toggleAll(true)} className="text-primary-600 hover:underline">Select all</button>
+                      <span className="text-gray-400">|</span>
+                      <button onClick={() => toggleAll(false)} className="text-gray-500 hover:underline">Deselect all</button>
+                    </div>
+                  </div>
+                  <div className="border border-gray-200 rounded-lg overflow-hidden mb-4 max-h-80 overflow-y-auto">
+                    <table className="min-w-full text-xs divide-y divide-gray-200">
+                      <thead className="bg-gray-50 sticky top-0">
+                        <tr>
+                          <th className="px-3 py-2 text-left w-8"></th>
+                          <th className="px-3 py-2 text-left font-medium text-gray-600">Title</th>
+                          <th className="px-3 py-2 text-left font-medium text-gray-600 w-64">Affiliate Link</th>
+                        </tr>
+                      </thead>
+                      <tbody className="bg-white divide-y divide-gray-100">
+                        {csvRows.map((row, i) => (
+                          <tr key={i} className={row.selected ? '' : 'opacity-40'}>
+                            <td className="px-3 py-2">
+                              <input type="checkbox" checked={row.selected} onChange={e => setCsvRows(rows => rows.map((r, j) => j === i ? { ...r, selected: e.target.checked } : r))} />
+                            </td>
+                            <td className="px-3 py-2 text-gray-800 max-w-xs truncate">{row.title}</td>
+                            <td className="px-3 py-2 text-gray-400 truncate max-w-xs">{row.affiliate_link}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {csvResult && (
+                    <div className="mb-3 bg-green-50 border border-green-200 text-green-800 text-sm px-4 py-2 rounded-lg">
+                      ✓ Imported {csvResult.imported} offers — {csvResult.skipped} skipped (duplicates or invalid)
+                    </div>
+                  )}
+
+                  <div className="flex gap-3">
+                    <button
+                      onClick={handleCsvImport}
+                      disabled={csvImporting || !csvMerchantId || !csvCashback || csvRows.filter(r => r.selected).length === 0}
+                      className="bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white text-sm font-medium px-5 py-2 rounded-lg"
+                    >
+                      {csvImporting ? 'Importing...' : `Import ${csvRows.filter(r => r.selected).length} Offers`}
+                    </button>
+                    <button onClick={() => setShowCsvModal(false)} className="border border-gray-300 text-gray-700 text-sm px-5 py-2 rounded-lg hover:bg-gray-50">
+                      Close
+                    </button>
+                  </div>
+                </>
+              )}
+
+              {csvRows.length === 0 && (
+                <p className="text-sm text-gray-400 mt-2">Upload a CJ CSV file — English offers will be auto-filtered and previewed here.</p>
+              )}
+            </div>
           </div>
         )}
 
