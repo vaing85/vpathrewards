@@ -12,7 +12,16 @@ interface User {
   is_admin: number;
   created_at: string;
   transaction_count?: number;
+  subscription_plan?: string;
+  subscription_status?: string;
 }
+
+const TIER_STYLES: Record<string, { bg: string; text: string; label: string }> = {
+  free:     { bg: 'bg-gray-100',   text: 'text-gray-700',   label: 'Free' },
+  silver:   { bg: 'bg-slate-200',  text: 'text-slate-700',  label: 'Silver' },
+  gold:     { bg: 'bg-yellow-100', text: 'text-yellow-800', label: 'Gold' },
+  platinum: { bg: 'bg-indigo-100', text: 'text-indigo-800', label: 'Platinum' },
+};
 
 const AdminUsers = () => {
   const { isAuthenticated } = useAdmin();
@@ -81,6 +90,7 @@ const AdminUsers = () => {
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Email</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Total Earnings</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Transactions</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tier</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Role</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Joined</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
@@ -98,6 +108,17 @@ const AdminUsers = () => {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       {user.transaction_count || 0}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      {(() => {
+                        const plan = user.subscription_plan || 'free';
+                        const style = TIER_STYLES[plan] || TIER_STYLES.free;
+                        return (
+                          <span className={`px-2 py-1 text-xs rounded-full font-medium ${style.bg} ${style.text}`}>
+                            {style.label}
+                          </span>
+                        );
+                      })()}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       {user.is_admin ? (
