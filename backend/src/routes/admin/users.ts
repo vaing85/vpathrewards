@@ -21,16 +21,19 @@ router.get('/', authenticateAdmin, async (req, res) => {
     const totalPages = Math.ceil(total / limitNum);
     
     const users = await dbAll(`
-      SELECT 
-        id,
-        email,
-        name,
-        total_earnings,
-        is_admin,
-        created_at,
-        (SELECT COUNT(*) FROM cashback_transactions WHERE user_id = users.id) as transaction_count
-      FROM users
-      ORDER BY created_at DESC
+      SELECT
+        u.id,
+        u.email,
+        u.name,
+        u.total_earnings,
+        u.is_admin,
+        u.created_at,
+        (SELECT COUNT(*) FROM cashback_transactions WHERE user_id = u.id) as transaction_count,
+        COALESCE(s.plan, 'free') as subscription_plan,
+        COALESCE(s.status, 'active') as subscription_status
+      FROM users u
+      LEFT JOIN subscriptions s ON s.user_id = u.id
+      ORDER BY u.created_at DESC
       LIMIT ? OFFSET ?
     `, [limitNum, offset]);
     
