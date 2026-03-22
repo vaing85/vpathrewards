@@ -114,3 +114,44 @@ ALTER TABLE subscriptions ENABLE ROW LEVEL SECURITY;
 -- cashback_goals  (sensitive — no PostgREST access)
 -- ------------------------------------------------------------
 ALTER TABLE cashback_goals ENABLE ROW LEVEL SECURITY;
+
+-- ============================================================
+-- Explicit deny-all policies for sensitive tables
+-- (RLS with no policy already denies all; these make the intent
+-- explicit and silence the "RLS Enabled No Policy" INFO warnings)
+-- ============================================================
+CREATE POLICY "deny_all_affiliate_clicks"
+  ON affiliate_clicks FOR ALL TO anon, authenticated USING (false);
+
+CREATE POLICY "deny_all_cashback_goals"
+  ON cashback_goals FOR ALL TO anon, authenticated USING (false);
+
+CREATE POLICY "deny_all_cashback_transactions"
+  ON cashback_transactions FOR ALL TO anon, authenticated USING (false);
+
+CREATE POLICY "deny_all_conversions"
+  ON conversions FOR ALL TO anon, authenticated USING (false);
+
+CREATE POLICY "deny_all_merchant_banners"
+  ON merchant_banners FOR ALL TO anon, authenticated USING (false);
+
+CREATE POLICY "deny_all_referral_earnings"
+  ON referral_earnings FOR ALL TO anon, authenticated USING (false);
+
+CREATE POLICY "deny_all_referral_relationships"
+  ON referral_relationships FOR ALL TO anon, authenticated USING (false);
+
+CREATE POLICY "deny_all_subscriptions"
+  ON subscriptions FOR ALL TO anon, authenticated USING (false);
+
+CREATE POLICY "deny_all_user_favorites"
+  ON user_favorites FOR ALL TO anon, authenticated USING (false);
+
+CREATE POLICY "deny_all_user_referral_codes"
+  ON user_referral_codes FOR ALL TO anon, authenticated USING (false);
+
+CREATE POLICY "deny_all_users"
+  ON users FOR ALL TO anon, authenticated USING (false);
+
+CREATE POLICY "deny_all_withdrawals"
+  ON withdrawals FOR ALL TO anon, authenticated USING (false);
