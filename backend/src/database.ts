@@ -241,6 +241,21 @@ export const initDatabase = async () => {
       )
     `);
 
+    // Merchant banners
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS merchant_banners (
+        id          SERIAL PRIMARY KEY,
+        merchant_id INTEGER NOT NULL REFERENCES merchants(id) ON DELETE CASCADE,
+        image_url   TEXT NOT NULL,
+        click_url   TEXT,
+        width       INTEGER,
+        height      INTEGER,
+        alt_text    TEXT,
+        is_active   INTEGER DEFAULT 1,
+        created_at  TIMESTAMPTZ DEFAULT NOW()
+      )
+    `);
+
     // Merchant reviews
     await client.query(`
       CREATE TABLE IF NOT EXISTS merchant_reviews (
