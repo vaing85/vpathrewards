@@ -139,6 +139,19 @@ CREATE TABLE IF NOT EXISTS user_favorites (
   )
 );
 
+-- Merchant banners
+CREATE TABLE IF NOT EXISTS merchant_banners (
+  id          SERIAL PRIMARY KEY,
+  merchant_id INTEGER NOT NULL REFERENCES merchants(id) ON DELETE CASCADE,
+  image_url   TEXT NOT NULL,
+  click_url   TEXT,
+  width       INTEGER,
+  height      INTEGER,
+  alt_text    TEXT,
+  is_active   INTEGER DEFAULT 1,
+  created_at  TIMESTAMPTZ DEFAULT NOW()
+);
+
 -- Merchant reviews
 CREATE TABLE IF NOT EXISTS merchant_reviews (
   id          SERIAL PRIMARY KEY,
@@ -229,3 +242,40 @@ CREATE INDEX IF NOT EXISTS idx_subscriptions_plan_status      ON subscriptions(p
 CREATE UNIQUE INDEX IF NOT EXISTS idx_favorites_user_merchant
   ON user_favorites(user_id, merchant_id)
   WHERE merchant_id IS NOT NULL;
+
+-- ============================================================
+-- Row Level Security (RLS)
+-- ============================================================
+-- The Express backend connects via DATABASE_URL as the postgres
+-- superuser and bypasses RLS automatically. These policies lock
+-- down Supabase's PostgREST so no data leaks through the REST
+-- API. All application access must go through the backend API.
+-- ============================================================
+
+-- Sensitive tables — no PostgREST access
+ALTER TABLE users                 ENABLE ROW LEVEL SECURITY;
+ALTER TABLE cashback_transactions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE withdrawals           ENABLE ROW LEVEL SECURITY;
+ALTER TABLE user_referral_codes   ENABLE ROW LEVEL SECURITY;
+ALTER TABLE referral_relationships ENABLE ROW LEVEL SECURITY;
+ALTER TABLE referral_earnings     ENABLE ROW LEVEL SECURITY;
+ALTER TABLE affiliate_clicks      ENABLE ROW LEVEL SECURITY;
+ALTER TABLE conversions           ENABLE ROW LEVEL SECURITY;
+ALTER TABLE user_favorites        ENABLE ROW LEVEL SECURITY;
+ALTER TABLE subscriptions         ENABLE ROW LEVEL SECURITY;
+ALTER TABLE cashback_goals        ENABLE ROW LEVEL SECURITY;
+ALTER TABLE merchant_banners      ENABLE ROW LEVEL SECURITY;
+
+-- Public catalogue tables — anonymous read allowed
+ALTER TABLE merchants        ENABLE ROW LEVEL SECURITY;
+ALTER TABLE offers           ENABLE ROW LEVEL SECURITY;
+ALTER TABLE merchant_reviews ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "merchants_anon_read"
+  ON merchants FOR SELECT TO anon USING (true);
+
+CREATE POLICY "offers_anon_read"
+  ON offers FOR SELECT TO anon USING (is_active = 1);
+
+CREATE POLICY "merchant_reviews_anon_read"
+  ON merchant_reviews FOR SELECT TO anon USING (true);
