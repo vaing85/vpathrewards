@@ -36,11 +36,11 @@ export const securityConfig = {
   rateLimit: {
     api: {
       windowMs: 15 * 60 * 1000,
-      max: isProduction ? 100 : 1000,
+      max: isProduction ? 300 : 1000,
     },
     auth: {
       windowMs: 15 * 60 * 1000,
-      max: isProduction ? 5 : 50,
+      max: isProduction ? 20 : 50,
     },
     password: {
       windowMs: 60 * 60 * 1000,
