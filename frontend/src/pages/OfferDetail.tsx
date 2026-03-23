@@ -21,6 +21,7 @@ interface Offer {
   title: string;
   description?: string;
   cashback_rate: number;
+  cashback_type?: string;
   merchant_name?: string;
   merchant_logo?: string;
   merchant_website?: string;
@@ -120,8 +121,10 @@ const OfferDetail = () => {
                 />
               </div>
               <div className="bg-primary-600 text-white px-6 py-4 rounded-lg text-center">
-                <div className="text-4xl font-bold">{offer.cashback_rate}%</div>
-                <div className="text-sm">Cashback</div>
+                <div className="text-4xl font-bold">
+                  {offer.cashback_type === 'flat' ? `$${offer.cashback_rate}` : `${offer.cashback_rate}%`}
+                </div>
+                <div className="text-sm">{offer.cashback_type === 'flat' ? 'Flat Cashback' : 'Cashback'}</div>
               </div>
             </div>
           </div>

@@ -73,7 +73,7 @@ router.get('/:id', authenticateAdmin, async (req, res) => {
 // Create offer
 router.post('/', authenticateAdmin, validateOffer, async (req: express.Request, res: express.Response) => {
   try {
-    const { merchant_id, title, description, cashback_rate, commission_rate, terms, affiliate_link, is_active, end_date } = req.body;
+    const { merchant_id, title, description, cashback_rate, cashback_type, commission_rate, terms, affiliate_link, is_active, end_date, excluded_states } = req.body;
 
     if (!merchant_id || !title || !cashback_rate || !affiliate_link) {
       return res.status(400).json({ error: 'Merchant ID, title, cashback rate, and affiliate link are required' });
@@ -86,17 +86,19 @@ router.post('/', authenticateAdmin, validateOffer, async (req: express.Request, 
     }
 
     const result = await dbRun(
-      'INSERT INTO offers (merchant_id, title, description, cashback_rate, commission_rate, terms, affiliate_link, is_active, end_date) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      'INSERT INTO offers (merchant_id, title, description, cashback_rate, cashback_type, commission_rate, terms, affiliate_link, is_active, end_date, excluded_states) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
       [
         merchant_id,
         title,
         description || null,
         cashback_rate,
+        cashback_type || 'percentage',
         commission_rate || 0,
         terms || null,
         affiliate_link,
         is_active !== undefined ? (is_active ? 1 : 0) : 1,
-        end_date || null
+        end_date || null,
+        excluded_states || null
       ]
     );
 
@@ -130,7 +132,7 @@ router.post('/', authenticateAdmin, validateOffer, async (req: express.Request, 
 // Update offer
 router.put('/:id', authenticateAdmin, validateId, validateOffer, async (req: express.Request, res: express.Response) => {
   try {
-    const { merchant_id, title, description, cashback_rate, commission_rate, terms, affiliate_link, is_active, end_date } = req.body;
+    const { merchant_id, title, description, cashback_rate, cashback_type, commission_rate, terms, affiliate_link, is_active, end_date, excluded_states } = req.body;
 
     const offer = await dbGet('SELECT * FROM offers WHERE id = ?', [req.params.id]);
     if (!offer) {
@@ -145,17 +147,19 @@ router.put('/:id', authenticateAdmin, validateId, validateOffer, async (req: exp
     }
 
     await dbRun(
-      'UPDATE offers SET merchant_id = ?, title = ?, description = ?, cashback_rate = ?, commission_rate = ?, terms = ?, affiliate_link = ?, is_active = ?, end_date = ? WHERE id = ?',
+      'UPDATE offers SET merchant_id = ?, title = ?, description = ?, cashback_rate = ?, cashback_type = ?, commission_rate = ?, terms = ?, affiliate_link = ?, is_active = ?, end_date = ?, excluded_states = ? WHERE id = ?',
       [
         merchant_id !== undefined ? merchant_id : (offer as any).merchant_id,
         title !== undefined ? title : (offer as any).title,
         description !== undefined ? description : (offer as any).description,
         cashback_rate !== undefined ? cashback_rate : (offer as any).cashback_rate,
+        cashback_type !== undefined ? cashback_type : (offer as any).cashback_type || 'percentage',
         commission_rate !== undefined ? commission_rate : (offer as any).commission_rate,
         terms !== undefined ? terms : (offer as any).terms,
         affiliate_link !== undefined ? affiliate_link : (offer as any).affiliate_link,
         is_active !== undefined ? (is_active ? 1 : 0) : (offer as any).is_active,
         end_date !== undefined ? end_date || null : (offer as any).end_date,
+        excluded_states !== undefined ? excluded_states || null : (offer as any).excluded_states,
         req.params.id
       ]
     );

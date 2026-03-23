@@ -10,12 +10,14 @@ interface Offer {
   title: string;
   description?: string;
   cashback_rate: number;
+  cashback_type?: string;
   commission_rate: number;
   terms?: string;
   affiliate_link: string;
   is_active: number;
   merchant_name?: string;
   end_date?: string;
+  excluded_states?: string;
 }
 
 interface Merchant {
@@ -68,11 +70,13 @@ const AdminOffers = () => {
     title: '',
     description: '',
     cashback_rate: '',
+    cashback_type: 'percentage',
     commission_rate: '',
     terms: '',
     affiliate_link: '',
     is_active: true,
     end_date: '',
+    excluded_states: '',
   });
 
   useEffect(() => {
@@ -120,11 +124,13 @@ const AdminOffers = () => {
         title: offer.title,
         description: offer.description || '',
         cashback_rate: offer.cashback_rate.toString(),
+        cashback_type: offer.cashback_type || 'percentage',
         commission_rate: offer.commission_rate?.toString() || '',
         terms: offer.terms || '',
         affiliate_link: offer.affiliate_link,
         is_active: offer.is_active === 1,
         end_date: offer.end_date ? offer.end_date.slice(0, 10) : '',
+        excluded_states: offer.excluded_states || '',
       });
     } else {
       setEditingOffer(null);
@@ -133,11 +139,13 @@ const AdminOffers = () => {
         title: '',
         description: '',
         cashback_rate: '',
+        cashback_type: 'percentage',
         commission_rate: '',
         terms: '',
         affiliate_link: '',
         is_active: true,
         end_date: '',
+        excluded_states: '',
       });
     }
     setShowModal(true);
@@ -156,6 +164,7 @@ const AdminOffers = () => {
         merchant_id: parseInt(formData.merchant_id),
         cashback_rate: parseFloat(formData.cashback_rate),
         commission_rate: formData.commission_rate ? parseFloat(formData.commission_rate) : 0,
+        excluded_states: formData.excluded_states.trim().toUpperCase() || null,
       };
       if (editingOffer) {
         await apiClient.put(`/admin/offers/${editingOffer.id}`, payload);
@@ -495,9 +504,23 @@ const AdminOffers = () => {
                       onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                     />
                   </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Cashback Type *</label>
+                    <select
+                      required
+                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm"
+                      value={formData.cashback_type}
+                      onChange={(e) => setFormData({ ...formData, cashback_type: e.target.value })}
+                    >
+                      <option value="percentage">Percentage (%)</option>
+                      <option value="flat">Flat ($)</option>
+                    </select>
+                  </div>
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700">User Cashback (%) *</label>
+                      <label className="block text-sm font-medium text-gray-700">
+                        User Cashback ({formData.cashback_type === 'flat' ? '$' : '%'}) *
+                      </label>
                       <input
                         type="number"
                         step="0.1"
@@ -508,7 +531,7 @@ const AdminOffers = () => {
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700">CJ Commission (%)</label>
+                      <label className="block text-sm font-medium text-gray-700">CJ Commission ($)</label>
                       <input
                         type="number"
                         step="0.1"
@@ -516,7 +539,7 @@ const AdminOffers = () => {
                         className="mt-1 block w-full rounded-md border-gray-300 shadow-sm"
                         value={formData.commission_rate}
                         onChange={(e) => setFormData({ ...formData, commission_rate: e.target.value })}
-                        placeholder="e.g. 8"
+                        placeholder="e.g. 20"
                       />
                     </div>
                   </div>
@@ -541,6 +564,19 @@ const AdminOffers = () => {
                       className="mt-1 block w-full rounded-md border-gray-300 shadow-sm"
                       value={formData.terms}
                       onChange={(e) => setFormData({ ...formData, terms: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">
+                      Excluded States
+                      <span className="ml-1 text-xs text-gray-400">(comma-separated, e.g. CA,IA,UT,WA)</span>
+                    </label>
+                    <input
+                      type="text"
+                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm"
+                      value={formData.excluded_states}
+                      onChange={(e) => setFormData({ ...formData, excluded_states: e.target.value.toUpperCase() })}
+                      placeholder="e.g. CA,IA,UT,WA"
                     />
                   </div>
                   <div>
