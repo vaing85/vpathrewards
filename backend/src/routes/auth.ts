@@ -12,15 +12,81 @@ const router = express.Router();
 
 const isProduction = process.env.NODE_ENV === 'production';
 
-function setAuthCookie(res: express.Response, token: string) {
+// ---------------------------------------------------------------------------
+// Cookie helpers
+// ---------------------------------------------------------------------------
+
+function setAccessCookie(res: express.Response, token: string) {
   res.cookie('auth_token', token, {
     httpOnly: true,
     secure: isProduction,
     sameSite: 'strict',
-    maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days in ms
+    maxAge: 15 * 60 * 1000, // 15 minutes
     path: '/',
   });
 }
+
+function setRefreshCookie(res: express.Response, token: string) {
+  res.cookie('refresh_token', token, {
+    httpOnly: true,
+    secure: isProduction,
+    sameSite: 'strict',
+    maxAge: securityConfig.jwt.refreshExpiresMs,
+    path: '/api/auth', // scoped so browser only sends it to refresh endpoint
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Token issuance (stores hashed refresh token in DB, returns both tokens)
+// ---------------------------------------------------------------------------
+
+async function issueTokens(res: express.Response, userId: number) {
+  // Short-lived JWT access token
+  const accessToken = jwt.sign(
+    { userId },
+    securityConfig.jwt.secret,
+    { expiresIn: securityConfig.jwt.expiresIn } as jwt.SignOptions
+  );
+
+  // Long-lived opaque refresh token — store only its SHA-256 hash
+  const refreshToken = crypto.randomBytes(40).toString('hex');
+  const tokenHash = crypto.createHash('sha256').update(refreshToken).digest('hex');
+  const expiresAt = new Date(Date.now() + securityConfig.jwt.refreshExpiresMs);
+
+  await dbRun(
+    'INSERT INTO refresh_tokens (user_id, token_hash, expires_at) VALUES (?, ?, ?)',
+    [userId, tokenHash, expiresAt.toISOString()]
+  );
+
+  setAccessCookie(res, accessToken);
+  setRefreshCookie(res, refreshToken);
+}
+
+// ---------------------------------------------------------------------------
+// Routes
+// ---------------------------------------------------------------------------
+
+// Refresh access token using the httpOnly refresh_token cookie
+router.post('/refresh', async (req: express.Request, res: express.Response) => {
+  const rawToken: string | undefined = req.cookies?.refresh_token;
+  if (!rawToken) return res.status(401).json({ error: 'Refresh token required' });
+
+  const tokenHash = crypto.createHash('sha256').update(rawToken).digest('hex');
+  const stored = await dbGet(
+    "SELECT id, user_id, expires_at FROM refresh_tokens WHERE token_hash = ?",
+    [tokenHash]
+  ) as { id: number; user_id: number; expires_at: string } | undefined;
+
+  if (!stored || new Date(stored.expires_at) < new Date()) {
+    res.clearCookie('refresh_token', { path: '/api/auth' });
+    return res.status(401).json({ error: 'Refresh token expired or invalid' });
+  }
+
+  // Rotate: delete old token, issue new pair
+  await dbRun('DELETE FROM refresh_tokens WHERE id = ?', [stored.id]);
+  await issueTokens(res, stored.user_id);
+  res.json({ ok: true });
+});
 
 // Current user (validates cookie / Authorization header)
 router.get('/me', authenticateToken, async (req: AuthRequest, res) => {
@@ -36,9 +102,15 @@ router.get('/me', authenticateToken, async (req: AuthRequest, res) => {
   }
 });
 
-// Logout — clears auth cookie
-router.post('/logout', (_req, res) => {
+// Logout — clears both cookies and revokes refresh token
+router.post('/logout', async (req: express.Request, res: express.Response) => {
+  const rawToken: string | undefined = req.cookies?.refresh_token;
+  if (rawToken) {
+    const tokenHash = crypto.createHash('sha256').update(rawToken).digest('hex');
+    await dbRun('DELETE FROM refresh_tokens WHERE token_hash = ?', [tokenHash]).catch(() => {});
+  }
   res.clearCookie('auth_token', { path: '/' });
+  res.clearCookie('refresh_token', { path: '/api/auth' });
   res.json({ message: 'Logged out' });
 });
 
@@ -51,67 +123,48 @@ router.post('/register', validateRegister, async (req: express.Request, res: exp
       return res.status(400).json({ error: 'Email, password, and name are required' });
     }
 
-    // Check if user exists
     const existingUser = await dbGet('SELECT id FROM users WHERE email = ?', [email]);
     if (existingUser) {
       return res.status(400).json({ error: 'User already exists' });
     }
 
-    // Hash password
     const hashedPassword = await bcrypt.hash(password, 10);
-
-    // Create user
     const result = await dbRun(
       'INSERT INTO users (email, password, name) VALUES (?, ?, ?)',
       [email, hashedPassword, name]
     );
-
     const userId = (result as any).lastID;
-    
-    // Handle referral code if provided
+
     if (referral_code) {
       try {
         const referrer = await dbGet(
           'SELECT user_id FROM user_referral_codes WHERE referral_code = ?',
           [referral_code]
         ) as { user_id: number } | undefined;
-        
         if (referrer && referrer.user_id !== userId) {
-          // Create referral relationship
           await dbRun(
             'INSERT INTO referral_relationships (referrer_id, referred_id, referral_code) VALUES (?, ?, ?)',
             [referrer.user_id, userId, referral_code]
           );
         }
       } catch (refError) {
-        // Don't fail registration if referral code is invalid
         console.error('Error processing referral code:', refError);
       }
     }
 
-    // Create referral code for new user
     const userReferralCode = `REF${userId}${Date.now().toString().slice(-6)}`;
     await dbRun(
       'INSERT INTO user_referral_codes (user_id, referral_code) VALUES (?, ?)',
       [userId, userReferralCode]
     );
 
-    const token = jwt.sign({ userId }, securityConfig.jwt.secret, { expiresIn: securityConfig.jwt.expiresIn } as jwt.SignOptions);
-    setAuthCookie(res, token);
+    await issueTokens(res, userId);
 
-    // Send welcome email (async, don't wait for it)
     sendEmailToUser(userId, email, 'welcome', { name }, 'email').catch(err => {
       console.error('Failed to send welcome email:', err);
     });
 
-    res.status(201).json({
-      user: {
-        id: userId,
-        email,
-        name,
-        total_earnings: 0
-      }
-    });
+    res.status(201).json({ user: { id: userId, email, name, total_earnings: 0 } });
   } catch (error) {
     console.error('Registration error:', error);
     res.status(500).json({ error: 'Internal server error' });
@@ -127,20 +180,13 @@ router.post('/login', validateLogin, async (req: express.Request, res: express.R
       return res.status(400).json({ error: 'Email and password are required' });
     }
 
-    // Find user
     const user = await dbGet('SELECT * FROM users WHERE email = ?', [email]) as any;
-    if (!user) {
-      return res.status(401).json({ error: 'Invalid credentials' });
-    }
+    if (!user) return res.status(401).json({ error: 'Invalid credentials' });
 
-    // Verify password
     const validPassword = await bcrypt.compare(password, user.password);
-    if (!validPassword) {
-      return res.status(401).json({ error: 'Invalid credentials' });
-    }
+    if (!validPassword) return res.status(401).json({ error: 'Invalid credentials' });
 
-    const token = jwt.sign({ userId: user.id }, securityConfig.jwt.secret, { expiresIn: securityConfig.jwt.expiresIn } as jwt.SignOptions);
-    setAuthCookie(res, token);
+    await issueTokens(res, user.id);
 
     res.json({
       user: {
@@ -163,8 +209,6 @@ router.post('/forgot-password', async (req: express.Request, res: express.Respon
     if (!email) return res.status(400).json({ error: 'Email is required' });
 
     const user = await dbGet('SELECT id, name, email FROM users WHERE email = ?', [email]) as any;
-
-    // Always respond the same way to prevent email enumeration
     if (!user) return res.json({ message: 'If that email exists, a reset link has been sent.' });
 
     const token = crypto.randomBytes(32).toString('hex');
@@ -199,7 +243,6 @@ router.post('/reset-password', async (req: express.Request, res: express.Respons
       "SELECT id FROM users WHERE reset_token = ? AND reset_token_expires > NOW()",
       [token]
     ) as any;
-
     if (!user) return res.status(400).json({ error: 'This reset link is invalid or has expired.' });
 
     const hashedPassword = await bcrypt.hash(password, 10);
