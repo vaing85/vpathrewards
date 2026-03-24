@@ -372,6 +372,7 @@ export const initDatabase = async () => {
       `ALTER TABLE offers ADD COLUMN IF NOT EXISTS commission_rate DOUBLE PRECISION DEFAULT 0`,
       `ALTER TABLE offers ADD COLUMN IF NOT EXISTS cashback_type TEXT DEFAULT 'percentage'`,
       `ALTER TABLE offers ADD COLUMN IF NOT EXISTS excluded_states TEXT`,
+      `ALTER TABLE offers ADD COLUMN IF NOT EXISTS category TEXT`,
     ];
     for (const sql of migrations) {
       try {
