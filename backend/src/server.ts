@@ -118,15 +118,19 @@ app.use(sanitizeInput);
 // the x-csrf-token header whose value matches the csrf cookie.
 const { generateCsrfToken, doubleCsrfProtection } = doubleCsrf({
   getSecret: () => process.env.JWT_SECRET ?? 'dev-csrf-secret',
-  // Session identifier: use auth cookie if present, else real client IP
-  // (req.ip respects trust proxy / X-Forwarded-For; req.socket.remoteAddress
-  //  returns the load-balancer's internal IP and is not stable per-user)
+  // Session identifier: use auth cookie if present, else 'anon'.
+  // IP is intentionally NOT used — it can change across load-balancer hops,
+  // causing spurious CSRF failures. The token's security comes from its
+  // cryptographic unpredictability, not from IP binding.
   getSessionIdentifier: (req) =>
-    (req.cookies?.admin_token as string | undefined) ?? req.ip ?? 'anon',
+    (req.cookies?.admin_token as string | undefined) ?? 'anon',
   cookieName: 'csrf_token',
   cookieOptions: {
+    // sameSite:'none' is required in production so the cookie is sent on
+    // cross-site requests when the SPA (vpathrewards.store) calls the API
+    // on a different domain. 'lax' is fine for local development (same host).
     secure: process.env.NODE_ENV === 'production',
-    sameSite: 'strict',
+    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
     httpOnly: false, // must be readable by JS so the frontend can send it in a header
     path: '/',
   },
