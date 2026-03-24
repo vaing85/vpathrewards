@@ -171,6 +171,7 @@ CREATE TABLE IF NOT EXISTS subscriptions (
   stripe_subscription_id TEXT UNIQUE,
   plan                   TEXT DEFAULT 'free',
   status                 TEXT DEFAULT 'active',
+  current_period_start   TIMESTAMPTZ,
   current_period_end     TIMESTAMPTZ,
   created_at             TIMESTAMPTZ DEFAULT NOW(),
   updated_at             TIMESTAMPTZ DEFAULT NOW()
