@@ -410,7 +410,7 @@ export const initDatabase = async () => {
 
     const seedMerchantsOffers = async (
       merchant: { name: string; description: string; website: string; category: string },
-      offers: { title: string; description: string; affiliate_url: string; cashback_rate: number; commission_rate: number }[]
+      offers: { title: string; description: string; affiliate_url: string; cashback_rate: number; commission_rate: number; category?: string }[]
     ) => {
       let m = await dbGet('SELECT id FROM merchants WHERE name = ?', [merchant.name]) as any;
       if (!m) {
@@ -425,8 +425,8 @@ export const initDatabase = async () => {
         const exists = await dbGet('SELECT id FROM offers WHERE merchant_id = ? AND title = ?', [m.id, offer.title]);
         if (!exists) {
           await dbRun(
-            'INSERT INTO offers (merchant_id, title, description, affiliate_link, cashback_rate, commission_rate, is_active) VALUES (?, ?, ?, ?, ?, ?, 1)',
-            [m.id, offer.title, offer.description, offer.affiliate_url, offer.cashback_rate, offer.commission_rate]
+            'INSERT INTO offers (merchant_id, title, description, affiliate_link, cashback_rate, commission_rate, category, is_active) VALUES (?, ?, ?, ?, ?, ?, ?, 1)',
+            [m.id, offer.title, offer.description, offer.affiliate_url, offer.cashback_rate, offer.commission_rate, offer.category || null]
           );
         }
       }
@@ -461,6 +461,17 @@ export const initDatabase = async () => {
         { title: 'US Vacation Rentals Under $200 a Night', description: 'Find affordable vacation rentals across the United States for under $200 per night.', affiliate_url: 'https://www.anrdoezrs.net/click-101708885-15407788', cashback_rate: 1, commission_rate: 2 },
         { title: 'Hilton Head, SC Vacation Rentals', description: 'Find the best vacation rentals in Hilton Head, South Carolina on Vrbo.', affiliate_url: 'https://www.jdoqocy.com/click-101708885-13217353', cashback_rate: 1, commission_rate: 2 },
         { title: 'South Carolina Vacation Rentals', description: 'Find out what vacation rentals in South Carolina are available and renting for on Vrbo.', affiliate_url: 'https://www.kqzyfj.com/click-101708885-10790647', cashback_rate: 1, commission_rate: 2 },
+      ]
+    );
+
+    // GearUP — 70% CJ commission on new subscriptions, offering 35% cashback
+    // CJ Advertiser ID: 7804601 — affiliate links are placeholders until CJ offer is accepted
+    await seedMerchantsOffers(
+      { name: 'GearUP', description: 'Game booster that reduces ping and stabilizes gaming networks for players worldwide. Subscription plans for serious gamers.', website: 'https://www.gearupbooster.com', category: 'Gaming' },
+      [
+        { title: 'GearUP Monthly Plan — Reduce Game Ping Instantly', description: 'Subscribe monthly to GearUP and enjoy reduced ping and stable gaming networks. Cancel anytime.', affiliate_url: 'https://www.gearupbooster.com/pay/subscription/', cashback_rate: 35, commission_rate: 70, category: 'Gaming' },
+        { title: 'GearUP Quarterly Plan — 3 Months of Smooth Gaming', description: 'Save more with a 3-month GearUP subscription. Reduce lag and stabilize your gaming connection.', affiliate_url: 'https://www.gearupbooster.com/pay/subscription/', cashback_rate: 35, commission_rate: 70, category: 'Gaming' },
+        { title: 'GearUP Annual Plan — Best Value for Gamers', description: 'Get the best deal with a full year of GearUP. Maximum savings, minimum ping, all year long.', affiliate_url: 'https://www.gearupbooster.com/pay/subscription/', cashback_rate: 35, commission_rate: 70, category: 'Gaming' },
       ]
     );
 
