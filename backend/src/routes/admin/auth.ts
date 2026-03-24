@@ -7,6 +7,17 @@ import { authenticateAdmin, AdminRequest } from '../../middleware/adminAuth';
 import { sendEmail } from '../../utils/emailService';
 
 const router = express.Router();
+const isProduction = process.env.NODE_ENV === 'production';
+
+function setAdminCookie(res: express.Response, token: string) {
+  res.cookie('admin_token', token, {
+    httpOnly: true,
+    secure: isProduction,
+    sameSite: 'strict',
+    maxAge: 7 * 24 * 60 * 60 * 1000,
+    path: '/',
+  });
+}
 
 // Admin login
 router.post('/login', async (req, res) => {
@@ -34,9 +45,9 @@ router.post('/login', async (req, res) => {
     }
 
     const token = jwt.sign({ userId: user.id }, securityConfig.jwt.secret, { expiresIn: securityConfig.jwt.expiresIn } as jwt.SignOptions);
+    setAdminCookie(res, token);
 
     res.json({
-      token,
       user: {
         id: user.id,
         email: user.email,
@@ -75,6 +86,26 @@ router.post('/change-password', authenticateAdmin, async (req: AdminRequest, res
     console.error('Change password error:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
+});
+
+// Current admin user
+router.get('/me', authenticateAdmin, async (req: AdminRequest, res) => {
+  try {
+    const user = await dbGet(
+      'SELECT id, email, name, is_admin FROM users WHERE id = ?',
+      [req.userId]
+    ) as any;
+    if (!user) return res.status(404).json({ error: 'User not found' });
+    res.json({ user: { ...user, is_admin: true } });
+  } catch (error) {
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Admin logout — clears admin cookie
+router.post('/logout', (_req, res) => {
+  res.clearCookie('admin_token', { path: '/' });
+  res.json({ message: 'Logged out' });
 });
 
 // Test email — sends a welcome-style test to any address

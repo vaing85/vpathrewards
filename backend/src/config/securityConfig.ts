@@ -6,9 +6,18 @@
 const nodeEnv = process.env.NODE_ENV || 'development';
 const isProduction = nodeEnv === 'production';
 
+const jwtSecret = process.env.JWT_SECRET;
+if (!jwtSecret) {
+  if (isProduction) {
+    throw new Error('FATAL: JWT_SECRET environment variable is not set. Refusing to start in production.');
+  } else {
+    console.warn('WARNING: JWT_SECRET is not set. Using insecure default — do NOT use in production.');
+  }
+}
+
 export const securityConfig = {
   jwt: {
-    secret: process.env.JWT_SECRET || 'your-secret-key',
+    secret: jwtSecret || 'dev-only-insecure-secret',
     /** Token expiry (e.g. '7d', '24h'). */
     expiresIn: process.env.JWT_EXPIRES_IN || '7d',
   },
@@ -53,6 +62,10 @@ export const securityConfig = {
     admin: {
       windowMs: 15 * 60 * 1000,
       max: 50,
+    },
+    tracking: {
+      windowMs: 60 * 1000, // 1 minute
+      max: isProduction ? 30 : 200,
     },
   },
 } as const;

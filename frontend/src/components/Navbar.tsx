@@ -30,7 +30,7 @@ const Navbar = () => {
   };
 
   const handleLogout = () => {
-    logout();
+    void logout();
     navigate('/');
   };
 
