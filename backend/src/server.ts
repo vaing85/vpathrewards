@@ -118,9 +118,11 @@ app.use(sanitizeInput);
 // the x-csrf-token header whose value matches the csrf cookie.
 const { generateCsrfToken, doubleCsrfProtection } = doubleCsrf({
   getSecret: () => process.env.JWT_SECRET ?? 'dev-csrf-secret',
-  // Session identifier: use auth cookie if present, else remote IP
+  // Session identifier: use auth cookie if present, else real client IP
+  // (req.ip respects trust proxy / X-Forwarded-For; req.socket.remoteAddress
+  //  returns the load-balancer's internal IP and is not stable per-user)
   getSessionIdentifier: (req) =>
-    (req.cookies?.auth_token as string | undefined) ?? req.socket.remoteAddress ?? 'anon',
+    (req.cookies?.admin_token as string | undefined) ?? req.ip ?? 'anon',
   cookieName: 'csrf_token',
   cookieOptions: {
     secure: process.env.NODE_ENV === 'production',
