@@ -7,8 +7,10 @@ export interface AuthRequest extends Request {
 }
 
 export const authenticateToken = (req: AuthRequest, res: Response, next: NextFunction) => {
+  // Prefer httpOnly cookie; fall back to Authorization header for API clients
+  const cookieToken = req.cookies?.auth_token;
   const authHeader = req.headers['authorization'];
-  const token = authHeader && authHeader.split(' ')[1];
+  const token = cookieToken || (authHeader && authHeader.split(' ')[1]);
 
   if (!token) {
     return res.status(401).json({ error: 'Access token required' });

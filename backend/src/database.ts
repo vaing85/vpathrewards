@@ -388,20 +388,15 @@ export const initDatabase = async () => {
     // Seed data (outside transaction so partial failures don't roll back schema)
     // ---------------------------------------------------------------------------
 
-    // Default admin
-    const adminExists = await dbGet('SELECT id FROM users WHERE email = ?', ['admin@cashback.com']);
+    // Check whether any admin user exists; if not, guide the operator to create one.
+    const adminExists = await dbGet('SELECT id FROM users WHERE is_admin = 1');
     if (!adminExists) {
-      const hashedPassword = await bcrypt.hash('admin123', 10);
-      const result = await dbRun(
-        'INSERT INTO users (email, password, name, is_admin) VALUES (?, ?, ?, ?)',
-        ['admin@cashback.com', hashedPassword, 'Admin User', 1]
-      );
-      const adminId = result.lastID;
-      await dbRun(
-        'INSERT INTO user_referral_codes (user_id, referral_code) VALUES (?, ?)',
-        [adminId, `ADMIN${adminId}`]
-      );
-      console.log('Default admin created: admin@cashback.com / admin123');
+      console.warn('='.repeat(60));
+      console.warn('WARNING: No admin user found.');
+      console.warn('Create one by running the admin setup script:');
+      console.warn('  npm run create-admin');
+      console.warn('or by inserting directly into the database.');
+      console.warn('='.repeat(60));
     }
 
     // ---------------------------------------------------------------------------

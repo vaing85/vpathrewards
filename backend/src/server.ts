@@ -1,6 +1,7 @@
 import dotenv from 'dotenv';
 dotenv.config({ override: true });
 import express from 'express';
+import cookieParser from 'cookie-parser';
 import cors from 'cors';
 import helmet from 'helmet';
 import { initDatabase, dbGet } from './database';
@@ -73,6 +74,9 @@ app.use(cors({
 
 // Stripe webhook — must be registered BEFORE express.json() to get raw body
 app.use('/api/webhooks', webhookRoutes);
+
+// Cookie parsing (must come before auth middleware)
+app.use(cookieParser());
 
 // Body parsing with size limit
 app.use(express.json({ limit: '10mb' }));

@@ -7,23 +7,8 @@ const apiClient = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
-});
-
-// Add token to requests if available
-apiClient.interceptors.request.use((config) => {
-  // Check if this is an admin route
-  if (config.url?.includes('/admin/')) {
-    const adminToken = localStorage.getItem('admin_token');
-    if (adminToken) {
-      config.headers.Authorization = `Bearer ${adminToken}`;
-    }
-  } else {
-    const token = localStorage.getItem('token');
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
-  }
-  return config;
+  // Send httpOnly auth cookies automatically with every request
+  withCredentials: true,
 });
 
 export default apiClient;

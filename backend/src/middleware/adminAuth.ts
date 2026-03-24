@@ -9,8 +9,10 @@ export interface AdminRequest extends Request {
 }
 
 export const authenticateAdmin = async (req: AdminRequest, res: Response, next: NextFunction) => {
+  // Prefer httpOnly cookie; fall back to Authorization header for API clients
+  const cookieToken = req.cookies?.admin_token;
   const authHeader = req.headers['authorization'];
-  const token = authHeader && authHeader.split(' ')[1];
+  const token = cookieToken || (authHeader && authHeader.split(' ')[1]);
 
   if (!token) {
     return res.status(401).json({ error: 'Access token required' });

@@ -6,8 +6,41 @@ import { dbGet, dbRun } from '../database';
 import { securityConfig } from '../config/securityConfig';
 import { sendEmail, sendEmailToUser } from '../utils/emailService';
 import { validateRegister, validateLogin } from '../middleware/validation';
+import { authenticateToken, AuthRequest } from '../middleware/auth';
 
 const router = express.Router();
+
+const isProduction = process.env.NODE_ENV === 'production';
+
+function setAuthCookie(res: express.Response, token: string) {
+  res.cookie('auth_token', token, {
+    httpOnly: true,
+    secure: isProduction,
+    sameSite: 'strict',
+    maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days in ms
+    path: '/',
+  });
+}
+
+// Current user (validates cookie / Authorization header)
+router.get('/me', authenticateToken, async (req: AuthRequest, res) => {
+  try {
+    const user = await dbGet(
+      'SELECT id, email, name, total_earnings FROM users WHERE id = ?',
+      [req.userId]
+    ) as any;
+    if (!user) return res.status(404).json({ error: 'User not found' });
+    res.json({ user });
+  } catch (error) {
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Logout — clears auth cookie
+router.post('/logout', (_req, res) => {
+  res.clearCookie('auth_token', { path: '/' });
+  res.json({ message: 'Logged out' });
+});
 
 // Register
 router.post('/register', validateRegister, async (req: express.Request, res: express.Response) => {
@@ -64,6 +97,7 @@ router.post('/register', validateRegister, async (req: express.Request, res: exp
     );
 
     const token = jwt.sign({ userId }, securityConfig.jwt.secret, { expiresIn: securityConfig.jwt.expiresIn } as jwt.SignOptions);
+    setAuthCookie(res, token);
 
     // Send welcome email (async, don't wait for it)
     sendEmailToUser(userId, email, 'welcome', { name }, 'email').catch(err => {
@@ -71,7 +105,6 @@ router.post('/register', validateRegister, async (req: express.Request, res: exp
     });
 
     res.status(201).json({
-      token,
       user: {
         id: userId,
         email,
@@ -107,9 +140,9 @@ router.post('/login', validateLogin, async (req: express.Request, res: express.R
     }
 
     const token = jwt.sign({ userId: user.id }, securityConfig.jwt.secret, { expiresIn: securityConfig.jwt.expiresIn } as jwt.SignOptions);
+    setAuthCookie(res, token);
 
     res.json({
-      token,
       user: {
         id: user.id,
         email: user.email,
