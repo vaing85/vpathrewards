@@ -13,7 +13,10 @@ function setAdminCookie(res: express.Response, token: string) {
   res.cookie('admin_token', token, {
     httpOnly: true,
     secure: isProduction,
-    sameSite: 'strict',
+    // 'none' required in production so the cookie is sent back on cross-site
+    // XHR when the SPA (vpathrewards.store) calls the API on a different domain.
+    // 'strict' in dev is fine since everything runs on localhost.
+    sameSite: isProduction ? 'none' : 'strict',
     maxAge: 7 * 24 * 60 * 60 * 1000,
     path: '/',
   });
