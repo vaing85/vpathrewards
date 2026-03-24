@@ -116,24 +116,23 @@ app.use(sanitizeInput);
 // CSRF protection — double-submit cookie pattern.
 // GET/HEAD/OPTIONS are exempt; all state-changing requests must include
 // the x-csrf-token header whose value matches the csrf cookie.
+//
+// Cross-origin detection: sameSite=none + Secure are required whenever the
+// frontend (vpathrewards.store) is on a different domain from the API
+// (railway.app). We detect this by checking FRONTEND_URL — if it's an
+// https:// URL that isn't localhost, we're cross-origin. This is more
+// reliable than NODE_ENV which Railway does not set automatically.
+const frontendUrl = process.env.FRONTEND_URL || '';
+const isCrossOrigin = frontendUrl.startsWith('https://') && !frontendUrl.includes('localhost');
 const { generateCsrfToken, doubleCsrfProtection } = doubleCsrf({
   getSecret: () => process.env.JWT_SECRET ?? 'dev-csrf-secret',
-  // Session identifier: use auth cookie if present, else 'anon'.
-  // IP is intentionally NOT used — it can change across load-balancer hops,
-  // causing spurious CSRF failures. The token's security comes from its
-  // cryptographic unpredictability, not from IP binding.
-  // Use a stable constant — tying to admin_token causes CSRF mismatch
-  // immediately after login (identifier changes from 'anon' to token value).
-  // The double-submit pattern's security comes from token unpredictability,
-  // not from binding to the session.
   getSessionIdentifier: () => 'default',
   cookieName: 'csrf_token',
   cookieOptions: {
-    // sameSite:'none' is required in production so the cookie is sent on
-    // cross-site requests when the SPA (vpathrewards.store) calls the API
-    // on a different domain. 'lax' is fine for local development (same host).
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+    // sameSite:'none' + secure are required for cross-origin (SPA on different domain).
+    // 'lax' is fine for local development (same host, http).
+    secure: isCrossOrigin,
+    sameSite: isCrossOrigin ? 'none' : 'lax',
     httpOnly: false, // must be readable by JS so the frontend can send it in a header
     path: '/',
   },
