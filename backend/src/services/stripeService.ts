@@ -202,11 +202,12 @@ export async function handleWebhookEvent(event: Stripe.Event): Promise<void> {
             subscription: previousSubscriptionId,
             limit: 1,
           });
-          const lastInvoice = invoices.data[0];
+          const lastInvoice = invoices.data[0] as any;
           if (lastInvoice?.payment_intent && lastInvoice.amount_paid > 0) {
-            await stripe.refunds.create({
-              payment_intent: lastInvoice.payment_intent as string,
-            });
+            const pi = typeof lastInvoice.payment_intent === 'string'
+              ? lastInvoice.payment_intent
+              : lastInvoice.payment_intent.id;
+            await stripe.refunds.create({ payment_intent: pi });
           }
           await stripe.subscriptions.cancel(previousSubscriptionId);
         } catch (err) {
