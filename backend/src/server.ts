@@ -6,7 +6,6 @@ const REQUIRED_ENV_VARS = [
   'DATABASE_URL',
   'JWT_SECRET',
   'STRIPE_SECRET_KEY',
-  'RESEND_API_KEY',
   'FRONTEND_URL',
   // 64-char hex key for AES-256-GCM field encryption of payment_details
   // Generate: node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
@@ -197,7 +196,7 @@ initDatabase().then(() => {
     console.log(`Port: ${PORT}`);
     console.log(`Frontend URL: ${appConfig.frontendUrl}`);
     console.log(`Health Check: http://localhost:${PORT}/api/health`);
-    
+
     if (appConfig.isProduction) {
       console.log('⚠️  Production Mode: Ensure all security settings are configured!');
       console.log('   - JWT_SECRET is set and secure');
@@ -205,7 +204,7 @@ initDatabase().then(() => {
       console.log('   - CORS is restricted to production domain');
       console.log('   - Rate limits are appropriate');
     }
-    
+
     console.log('='.repeat(60));
   });
 }).catch((error) => {
