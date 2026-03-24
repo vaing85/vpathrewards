@@ -10,7 +10,8 @@ import { authenticateToken, AuthRequest } from '../middleware/auth';
 
 const router = express.Router();
 
-const isProduction = process.env.NODE_ENV === 'production';
+const frontendUrl = process.env.FRONTEND_URL || '';
+const isCrossOrigin = frontendUrl.startsWith('https://') && !frontendUrl.includes('localhost');
 
 // ---------------------------------------------------------------------------
 // Cookie helpers
@@ -19,8 +20,8 @@ const isProduction = process.env.NODE_ENV === 'production';
 function setAccessCookie(res: express.Response, token: string) {
   res.cookie('auth_token', token, {
     httpOnly: true,
-    secure: isProduction,
-    sameSite: isProduction ? 'none' : 'lax',
+    secure: isCrossOrigin,
+    sameSite: isCrossOrigin ? 'none' : 'lax',
     maxAge: 15 * 60 * 1000, // 15 minutes
     path: '/',
   });
@@ -29,8 +30,8 @@ function setAccessCookie(res: express.Response, token: string) {
 function setRefreshCookie(res: express.Response, token: string) {
   res.cookie('refresh_token', token, {
     httpOnly: true,
-    secure: isProduction,
-    sameSite: isProduction ? 'none' : 'lax',
+    secure: isCrossOrigin,
+    sameSite: isCrossOrigin ? 'none' : 'lax',
     maxAge: securityConfig.jwt.refreshExpiresMs,
     path: '/api/auth', // scoped so browser only sends it to refresh endpoint
   });
