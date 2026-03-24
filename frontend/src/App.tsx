@@ -22,6 +22,7 @@ import SubscriptionSuccess from './pages/SubscriptionSuccess';
 import SubscriptionCancel from './pages/SubscriptionCancel';
 import TermsOfService from './pages/TermsOfService';
 import PrivacyPolicy from './pages/PrivacyPolicy';
+import TemuTerms from './pages/TemuTerms';
 import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
 import Travel from './pages/Travel';
@@ -173,6 +174,15 @@ function App() {
                 <Navbar />
                 <div className="flex-1">
                   <PrivacyPolicy />
+                </div>
+                <Footer />
+              </div>
+            } />
+            <Route path="/temu-terms" element={
+              <div className="min-h-screen bg-gray-50 flex flex-col">
+                <Navbar />
+                <div className="flex-1">
+                  <TemuTerms />
                 </div>
                 <Footer />
               </div>
