@@ -29,6 +29,7 @@ interface CsvRow {
   title: string;
   description: string;
   affiliate_link: string;
+  category: string;
   selected: boolean;
 }
 
@@ -61,6 +62,7 @@ const AdminOffers = () => {
   const [showCsvModal, setShowCsvModal] = useState(false);
   const [csvRows, setCsvRows] = useState<CsvRow[]>([]);
   const [csvMerchantId, setCsvMerchantId] = useState('');
+  const [csvDetectedMerchant, setCsvDetectedMerchant] = useState('');
   const [csvCashback, setCsvCashback] = useState('');
   const [csvCommission, setCsvCommission] = useState('');
   const [csvImporting, setCsvImporting] = useState(false);
@@ -191,37 +193,54 @@ const AdminOffers = () => {
   const handleCsvFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    setCsvRows([]); setCsvResult(null); setCsvMerchantId(''); setCsvCashback(''); setCsvCommission('');
+    setCsvRows([]); setCsvResult(null); setCsvMerchantId(''); setCsvDetectedMerchant(''); setCsvCashback(''); setCsvCommission('');
     const reader = new FileReader();
     reader.onload = (ev) => {
       const text = ev.target?.result as string;
       const lines = text.split('\n').filter(l => l.trim());
       const header = parseCsvLine(lines[0]);
-      const nameIdx = header.findIndex(h => h === 'NAME');
-      const descIdx = header.findIndex(h => h === 'DESCRIPTION');
-      const urlIdx  = header.findIndex(h => h === 'CLICK URL');
-      const langIdx = header.findIndex(h => h === 'LANGUAGE');
+      const nameIdx     = header.findIndex(h => h === 'NAME');
+      const descIdx     = header.findIndex(h => h === 'DESCRIPTION');
+      const urlIdx      = header.findIndex(h => h === 'CLICK URL');
+      const langIdx     = header.findIndex(h => h === 'LANGUAGE');
+      const advIdx      = header.findIndex(h => h === 'ADVERTISER NAME' || h === 'ADVERTISER');
+      const catIdx      = header.findIndex(h => h === 'CATEGORY' || h === 'CATEGORY NAME');
 
       // If it's a CJ CSV, filter English and map columns
       if (nameIdx !== -1 && urlIdx !== -1) {
         const rows: CsvRow[] = [];
+        let detectedAdvertiser = '';
         for (let i = 1; i < lines.length; i++) {
           const cols = parseCsvLine(lines[i]);
           if (langIdx !== -1 && cols[langIdx] !== 'English') continue;
-          const title = cols[nameIdx] || '';
-          const desc  = descIdx !== -1 ? cols[descIdx] : '';
-          const url   = cols[urlIdx] || '';
+          const title    = cols[nameIdx] || '';
+          const desc     = descIdx !== -1 ? cols[descIdx] : '';
+          const url      = cols[urlIdx] || '';
+          const category = catIdx !== -1 ? cols[catIdx] : '';
+          const advName  = advIdx !== -1 ? cols[advIdx] : '';
           if (!title || !url) continue;
-          rows.push({ title, description: desc, affiliate_link: url, selected: true });
+          if (!detectedAdvertiser && advName) detectedAdvertiser = advName;
+          rows.push({ title, description: desc, affiliate_link: url, category, selected: true });
         }
         setCsvRows(rows);
+        // Auto-match advertiser name to existing merchant
+        if (detectedAdvertiser) {
+          setCsvDetectedMerchant(detectedAdvertiser);
+          const lower = detectedAdvertiser.toLowerCase();
+          const match = merchants.find(m =>
+            m.name.toLowerCase() === lower ||
+            m.name.toLowerCase().includes(lower) ||
+            lower.includes(m.name.toLowerCase())
+          );
+          if (match) setCsvMerchantId(String(match.id));
+        }
       } else {
-        // Simple CSV: title, description, affiliate_link
+        // Simple CSV: title, description, affiliate_link, category (optional 4th col)
         const rows: CsvRow[] = [];
         for (let i = 1; i < lines.length; i++) {
           const cols = parseCsvLine(lines[i]);
           if (!cols[0] || !cols[2]) continue;
-          rows.push({ title: cols[0], description: cols[1] || '', affiliate_link: cols[2], selected: true });
+          rows.push({ title: cols[0], description: cols[1] || '', affiliate_link: cols[2], category: cols[3] || '', selected: true });
         }
         setCsvRows(rows);
       }
@@ -243,6 +262,7 @@ const AdminOffers = () => {
         affiliate_link: r.affiliate_link,
         cashback_rate: parseFloat(csvCashback),
         commission_rate: csvCommission ? parseFloat(csvCommission) : 0,
+        category: r.category || null,
       }));
       const res = await apiClient.post('/admin/offers/bulk', { offers: payload });
       setCsvResult(res.data);
@@ -382,6 +402,11 @@ const AdminOffers = () => {
                     <option value="">Select merchant</option>
                     {merchants.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
                   </select>
+                  {csvDetectedMerchant && (
+                    <p className={`text-xs mt-1 ${csvMerchantId ? 'text-green-600' : 'text-amber-600'}`}>
+                      {csvMerchantId ? `✓ Auto-matched: ${csvDetectedMerchant}` : `⚠ No match for "${csvDetectedMerchant}" — select manually`}
+                    </p>
+                  )}
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-gray-700 mb-1">User Cashback % *</label>
@@ -416,6 +441,7 @@ const AdminOffers = () => {
                         <tr>
                           <th className="px-3 py-2 text-left w-8"></th>
                           <th className="px-3 py-2 text-left font-medium text-gray-600">Title</th>
+                          <th className="px-3 py-2 text-left font-medium text-gray-600">Category</th>
                           <th className="px-3 py-2 text-left font-medium text-gray-600 w-64">Affiliate Link</th>
                         </tr>
                       </thead>
@@ -426,6 +452,7 @@ const AdminOffers = () => {
                               <input type="checkbox" checked={row.selected} onChange={e => setCsvRows(rows => rows.map((r, j) => j === i ? { ...r, selected: e.target.checked } : r))} />
                             </td>
                             <td className="px-3 py-2 text-gray-800 max-w-xs truncate">{row.title}</td>
+                            <td className="px-3 py-2 text-gray-500 whitespace-nowrap">{row.category || <span className="text-gray-300">—</span>}</td>
                             <td className="px-3 py-2 text-gray-400 truncate max-w-xs">{row.affiliate_link}</td>
                           </tr>
                         ))}
