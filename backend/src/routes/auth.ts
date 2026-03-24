@@ -11,7 +11,9 @@ import { authenticateToken, AuthRequest } from '../middleware/auth';
 const router = express.Router();
 
 const frontendUrl = process.env.FRONTEND_URL || '';
-const isCrossOrigin = frontendUrl.startsWith('https://') && !frontendUrl.includes('localhost');
+const isCrossOrigin =
+  process.env.NODE_ENV === 'production' ||
+  (frontendUrl.startsWith('https://') && !frontendUrl.includes('localhost'));
 
 // ---------------------------------------------------------------------------
 // Cookie helpers
