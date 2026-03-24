@@ -300,6 +300,31 @@ export const initDatabase = async () => {
       )
     `);
 
+    // Refresh tokens (rotate-on-use, single session per row)
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS refresh_tokens (
+        id         SERIAL PRIMARY KEY,
+        user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        token_hash TEXT UNIQUE NOT NULL,
+        expires_at TIMESTAMPTZ NOT NULL,
+        created_at TIMESTAMPTZ DEFAULT NOW()
+      )
+    `);
+
+    // Admin audit log
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS admin_audit_log (
+        id           SERIAL PRIMARY KEY,
+        admin_id     INTEGER NOT NULL REFERENCES users(id),
+        action       TEXT NOT NULL,
+        resource     TEXT NOT NULL,
+        resource_id  TEXT,
+        details      JSONB,
+        ip_address   TEXT,
+        created_at   TIMESTAMPTZ DEFAULT NOW()
+      )
+    `);
+
 
     // ---------------------------------------------------------------------------
     // Indexes
@@ -346,6 +371,10 @@ export const initDatabase = async () => {
     await idx('idx_subscriptions_user_id',                'ON subscriptions(user_id)');
     await idx('idx_subscriptions_stripe_customer',        'ON subscriptions(stripe_customer_id)');
     await idx('idx_subscriptions_plan_status',            'ON subscriptions(plan, status)');
+    await idx('idx_refresh_tokens_user_id',               'ON refresh_tokens(user_id)');
+    await idx('idx_refresh_tokens_expires_at',            'ON refresh_tokens(expires_at)');
+    await idx('idx_audit_log_admin_id',                   'ON admin_audit_log(admin_id)');
+    await idx('idx_audit_log_created_at',                 'ON admin_audit_log(created_at)');
 
     // Partial unique indexes for user_favorites (handles NULLs correctly in Postgres)
     await client.query(`

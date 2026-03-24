@@ -18,8 +18,10 @@ if (!jwtSecret) {
 export const securityConfig = {
   jwt: {
     secret: jwtSecret || 'dev-only-insecure-secret',
-    /** Token expiry (e.g. '7d', '24h'). */
-    expiresIn: process.env.JWT_EXPIRES_IN || '7d',
+    /** Short-lived access token: 15 minutes. */
+    expiresIn: process.env.JWT_EXPIRES_IN || '15m',
+    /** Refresh token lifetime in milliseconds (7 days). */
+    refreshExpiresMs: 7 * 24 * 60 * 60 * 1000,
   },
 
   cors: {
@@ -38,7 +40,7 @@ export const securityConfig = {
     },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'x-csrf-token'],
   },
 
   rateLimit: {

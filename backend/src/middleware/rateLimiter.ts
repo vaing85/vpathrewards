@@ -1,3 +1,23 @@
+/**
+ * Rate limiting middleware.
+ *
+ * Current implementation uses the default in-memory store from express-rate-limit,
+ * which works correctly for single-process deployments.
+ *
+ * TODO (Redis-backed rate limiting): For multi-instance / horizontally-scaled
+ * deployments, replace the in-memory store with a shared Redis store so that
+ * rate-limit counters are consistent across all nodes.  Install and configure:
+ *
+ *   npm install rate-limit-redis ioredis
+ *
+ * Then pass a RedisStore instance to each rateLimit() call:
+ *
+ *   import RedisStore from 'rate-limit-redis';
+ *   import Redis from 'ioredis';
+ *   const redis = new Redis(process.env.REDIS_URL);
+ *   store: new RedisStore({ sendCommand: (...args) => redis.call(...args) })
+ */
+
 import rateLimit from 'express-rate-limit';
 import { securityConfig } from '../config/securityConfig';
 

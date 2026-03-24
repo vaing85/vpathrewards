@@ -18,7 +18,11 @@ export const authenticateToken = (req: AuthRequest, res: Response, next: NextFun
 
   jwt.verify(token, securityConfig.jwt.secret, (err: any, decoded: any) => {
     if (err) {
-      return res.status(403).json({ error: 'Invalid or expired token' });
+      // Distinguish expiry so the frontend can silently refresh
+      if (err.name === 'TokenExpiredError') {
+        return res.status(401).json({ error: 'TOKEN_EXPIRED' });
+      }
+      return res.status(403).json({ error: 'Invalid token' });
     }
     req.userId = decoded.userId;
     next();
