@@ -29,7 +29,7 @@ const pool = new Pool({
   try {
     const hashed = await bcrypt.hash(newPassword, 10);
     const result = await pool.query(
-      "UPDATE users SET password = $1 WHERE email = 'admin@cashback.com' RETURNING id, email",
+      "UPDATE users SET password = $1, is_admin = 1 WHERE email = 'admin@cashback.com' RETURNING id, email",
       [hashed]
     );
 
