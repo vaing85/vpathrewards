@@ -119,11 +119,12 @@ app.use(sanitizeInput);
 //
 // Cross-origin detection: sameSite=none + Secure are required whenever the
 // frontend (vpathrewards.store) is on a different domain from the API
-// (railway.app). We detect this by checking FRONTEND_URL — if it's an
-// https:// URL that isn't localhost, we're cross-origin. This is more
-// reliable than NODE_ENV which Railway does not set automatically.
+// (railway.app). Uses both checks so it works whether NODE_ENV or FRONTEND_URL
+// (or both) are set in Railway.
 const frontendUrl = process.env.FRONTEND_URL || '';
-const isCrossOrigin = frontendUrl.startsWith('https://') && !frontendUrl.includes('localhost');
+const isCrossOrigin =
+  process.env.NODE_ENV === 'production' ||
+  (frontendUrl.startsWith('https://') && !frontendUrl.includes('localhost'));
 const { generateCsrfToken, doubleCsrfProtection } = doubleCsrf({
   getSecret: () => process.env.JWT_SECRET ?? 'dev-csrf-secret',
   getSessionIdentifier: () => 'default',
