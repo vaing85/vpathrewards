@@ -22,8 +22,12 @@ router.get('/', authenticateAdmin, async (req, res) => {
     `;
     
     const params: any[] = [];
-    
+    const ALLOWED_STATUSES = ['pending', 'approved', 'processing', 'completed', 'rejected'];
+
     if (status) {
+      if (!ALLOWED_STATUSES.includes(status as string)) {
+        return res.status(400).json({ error: `Invalid status. Must be one of: ${ALLOWED_STATUSES.join(', ')}` });
+      }
       query += ` WHERE w.status = ?`;
       params.push(status);
     }

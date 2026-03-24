@@ -191,6 +191,9 @@ router.post('/reset-password', async (req: express.Request, res: express.Respons
     const { token, password } = req.body;
     if (!token || !password) return res.status(400).json({ error: 'Token and password are required' });
     if (password.length < 8) return res.status(400).json({ error: 'Password must be at least 8 characters' });
+    if (!/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(password)) {
+      return res.status(400).json({ error: 'Password must contain at least one uppercase letter, one lowercase letter, and one number' });
+    }
 
     const user = await dbGet(
       "SELECT id FROM users WHERE reset_token = ? AND reset_token_expires > NOW()",
