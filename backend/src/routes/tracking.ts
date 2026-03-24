@@ -2,6 +2,7 @@ import express from 'express';
 import { authenticateToken, AuthRequest } from '../middleware/auth';
 import * as trackingService from '../services/trackingService';
 import { appConfig } from '../config/appConfig';
+import { trackingLimiter } from '../middleware/rateLimiter';
 
 const router = express.Router();
 
@@ -16,7 +17,7 @@ router.get('/referral-code', authenticateToken, async (req: AuthRequest, res) =>
   }
 });
 
-router.post('/click', async (req, res) => {
+router.post('/click', trackingLimiter, async (req, res) => {
   try {
     const { offer_id, session_id, referral_code } = req.body;
     if (!offer_id) {
@@ -41,7 +42,7 @@ router.post('/click', async (req, res) => {
   }
 });
 
-router.post('/conversion', async (req, res) => {
+router.post('/conversion', trackingLimiter, async (req, res) => {
   try {
     const { session_id, click_id, order_id, order_amount, commission_amount } = req.body;
     if (!session_id) {

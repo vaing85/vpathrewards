@@ -1,8 +1,30 @@
 import dotenv from 'dotenv';
 dotenv.config({ override: true });
+
+// Validate required environment variables before any other code runs
+const REQUIRED_ENV_VARS = [
+  'DATABASE_URL',
+  'JWT_SECRET',
+  'STRIPE_SECRET_KEY',
+  'RESEND_API_KEY',
+  'FRONTEND_URL',
+  // 64-char hex key for AES-256-GCM field encryption of payment_details
+  // Generate: node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+  'FIELD_ENCRYPTION_KEY',
+];
+if (process.env.NODE_ENV === 'production') {
+  const missing = REQUIRED_ENV_VARS.filter((v) => !process.env[v]);
+  if (missing.length > 0) {
+    console.error(`FATAL: Missing required environment variables: ${missing.join(', ')}`);
+    process.exit(1);
+  }
+}
+
 import express from 'express';
+import cookieParser from 'cookie-parser';
 import cors from 'cors';
 import helmet from 'helmet';
+import { doubleCsrf } from 'csrf-csrf';
 import { initDatabase, dbGet } from './database';
 import { appConfig } from './config/appConfig';
 import { securityConfig } from './config/securityConfig';
@@ -47,7 +69,9 @@ app.use(helmet({
   contentSecurityPolicy: {
     directives: {
       defaultSrc: ["'self'"],
-      styleSrc: ["'self'", "'unsafe-inline'"], // Allow inline styles for React
+      // Tailwind CSS generates inline styles at build time; remove unsafe-inline
+      // once a nonce/hash strategy is in place for the frontend.
+      styleSrc: ["'self'"],
       scriptSrc: ["'self'"],
       imgSrc: ["'self'", "data:", "https:"],
       connectSrc: ["'self'"],
@@ -56,6 +80,12 @@ app.use(helmet({
       mediaSrc: ["'self'"],
       frameSrc: ["'none'"],
     },
+  },
+  // HSTS: force HTTPS for 1 year, include subdomains
+  hsts: {
+    maxAge: 31536000,
+    includeSubDomains: true,
+    preload: true,
   },
   crossOriginEmbedderPolicy: false, // Disable for API
 }));
@@ -74,12 +104,42 @@ app.use(cors({
 // Stripe webhook — must be registered BEFORE express.json() to get raw body
 app.use('/api/webhooks', webhookRoutes);
 
+// Cookie parsing (must come before auth middleware)
+app.use(cookieParser());
+
 // Body parsing with size limit
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 // Input sanitization
 app.use(sanitizeInput);
+
+// CSRF protection — double-submit cookie pattern.
+// GET/HEAD/OPTIONS are exempt; all state-changing requests must include
+// the x-csrf-token header whose value matches the csrf cookie.
+const { generateCsrfToken, doubleCsrfProtection } = doubleCsrf({
+  getSecret: () => process.env.JWT_SECRET ?? 'dev-csrf-secret',
+  // Session identifier: use auth cookie if present, else remote IP
+  getSessionIdentifier: (req) =>
+    (req.cookies?.auth_token as string | undefined) ?? req.socket.remoteAddress ?? 'anon',
+  cookieName: 'csrf_token',
+  cookieOptions: {
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'strict',
+    httpOnly: false, // must be readable by JS so the frontend can send it in a header
+    path: '/',
+  },
+  getCsrfTokenFromRequest: (req) => req.headers['x-csrf-token'] as string,
+});
+
+// Expose token-generation endpoint (GET is safe, no protection needed)
+app.get('/api/csrf-token', (req, res) => {
+  res.json({ csrfToken: generateCsrfToken(req, res) });
+});
+
+// Apply protection to all state-changing routes (excludes webhooks which
+// are already registered above and use their own Stripe signature check)
+app.use(doubleCsrfProtection);
 
 // Apply rate limiting to all routes
 app.use('/api', apiLimiter);

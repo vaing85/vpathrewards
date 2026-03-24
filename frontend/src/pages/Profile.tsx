@@ -251,7 +251,7 @@ const Profile = () => {
     setDeleteLoading(true);
     try {
       await apiClient.delete('/profile', { data: { password: deletePassword } });
-      logout();
+      await logout();
       navigate('/');
     } catch (err: any) {
       setDeleteError(err.response?.data?.error || 'Failed to delete account.');

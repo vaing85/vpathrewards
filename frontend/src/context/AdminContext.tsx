@@ -10,9 +10,8 @@ interface AdminUser {
 
 interface AdminContextType {
   admin: AdminUser | null;
-  token: string | null;
   login: (email: string, password: string) => Promise<void>;
-  logout: () => void;
+  logout: () => Promise<void>;
   isAuthenticated: boolean;
 }
 
@@ -20,44 +19,34 @@ const AdminContext = createContext<AdminContextType | undefined>(undefined);
 
 export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [admin, setAdmin] = useState<AdminUser | null>(null);
-  const [token, setToken] = useState<string | null>(null);
 
+  // On mount, check the httpOnly admin cookie via /me to restore session
   useEffect(() => {
-    const storedToken = localStorage.getItem('admin_token');
-    const storedAdmin = localStorage.getItem('admin_user');
-    
-    if (storedToken && storedAdmin) {
-      setToken(storedToken);
-      setAdmin(JSON.parse(storedAdmin));
-    }
+    apiClient.get('/admin/auth/me')
+      .then(res => setAdmin(res.data.user))
+      .catch(() => setAdmin(null));
   }, []);
 
   const login = async (email: string, password: string) => {
     const response = await apiClient.post('/admin/auth/login', { email, password });
-    const { token: newToken, user: newAdmin } = response.data;
-    
-    setToken(newToken);
-    setAdmin(newAdmin);
-    localStorage.setItem('admin_token', newToken);
-    localStorage.setItem('admin_user', JSON.stringify(newAdmin));
+    setAdmin(response.data.user);
   };
 
-  const logout = () => {
-    setToken(null);
+  const logout = async () => {
+    await apiClient.post('/admin/auth/logout').catch(() => {});
     setAdmin(null);
+    // Clear any legacy localStorage entries from previous versions
     localStorage.removeItem('admin_token');
     localStorage.removeItem('admin_user');
   };
-
 
   return (
     <AdminContext.Provider
       value={{
         admin,
-        token,
         login,
         logout,
-        isAuthenticated: !!token,
+        isAuthenticated: !!admin,
       }}
     >
       {children}

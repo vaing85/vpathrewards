@@ -2,6 +2,13 @@ import express from 'express';
 import { authenticateAdmin, AdminRequest } from '../../middleware/adminAuth';
 import { dbAll, dbGet, dbRun } from '../../database';
 import { sendEmailToUser } from '../../utils/emailService';
+import { auditLog } from '../../middleware/auditLog';
+import { safeDecrypt } from '../../utils/encryption';
+
+function decryptRow<T extends { payment_details?: string }>(row: T): T {
+  if (row?.payment_details) return { ...row, payment_details: safeDecrypt(row.payment_details) };
+  return row;
+}
 
 const router = express.Router();
 
@@ -22,15 +29,19 @@ router.get('/', authenticateAdmin, async (req, res) => {
     `;
     
     const params: any[] = [];
-    
+    const ALLOWED_STATUSES = ['pending', 'approved', 'processing', 'completed', 'rejected'];
+
     if (status) {
+      if (!ALLOWED_STATUSES.includes(status as string)) {
+        return res.status(400).json({ error: `Invalid status. Must be one of: ${ALLOWED_STATUSES.join(', ')}` });
+      }
       query += ` WHERE w.status = ?`;
       params.push(status);
     }
     
     query += ` ORDER BY w.requested_at DESC`;
     
-    const withdrawals = await dbAll(query, params);
+    const withdrawals = (await dbAll(query, params)).map(decryptRow);
     res.json(withdrawals);
   } catch (error) {
     console.error('Error fetching withdrawals:', error);
@@ -56,7 +67,7 @@ router.get('/:id', authenticateAdmin, async (req, res) => {
     if (!withdrawal) {
       return res.status(404).json({ error: 'Withdrawal not found' });
     }
-    res.json(withdrawal);
+    res.json(decryptRow(withdrawal));
   } catch (error) {
     console.error('Error fetching withdrawal:', error);
     res.status(500).json({ error: 'Internal server error' });
@@ -129,6 +140,8 @@ router.put('/:id/status', authenticateAdmin, async (req: AdminRequest, res) => {
       WHERE w.id = ?
     `, [req.params.id]) as any;
 
+    const decrypted = updated ? decryptRow(updated) : updated;
+
     // Send withdrawal status email (async, don't wait)
     if (updated && updated.user_email && updated.status !== 'pending') {
       sendEmailToUser(
@@ -147,7 +160,16 @@ router.put('/:id/status', authenticateAdmin, async (req: AdminRequest, res) => {
       });
     }
 
-    res.json(updated);
+    auditLog({
+      adminId: req.userId!,
+      action: 'UPDATE_WITHDRAWAL_STATUS',
+      resource: 'withdrawal',
+      resourceId: req.params.id,
+      details: { newStatus: status, previousStatus: withdrawal.status, adminNotes: admin_notes },
+      req,
+    });
+
+    res.json(decrypted);
   } catch (error) {
     console.error('Error updating withdrawal status:', error);
     res.status(500).json({ error: 'Internal server error' });
