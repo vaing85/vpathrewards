@@ -20,7 +20,7 @@ function setAccessCookie(res: express.Response, token: string) {
   res.cookie('auth_token', token, {
     httpOnly: true,
     secure: isProduction,
-    sameSite: 'strict',
+    sameSite: isProduction ? 'none' : 'lax',
     maxAge: 15 * 60 * 1000, // 15 minutes
     path: '/',
   });
@@ -30,7 +30,7 @@ function setRefreshCookie(res: express.Response, token: string) {
   res.cookie('refresh_token', token, {
     httpOnly: true,
     secure: isProduction,
-    sameSite: 'strict',
+    sameSite: isProduction ? 'none' : 'lax',
     maxAge: securityConfig.jwt.refreshExpiresMs,
     path: '/api/auth', // scoped so browser only sends it to refresh endpoint
   });
