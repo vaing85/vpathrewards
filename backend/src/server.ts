@@ -122,8 +122,11 @@ const { generateCsrfToken, doubleCsrfProtection } = doubleCsrf({
   // IP is intentionally NOT used — it can change across load-balancer hops,
   // causing spurious CSRF failures. The token's security comes from its
   // cryptographic unpredictability, not from IP binding.
-  getSessionIdentifier: (req) =>
-    (req.cookies?.admin_token as string | undefined) ?? 'anon',
+  // Use a stable constant — tying to admin_token causes CSRF mismatch
+  // immediately after login (identifier changes from 'anon' to token value).
+  // The double-submit pattern's security comes from token unpredictability,
+  // not from binding to the session.
+  getSessionIdentifier: () => 'default',
   cookieName: 'csrf_token',
   cookieOptions: {
     // sameSite:'none' is required in production so the cookie is sent on
