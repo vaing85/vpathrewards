@@ -101,7 +101,8 @@ export async function createCheckoutSession(
   name: string,
   successUrl: string,
   cancelUrl: string,
-  plan: PlanKey = 'gold'
+  plan: PlanKey = 'gold',
+  previousSubscriptionId?: string
 ): Promise<Stripe.Checkout.Session> {
   if (!stripe) throw new Error('Stripe is not configured');
   if (plan === 'free') throw new Error('Cannot checkout for free plan');
@@ -111,6 +112,15 @@ export async function createCheckoutSession(
 
   const customerId = await getOrCreateCustomer(userId, email, name);
 
+  const metadata: Record<string, string> = {
+    userId: String(userId),
+    plan,
+    isChangePlan: previousSubscriptionId ? 'true' : 'false',
+  };
+  if (previousSubscriptionId) {
+    metadata.previousSubscriptionId = previousSubscriptionId;
+  }
+
   return stripe.checkout.sessions.create({
     customer: customerId,
     payment_method_types: ['card'],
@@ -118,10 +128,8 @@ export async function createCheckoutSession(
     line_items: [{ price: selectedPlan.priceId, quantity: 1 }],
     success_url: successUrl,
     cancel_url: cancelUrl,
-    metadata: { userId: String(userId), plan },
-    subscription_data: {
-      metadata: { userId: String(userId), plan },
-    },
+    metadata,
+    subscription_data: { metadata },
   });
 }
 
@@ -183,16 +191,40 @@ export async function handleWebhookEvent(event: Stripe.Event): Promise<void> {
       if (!userId || session.mode !== 'subscription') break;
 
       const plan = session.metadata?.plan || 'gold';
+      const isChangePlan = session.metadata?.isChangePlan === 'true';
+      const previousSubscriptionId = session.metadata?.previousSubscriptionId;
+
+      // If this is a plan change, refund the previous subscription's last invoice
+      // and cancel it now that the new payment has been confirmed
+      if (isChangePlan && previousSubscriptionId && stripe) {
+        try {
+          const invoices = await stripe.invoices.list({
+            subscription: previousSubscriptionId,
+            limit: 1,
+          });
+          const lastInvoice = invoices.data[0] as any;
+          if (lastInvoice?.payment_intent && lastInvoice.amount_paid > 0) {
+            const pi = typeof lastInvoice.payment_intent === 'string'
+              ? lastInvoice.payment_intent
+              : lastInvoice.payment_intent.id;
+            await stripe.refunds.create({ payment_intent: pi });
+          }
+          await stripe.subscriptions.cancel(previousSubscriptionId);
+        } catch (err) {
+          console.error('Error refunding/canceling previous subscription:', err);
+        }
+      }
 
       await dbRun(`
-        INSERT INTO subscriptions (user_id, stripe_customer_id, stripe_subscription_id, plan, status)
-        VALUES (?, ?, ?, ?, 'active')
+        INSERT INTO subscriptions (user_id, stripe_customer_id, stripe_subscription_id, plan, status, current_period_start)
+        VALUES (?, ?, ?, ?, 'active', NOW())
         ON CONFLICT (user_id) DO UPDATE SET
           stripe_customer_id     = EXCLUDED.stripe_customer_id,
           stripe_subscription_id = EXCLUDED.stripe_subscription_id,
-          plan       = EXCLUDED.plan,
-          status     = 'active',
-          updated_at = NOW()
+          plan                   = EXCLUDED.plan,
+          status                 = 'active',
+          current_period_start   = NOW(),
+          updated_at             = NOW()
       `, [userId, session.customer as string, session.subscription as string, plan]);
       break;
     }

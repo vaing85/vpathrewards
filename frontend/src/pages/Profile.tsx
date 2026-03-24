@@ -44,6 +44,7 @@ const Profile = () => {
   const [subscription, setSubscription] = useState<{
     plan: string;
     status: string;
+    current_period_start: string | null;
     current_period_end: string | null;
     cashback_bonus: number;
     plans: PlanInfo[];
@@ -576,6 +577,9 @@ const Profile = () => {
                       <div>
                         <p className="text-sm text-gray-500">Current plan</p>
                         <p className="font-bold text-gray-800 capitalize">{subscription.plan}</p>
+                        {subscription.current_period_start && (
+                          <p className="text-xs text-gray-400">Member since {new Date(subscription.current_period_start).toLocaleDateString()}</p>
+                        )}
                         {subscription.current_period_end && (
                           <p className="text-xs text-gray-400">Renews {new Date(subscription.current_period_end).toLocaleDateString()}</p>
                         )}
@@ -596,6 +600,14 @@ const Profile = () => {
                       {subscription.plans.map((p) => {
                         const isCurrent = subscription.plan === p.key;
                         const isPaid = p.amountCents > 0;
+                        const planPriority: Record<string, number> = { free: 0, silver: 1, gold: 2, platinum: 3 };
+                        const currentPriority = planPriority[subscription.plan] ?? 0;
+                        const targetPriority = planPriority[p.key] ?? 0;
+                        const changeLabel = currentPriority === 0
+                          ? `Upgrade to ${p.name}`
+                          : targetPriority > currentPriority
+                            ? `Upgrade to ${p.name}`
+                            : `Downgrade to ${p.name}`;
                         const tierColors: Record<string, string> = {
                           free:     'border-gray-200',
                           silver:   'border-gray-400',
@@ -644,7 +656,7 @@ const Profile = () => {
                                 disabled={subActionLoading}
                                 className="w-full text-sm font-semibold py-2 px-4 rounded-lg bg-primary-600 hover:bg-primary-700 disabled:opacity-50 text-white transition-colors"
                               >
-                                {subActionLoading ? '...' : `Upgrade to ${p.name}`}
+                                {subActionLoading ? '...' : changeLabel}
                               </button>
                             )}
                             {isCurrent && isPaid && (
