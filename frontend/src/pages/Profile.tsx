@@ -44,6 +44,7 @@ const Profile = () => {
   const [subscription, setSubscription] = useState<{
     plan: string;
     status: string;
+    current_period_start: string | null;
     current_period_end: string | null;
     cashback_bonus: number;
     plans: PlanInfo[];
