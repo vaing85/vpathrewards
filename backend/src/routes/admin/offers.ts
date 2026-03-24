@@ -191,7 +191,7 @@ router.post('/bulk', authenticateAdmin, async (req: express.Request, res: expres
     let skipped = 0;
 
     for (const offer of offers) {
-      const { merchant_id, title, description, affiliate_link, cashback_rate, commission_rate } = offer;
+      const { merchant_id, title, description, affiliate_link, cashback_rate, commission_rate, category } = offer;
       if (!merchant_id || !title || !affiliate_link || cashback_rate === undefined) {
         skipped++;
         continue;
@@ -204,8 +204,8 @@ router.post('/bulk', authenticateAdmin, async (req: express.Request, res: expres
       if (exists) { skipped++; continue; }
 
       await dbRun(
-        'INSERT INTO offers (merchant_id, title, description, affiliate_link, cashback_rate, commission_rate, is_active) VALUES (?, ?, ?, ?, ?, ?, 1)',
-        [merchant_id, title, description || '', affiliate_link, cashback_rate, commission_rate || 0]
+        'INSERT INTO offers (merchant_id, title, description, affiliate_link, cashback_rate, commission_rate, category, is_active) VALUES (?, ?, ?, ?, ?, ?, ?, 1)',
+        [merchant_id, title, description || '', affiliate_link, cashback_rate, commission_rate || 0, category || null]
       );
       imported++;
     }
