@@ -29,7 +29,6 @@ export const securityConfig = {
         'http://localhost:3000',
         'https://vpathrewards.store',
         'https://www.vpathrewards.store',
-        'https://vaing85.github.io',
       ];
       if (!origin || allowed.includes(origin)) {
         callback(null, true);

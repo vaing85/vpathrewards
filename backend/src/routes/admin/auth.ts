@@ -71,6 +71,9 @@ router.post('/change-password', authenticateAdmin, async (req: AdminRequest, res
     if (new_password.length < 8) {
       return res.status(400).json({ error: 'New password must be at least 8 characters' });
     }
+    if (!/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(new_password)) {
+      return res.status(400).json({ error: 'Password must contain at least one uppercase letter, one lowercase letter, and one number' });
+    }
 
     const user = await dbGet('SELECT * FROM users WHERE id = ?', [req.userId]) as any;
     if (!user) return res.status(404).json({ error: 'User not found' });
@@ -123,13 +126,13 @@ router.post('/test-email', authenticateAdmin, async (req: AdminRequest, res) => 
 
     const ok = await sendEmail(to, 'welcome', { name: 'Test User' });
     if (ok) {
-      res.json({ message: `Test email sent to ${to}`, from: fromAddr });
+      res.json({ message: `Test email sent to ${to}` });
     } else {
-      res.status(500).json({ error: 'Resend returned an error — check server logs', from: fromAddr, apiKeySet: !!apiKey });
+      res.status(500).json({ error: 'Failed to send test email — check server logs' });
     }
   } catch (error: any) {
     console.error('Test email error:', error);
-    res.status(500).json({ error: error.message || 'Internal server error' });
+    res.status(500).json({ error: 'Internal server error' });
   }
 });
 

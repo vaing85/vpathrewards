@@ -1,5 +1,22 @@
 import dotenv from 'dotenv';
 dotenv.config({ override: true });
+
+// Validate required environment variables before any other code runs
+const REQUIRED_ENV_VARS = [
+  'DATABASE_URL',
+  'JWT_SECRET',
+  'STRIPE_SECRET_KEY',
+  'RESEND_API_KEY',
+  'FRONTEND_URL',
+];
+if (process.env.NODE_ENV === 'production') {
+  const missing = REQUIRED_ENV_VARS.filter((v) => !process.env[v]);
+  if (missing.length > 0) {
+    console.error(`FATAL: Missing required environment variables: ${missing.join(', ')}`);
+    process.exit(1);
+  }
+}
+
 import express from 'express';
 import cookieParser from 'cookie-parser';
 import cors from 'cors';
@@ -48,7 +65,9 @@ app.use(helmet({
   contentSecurityPolicy: {
     directives: {
       defaultSrc: ["'self'"],
-      styleSrc: ["'self'", "'unsafe-inline'"], // Allow inline styles for React
+      // Tailwind CSS generates inline styles at build time; remove unsafe-inline
+      // once a nonce/hash strategy is in place for the frontend.
+      styleSrc: ["'self'"],
       scriptSrc: ["'self'"],
       imgSrc: ["'self'", "data:", "https:"],
       connectSrc: ["'self'"],
@@ -57,6 +76,12 @@ app.use(helmet({
       mediaSrc: ["'self'"],
       frameSrc: ["'none'"],
     },
+  },
+  // HSTS: force HTTPS for 1 year, include subdomains
+  hsts: {
+    maxAge: 31536000,
+    includeSubDomains: true,
+    preload: true,
   },
   crossOriginEmbedderPolicy: false, // Disable for API
 }));
