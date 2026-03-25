@@ -435,7 +435,7 @@ export const initDatabase = async () => {
 
     const seedMerchantsOffers = async (
       merchant: { name: string; description: string; website: string; category: string },
-      offers: { title: string; description: string; affiliate_url: string; cashback_rate: number; commission_rate: number }[]
+      offers: { title: string; description: string; affiliate_url: string; cashback_rate: number; commission_rate: number; cashback_type?: string }[]
     ) => {
       let m = await dbGet('SELECT id FROM merchants WHERE name = ?', [merchant.name]) as any;
       if (!m) {
@@ -449,9 +449,10 @@ export const initDatabase = async () => {
       for (const offer of offers) {
         const exists = await dbGet('SELECT id FROM offers WHERE merchant_id = ? AND title = ?', [m.id, offer.title]);
         if (!exists) {
+          const cashbackType = offer.cashback_type ?? 'percentage';
           await dbRun(
-            'INSERT INTO offers (merchant_id, title, description, affiliate_link, cashback_rate, commission_rate, is_active) VALUES (?, ?, ?, ?, ?, ?, 1)',
-            [m.id, offer.title, offer.description, offer.affiliate_url, offer.cashback_rate, offer.commission_rate]
+            'INSERT INTO offers (merchant_id, title, description, affiliate_link, cashback_rate, commission_rate, cashback_type, is_active) VALUES (?, ?, ?, ?, ?, ?, ?, 1)',
+            [m.id, offer.title, offer.description, offer.affiliate_url, offer.cashback_rate, offer.commission_rate, cashbackType]
           );
         }
       }
@@ -486,6 +487,58 @@ export const initDatabase = async () => {
         { title: 'US Vacation Rentals Under $200 a Night', description: 'Find affordable vacation rentals across the United States for under $200 per night.', affiliate_url: 'https://www.anrdoezrs.net/click-101708885-15407788', cashback_rate: 1, commission_rate: 2 },
         { title: 'Hilton Head, SC Vacation Rentals', description: 'Find the best vacation rentals in Hilton Head, South Carolina on Vrbo.', affiliate_url: 'https://www.jdoqocy.com/click-101708885-13217353', cashback_rate: 1, commission_rate: 2 },
         { title: 'South Carolina Vacation Rentals', description: 'Find out what vacation rentals in South Carolina are available and renting for on Vrbo.', affiliate_url: 'https://www.kqzyfj.com/click-101708885-10790647', cashback_rate: 1, commission_rate: 2 },
+      ]
+    );
+
+    // CuriosityStream — $10 flat CJ commission per paid subscription conversion (45-day referral window)
+    // Offering $5 flat cashback per subscription signup
+    await seedMerchantsOffers(
+      { name: 'CuriosityStream', description: 'Stream award-winning documentaries covering science, history, nature, technology, and more.', website: 'https://www.curiositystream.com', category: 'Entertainment' },
+      [
+        { title: 'Feed Your Intelligence with Original Documentaries', description: 'Explore thousands of award-winning documentaries on science, history, nature, and technology.', affiliate_url: 'https://www.kqzyfj.com/click-101708885-12584120', cashback_rate: 5, commission_rate: 10, cashback_type: 'flat' },
+        { title: 'Watch Secrets of the Universe on Curiosity Stream', description: 'Dive deep into the cosmos with Secrets of the Universe, streaming now on CuriosityStream.', affiliate_url: 'https://www.kqzyfj.com/click-101708885-15195975', cashback_rate: 5, commission_rate: 10, cashback_type: 'flat' },
+        { title: 'My Greek Odyssey — Watch Now on Curiosity Stream', description: 'Explore the wonders of Greece in this captivating travel documentary series, streaming now.', affiliate_url: 'https://www.tkqlhce.com/click-101708885-15195978', cashback_rate: 5, commission_rate: 10, cashback_type: 'flat' },
+        { title: 'The History of Home Narrated by Nick Offerman', description: 'Nick Offerman narrates this fascinating look at how our homes shaped history.', affiliate_url: 'https://www.tkqlhce.com/click-101708885-14074131', cashback_rate: 5, commission_rate: 10, cashback_type: 'flat' },
+        { title: "Stephen Hawking's Favorite Place — Stream Now", description: "Join Stephen Hawking on an epic journey through the universe in this acclaimed documentary.", affiliate_url: 'https://www.kqzyfj.com/click-101708885-14102949', cashback_rate: 5, commission_rate: 10, cashback_type: 'flat' },
+        { title: 'The Secrets of Quantum Physics — Stream Now', description: 'Unravel the mysteries of quantum mechanics in this mind-bending documentary series.', affiliate_url: 'https://www.jdoqocy.com/click-101708885-14102962', cashback_rate: 5, commission_rate: 10, cashback_type: 'flat' },
+        { title: 'Watch Queens of Ancient Egypt on Curiosity Stream', description: 'Discover the powerful women who ruled ancient Egypt in this new streaming series.', affiliate_url: 'https://www.jdoqocy.com/click-101708885-15585173', cashback_rate: 5, commission_rate: 10, cashback_type: 'flat' },
+        { title: "Watch Nature's Hidden Miracles on Curiosity Stream", description: 'Witness the extraordinary wonders of the natural world in this stunning new series.', affiliate_url: 'https://www.jdoqocy.com/click-101708885-15595934', cashback_rate: 5, commission_rate: 10, cashback_type: 'flat' },
+        { title: 'Watch Living With Lions on Curiosity Stream', description: 'An intimate look at life alongside lions in the African wild, streaming now exclusively.', affiliate_url: 'https://www.jdoqocy.com/click-101708885-15632582', cashback_rate: 5, commission_rate: 10, cashback_type: 'flat' },
+        { title: 'Watch Rescued Chimpanzees of the Congo with Jane Goodall', description: 'Jane Goodall presents the remarkable story of rescued chimpanzees in the Congo.', affiliate_url: 'https://www.jdoqocy.com/click-101708885-15595936', cashback_rate: 5, commission_rate: 10, cashback_type: 'flat' },
+        { title: 'Blue — Stream Now on Curiosity Stream', description: 'An immersive documentary journey beneath the ocean surface, now streaming.', affiliate_url: 'https://www.anrdoezrs.net/click-101708885-15708561', cashback_rate: 5, commission_rate: 10, cashback_type: 'flat' },
+        { title: 'Curiosity Stream — Classic Literature and Cinema', description: 'Explore classic literature and cinema through the lens of award-winning documentaries.', affiliate_url: 'https://www.kqzyfj.com/click-101708885-15195983', cashback_rate: 5, commission_rate: 10, cashback_type: 'flat' },
+        { title: 'Secrets of the Universe 2 — Stream Now on Curiosity Stream', description: 'The acclaimed series returns with more breathtaking explorations of our universe.', affiliate_url: 'https://www.dpbolvw.net/click-101708885-15196572', cashback_rate: 5, commission_rate: 10, cashback_type: 'flat' },
+        { title: 'Breakthrough: Brain-Computer Interface — Stream Now', description: 'Explore the cutting edge of neurotechnology and brain-computer interfaces in this new documentary.', affiliate_url: 'https://www.dpbolvw.net/click-101708885-17161882', cashback_rate: 5, commission_rate: 10, cashback_type: 'flat' },
+        { title: 'Blockchain Revolution — Stream Now on Curiosity Stream', description: 'Understand the technology reshaping finance, business, and society in this eye-opening documentary.', affiliate_url: 'https://www.tkqlhce.com/click-101708885-17192225', cashback_rate: 5, commission_rate: 10, cashback_type: 'flat' },
+        { title: 'Watch Deadly Science Season 2 on Curiosity Stream', description: 'Season 2 of the thrilling science series explores the most dangerous experiments in history.', affiliate_url: 'https://www.jdoqocy.com/click-101708885-16960937', cashback_rate: 5, commission_rate: 10, cashback_type: 'flat' },
+        { title: 'Marie Tussaud: A Legend in Wax — Stream Now', description: 'The incredible true story behind the world-famous wax museum empire, now streaming.', affiliate_url: 'https://www.anrdoezrs.net/click-101708885-14101861', cashback_rate: 5, commission_rate: 10, cashback_type: 'flat' },
+        { title: 'Wild Weather With Richard Hammond — Stream Now', description: 'Richard Hammond investigates the science behind the world\'s most extreme weather events.', affiliate_url: 'https://www.dpbolvw.net/click-101708885-14102963', cashback_rate: 5, commission_rate: 10, cashback_type: 'flat' },
+        { title: 'Watch The Real Wild West on Curiosity Stream', description: 'Separate myth from reality in this gripping documentary series about the American frontier.', affiliate_url: 'https://www.dpbolvw.net/click-101708885-15565269', cashback_rate: 5, commission_rate: 10, cashback_type: 'flat' },
+        { title: 'Bridging the Expanse — Available Now on Curiosity Stream', description: 'A captivating journey across vast landscapes and cultures, now available to stream.', affiliate_url: 'https://www.anrdoezrs.net/click-101708885-15196578', cashback_rate: 5, commission_rate: 10, cashback_type: 'flat' },
+      ]
+    );
+
+    // E-file.com — 30% CJ commission on paid tax preparation (120-day referral window, US traffic only)
+    // Offering 15% cashback to users (50% of commission)
+    await seedMerchantsOffers(
+      { name: 'E-file.com', description: 'File your federal and state taxes online quickly and affordably — up to 50% cheaper than the competition.', website: 'https://www.e-file.com', category: 'Tax Services' },
+      [
+        { title: 'Start Filing Your Taxes Here', description: 'File your taxes online quickly and easily at E-file.com — one of the most affordable e-filing services available.', affiliate_url: 'https://www.jdoqocy.com/click-101708885-11917138', cashback_rate: 15, commission_rate: 30 },
+        { title: 'E-file a State Tax Return', description: 'File your state tax return online in minutes with E-file.com. Fast, secure, and affordable.', affiliate_url: 'https://www.jdoqocy.com/click-101708885-11917140', cashback_rate: 15, commission_rate: 30 },
+        { title: 'IRS Tax Returns — File Online', description: 'Prepare and e-file your IRS federal tax return online at E-file.com. Guaranteed accurate and secure.', affiliate_url: 'https://www.kqzyfj.com/click-101708885-11917161', cashback_rate: 15, commission_rate: 30 },
+        { title: 'IRS Tax Filing at E-file.com', description: 'E-file your IRS taxes online with confidence. Simple step-by-step guidance from E-file.com.', affiliate_url: 'https://www.jdoqocy.com/click-101708885-11917158', cashback_rate: 15, commission_rate: 30 },
+        { title: 'Compare Tax Providers — E-file.com', description: 'See why E-file.com beats the competition on price. Compare top tax filing providers side by side.', affiliate_url: 'https://www.anrdoezrs.net/click-101708885-11917148', cashback_rate: 15, commission_rate: 30 },
+        { title: '$10 Off State Filings — Coupon Code 10OFFSTATE', description: 'Save $10 on your state tax filing when you use coupon code 10OFFSTATE at E-file.com.', affiliate_url: 'https://www.tkqlhce.com/click-101708885-11917143', cashback_rate: 15, commission_rate: 30 },
+        { title: '20% Off Tax Filing at E-file.com', description: 'Save 20% on your federal and state tax filings at E-file.com. Fast, easy, and secure.', affiliate_url: 'https://www.tkqlhce.com/click-101708885-11917170', cashback_rate: 15, commission_rate: 30 },
+        { title: '50% Cheaper Tax Filing — E-file.com', description: 'E-file.com is up to 50% cheaper than other major tax filing services. File smarter, save more.', affiliate_url: 'https://www.anrdoezrs.net/click-101708885-11917145', cashback_rate: 15, commission_rate: 30 },
+        { title: '50% Cheaper E-filing — Switch to E-file.com', description: 'Switch to E-file.com and save up to 50% on your tax e-filing compared to other providers.', affiliate_url: 'https://www.tkqlhce.com/click-101708885-11917147', cashback_rate: 15, commission_rate: 30 },
+        { title: 'Compare E-file Providers — E-file.com', description: 'Compare e-file providers and see why thousands choose E-file.com for their annual tax filing.', affiliate_url: 'https://www.tkqlhce.com/click-101708885-11917150', cashback_rate: 15, commission_rate: 30 },
+        { title: 'File Your IRS Taxes Online — E-file.com', description: 'Quickly and securely file your IRS taxes online at E-file.com. Step-by-step guidance included.', affiliate_url: 'https://www.tkqlhce.com/click-101708885-11917163', cashback_rate: 15, commission_rate: 30 },
+        { title: 'E-file IRS Taxes — E-file.com', description: 'E-file your IRS taxes with ease. Accurate calculations and maximum refund guaranteed.', affiliate_url: 'https://www.tkqlhce.com/click-101708885-11917162', cashback_rate: 15, commission_rate: 30 },
+        { title: 'E-file Your Tax Return Today', description: 'Stop procrastinating — e-file your tax return today at E-file.com and get your refund faster.', affiliate_url: 'https://www.jdoqocy.com/click-101708885-17012252', cashback_rate: 15, commission_rate: 30 },
+        { title: 'Save 20% at E-file.com', description: 'Get 20% off your tax filing at E-file.com. The affordable way to file federal and state returns.', affiliate_url: 'https://www.anrdoezrs.net/click-101708885-11917168', cashback_rate: 15, commission_rate: 30 },
+        { title: '20% Off With Coupon Code SAVE24', description: 'Use coupon code SAVE24 at E-file.com to save 20% on your tax filing this season.', affiliate_url: 'https://www.jdoqocy.com/click-101708885-11917173', cashback_rate: 15, commission_rate: 30 },
+        { title: 'File Your IRS Taxes Free — E-file.com Basic', description: 'Qualify for free federal filing with E-file.com Basic. Simple returns filed at no cost.', affiliate_url: 'https://www.kqzyfj.com/click-101708885-17233815', cashback_rate: 15, commission_rate: 30 },
       ]
     );
 
