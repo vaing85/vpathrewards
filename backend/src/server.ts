@@ -141,14 +141,22 @@ const { generateCsrfToken, doubleCsrfProtection } = doubleCsrf({
   // Login/register routes are exempt: CSRF on a login endpoint provides no
   // meaningful protection because an attacker still needs valid credentials.
   // Skipping avoids cross-domain cookie timing races on the first page load.
-  skipCsrfProtection: (req) =>
-    req.method === 'POST' &&
-    (req.path === '/api/admin/auth/login' ||
-     req.path === '/api/auth/login' ||
-     req.path === '/api/auth/register' ||
-     // Refresh is protected by the httpOnly refresh_token cookie itself —
-     // an attacker cannot read it, so CSRF adds nothing here.
-     req.path === '/api/auth/refresh'),
+  skipCsrfProtection: (req) => {
+    // All admin routes use a Bearer JWT from sessionStorage for auth.
+    // sessionStorage is not readable cross-origin, so Bearer-token auth is
+    // inherently CSRF-safe without needing a cookie-based CSRF check.
+    // Skipping also avoids failures caused by browsers blocking third-party
+    // cookies (Chrome 120+, Safari ITP) in cross-origin API setups.
+    if (req.path.startsWith('/api/admin/')) return true;
+
+    // Login/register/refresh are exempt: either CSRF provides no meaningful
+    // protection (login needs credentials; refresh uses httpOnly cookie), or
+    // they are the first request in a session before a CSRF token exists.
+    return req.method === 'POST' &&
+      (req.path === '/api/auth/login' ||
+       req.path === '/api/auth/register' ||
+       req.path === '/api/auth/refresh');
+  },
 });
 
 // Expose token-generation endpoint (GET is safe, no protection needed)
