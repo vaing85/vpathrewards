@@ -20,20 +20,30 @@ const AdminContext = createContext<AdminContextType | undefined>(undefined);
 export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [admin, setAdmin] = useState<AdminUser | null>(null);
 
-  // On mount, check the httpOnly admin cookie via /me to restore session
+  // On mount, restore session using the token stored in sessionStorage (or
+  // fall back to the httpOnly cookie for same-origin setups).
   useEffect(() => {
     apiClient.get('/admin/auth/me')
       .then(res => setAdmin(res.data.user))
-      .catch(() => setAdmin(null));
+      .catch(() => {
+        sessionStorage.removeItem('admin_token');
+        setAdmin(null);
+      });
   }, []);
 
   const login = async (email: string, password: string) => {
     const response = await apiClient.post('/admin/auth/login', { email, password });
+    // Persist token so the Bearer interceptor can attach it on every admin request.
+    // sessionStorage clears automatically when the browser tab/window closes.
+    if (response.data.token) {
+      sessionStorage.setItem('admin_token', response.data.token);
+    }
     setAdmin(response.data.user);
   };
 
   const logout = async () => {
     await apiClient.post('/admin/auth/logout').catch(() => {});
+    sessionStorage.removeItem('admin_token');
     setAdmin(null);
     // Clear any legacy localStorage entries from previous versions
     localStorage.removeItem('admin_token');

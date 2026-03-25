@@ -50,7 +50,10 @@ router.post('/login', async (req, res) => {
     const token = jwt.sign({ userId: user.id }, securityConfig.jwt.secret, { expiresIn: securityConfig.jwt.adminExpiresIn } as jwt.SignOptions);
     setAdminCookie(res, token);
 
+    // Also return the token in the body so the SPA can use it as a Bearer token
+    // on cross-origin requests (avoids SameSite cookie delivery issues).
     res.json({
+      token,
       user: {
         id: user.id,
         email: user.email,
