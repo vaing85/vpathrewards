@@ -55,6 +55,7 @@ import adminBannerRoutes from './routes/admin/banners';
 import subscriptionRoutes from './routes/subscriptions';
 import webhookRoutes from './routes/webhooks';
 import supportRoutes from './routes/support';
+import stripeConnectRoutes from './routes/stripeConnect';
 import { errorHandler } from './middleware/errorHandler';
 
 const app = express();
@@ -186,6 +187,7 @@ app.use('/api/favorites', favoritesRoutes);
 app.use('/api/analytics', analyticsRoutes);
 app.use('/api/stats', statsRoutes);
 app.use('/api/subscriptions', subscriptionRoutes);
+app.use('/api/stripe/connect', stripeConnectRoutes);
 app.use('/api/support', supportRoutes);
 
 // Admin routes with admin rate limiter
