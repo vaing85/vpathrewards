@@ -266,7 +266,7 @@ const Analytics = () => {
                           <div key={offer.id} className="flex items-center justify-between bg-white p-3 rounded">
                             <div className="flex items-center space-x-3">
                               {offer.merchant_logo && (
-                                <LazyImage src={offer.merchant_logo} alt={offer.merchant_name || 'Merchant'} className="w-8 h-8 object-contain" width={32} height={32} fallback="https://via.placeholder.com/32" />
+                                <LazyImage src={offer.merchant_logo} alt={offer.merchant_name || 'Merchant'} className="w-8 h-8 object-contain" width={32} height={32} fallback="https://placehold.co/32" />
                               )}
                               <div>
                                 <div className="font-medium text-sm">{offer.merchant_name}</div>
@@ -356,7 +356,7 @@ const Analytics = () => {
                                 <td className="px-4 py-3">
                                   <Link to={`/merchants/${merchant.id}`} className="flex items-center space-x-2 hover:text-primary-600">
                                     {merchant.logo_url && (
-                                      <LazyImage src={merchant.logo_url} alt={merchant.name} className="w-6 h-6 object-contain" width={24} height={24} fallback="https://via.placeholder.com/24" />
+                                      <LazyImage src={merchant.logo_url} alt={merchant.name} className="w-6 h-6 object-contain" width={24} height={24} fallback="https://placehold.co/24" />
                                     )}
                                     <div className="text-sm font-medium">{merchant.name}</div>
                                   </Link>
