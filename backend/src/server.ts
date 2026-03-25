@@ -145,7 +145,10 @@ const { generateCsrfToken, doubleCsrfProtection } = doubleCsrf({
     req.method === 'POST' &&
     (req.path === '/api/admin/auth/login' ||
      req.path === '/api/auth/login' ||
-     req.path === '/api/auth/register'),
+     req.path === '/api/auth/register' ||
+     // Refresh is protected by the httpOnly refresh_token cookie itself —
+     // an attacker cannot read it, so CSRF adds nothing here.
+     req.path === '/api/auth/refresh'),
 });
 
 // Expose token-generation endpoint (GET is safe, no protection needed)
