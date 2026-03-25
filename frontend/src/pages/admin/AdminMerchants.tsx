@@ -156,7 +156,7 @@ const AdminMerchants = () => {
                             className="w-10 h-10 object-contain mr-3"
                             width={40}
                             height={40}
-                            fallback="https://via.placeholder.com/40"
+                            fallback="https://placehold.co/40"
                           />
                         )}
                         <div>

@@ -31,7 +31,7 @@ const MerchantCard = ({ merchant }: MerchantCardProps) => {
               className="w-16 h-16 object-contain rounded"
               width={64}
               height={64}
-              fallback="https://via.placeholder.com/64"
+              fallback="https://placehold.co/64"
             />
           ) : (
             <div className="w-16 h-16 bg-gray-200 rounded flex items-center justify-center">
