@@ -4,6 +4,7 @@ import { dbAll, dbGet, dbRun } from '../../database';
 import { sendEmailToUser } from '../../utils/emailService';
 import { auditLog } from '../../middleware/auditLog';
 import { safeDecrypt } from '../../utils/encryption';
+import { createTransfer } from '../../services/stripeConnect';
 
 function decryptRow<T extends { payment_details?: string }>(row: T): T {
   if (row?.payment_details) return { ...row, payment_details: safeDecrypt(row.payment_details) };
@@ -104,7 +105,60 @@ router.put('/:id/status', authenticateAdmin, async (req: AdminRequest, res) => {
       }
     }
 
-    // If completing, deduct from user's total earnings
+    // If setting to 'processing' for a bank_transfer, trigger Stripe transfer automatically
+    if (status === 'processing' && withdrawal.payment_method === 'bank_transfer') {
+      const user = await dbGet(
+        'SELECT stripe_account_id FROM users WHERE id = ?',
+        [withdrawal.user_id]
+      ) as { stripe_account_id?: string } | undefined;
+
+      if (!user?.stripe_account_id) {
+        return res.status(400).json({
+          error: 'User has not connected a bank account via Stripe. Ask them to connect at /withdrawals.',
+        });
+      }
+
+      const transfer = await createTransfer(
+        user.stripe_account_id,
+        withdrawal.amount,
+        Number(req.params.id)
+      );
+
+      if (!transfer.success) {
+        return res.status(400).json({ error: `Stripe transfer failed: ${transfer.error}` });
+      }
+
+      // Transfer succeeded — go straight to completed
+      await dbRun(
+        `UPDATE withdrawals SET status = 'completed', admin_notes = ?, processed_by = ?, processed_at = NOW() WHERE id = ?`,
+        [`Stripe transfer: ${transfer.transferId}`, req.userId, req.params.id]
+      );
+      await dbRun(
+        'UPDATE users SET total_earnings = total_earnings - ? WHERE id = ?',
+        [withdrawal.amount, withdrawal.user_id]
+      );
+
+      const completed = await dbGet(`
+        SELECT w.*, u.name as user_name, u.email as user_email, admin.name as processed_by_name
+        FROM withdrawals w
+        JOIN users u ON w.user_id = u.id
+        LEFT JOIN users admin ON w.processed_by = admin.id
+        WHERE w.id = ?
+      `, [req.params.id]) as any;
+
+      sendEmailToUser(completed.user_id, completed.user_email, 'withdrawalStatus', {
+        name: completed.user_name, amount: completed.amount, status: 'completed',
+        adminNotes: `Paid via Stripe — transfer ID: ${transfer.transferId}`,
+      }, 'withdrawal').catch(() => {});
+
+      auditLog({ adminId: req.userId!, action: 'UPDATE_WITHDRAWAL_STATUS', resource: 'withdrawal',
+        resourceId: req.params.id, details: { newStatus: 'completed', previousStatus: withdrawal.status,
+        stripeTransferId: transfer.transferId }, req });
+
+      return res.json(completed ? decryptRow(completed) : completed);
+    }
+
+    // If completing manually (non-bank_transfer), deduct from user's total earnings
     if (status === 'completed' && withdrawal.status !== 'completed') {
       await dbRun(
         'UPDATE users SET total_earnings = total_earnings - ? WHERE id = ?',

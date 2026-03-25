@@ -403,6 +403,7 @@ export const initDatabase = async () => {
       `ALTER TABLE offers ADD COLUMN IF NOT EXISTS excluded_states TEXT`,
       `ALTER TABLE offers ADD COLUMN IF NOT EXISTS category TEXT`,
       `ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS current_period_start TIMESTAMPTZ`,
+      `ALTER TABLE users ADD COLUMN IF NOT EXISTS stripe_account_id TEXT`,
     ];
     for (const sql of migrations) {
       try {
