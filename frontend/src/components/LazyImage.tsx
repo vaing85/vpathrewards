@@ -16,7 +16,7 @@ const LazyImage: React.FC<LazyImageProps> = ({
   alt,
   className = '',
   placeholder,
-  fallback = 'https://via.placeholder.com/150?text=No+Image',
+  fallback = 'https://placehold.co/150?text=No+Image',
   onError,
   width,
   height,

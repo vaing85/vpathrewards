@@ -48,7 +48,7 @@ const OfferCard = ({ offer }: OfferCardProps) => {
                 className="w-12 h-12 object-contain rounded flex-shrink-0"
                 width={48}
                 height={48}
-                fallback="https://via.placeholder.com/48"
+                fallback="https://placehold.co/48"
               />
             )}
             <div className="min-w-0">

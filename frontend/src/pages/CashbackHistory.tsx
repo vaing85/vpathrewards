@@ -424,7 +424,7 @@ const CashbackHistory = () => {
                             <div key={merchant.id} className="flex items-center justify-between bg-gray-50 p-4 rounded">
                               <div className="flex items-center space-x-3">
                                 {merchant.logo_url && (
-                                  <LazyImage src={merchant.logo_url} alt={merchant.name} className="w-10 h-10 object-contain" width={40} height={40} fallback="https://via.placeholder.com/40" />
+                                  <LazyImage src={merchant.logo_url} alt={merchant.name} className="w-10 h-10 object-contain" width={40} height={40} fallback="https://placehold.co/40" />
                                 )}
                                 <div>
                                   <div className="font-medium">{merchant.name}</div>
