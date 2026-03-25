@@ -489,6 +489,44 @@ export const initDatabase = async () => {
       ]
     );
 
+    // CuriosityStream — documentary streaming, ~10% commission, 5% cashback
+    await seedMerchantsOffers(
+      { name: 'CuriosityStream', description: 'Stream award-winning documentaries covering science, history, nature, technology, and more.', website: 'https://www.curiositystream.com', category: 'Entertainment' },
+      [
+        { title: 'Feed Your Intelligence with Original Documentaries', description: 'Explore thousands of award-winning documentaries on science, history, nature, and technology.', affiliate_url: 'https://www.kqzyfj.com/click-101708885-12584120', cashback_rate: 5, commission_rate: 10 },
+        { title: 'Watch Secrets of the Universe on Curiosity Stream', description: 'Dive deep into the cosmos with Secrets of the Universe, streaming now on CuriosityStream.', affiliate_url: 'https://www.kqzyfj.com/click-101708885-15195975', cashback_rate: 5, commission_rate: 10 },
+        { title: 'My Greek Odyssey — Watch Now on Curiosity Stream', description: 'Explore the wonders of Greece in this captivating travel documentary series, streaming now.', affiliate_url: 'https://www.tkqlhce.com/click-101708885-15195978', cashback_rate: 5, commission_rate: 10 },
+        { title: 'The History of Home Narrated by Nick Offerman', description: 'Nick Offerman narrates this fascinating look at how our homes shaped history.', affiliate_url: 'https://www.tkqlhce.com/click-101708885-14074131', cashback_rate: 5, commission_rate: 10 },
+        { title: "Stephen Hawking's Favorite Place — Stream Now", description: "Join Stephen Hawking on an epic journey through the universe in this acclaimed documentary.", affiliate_url: 'https://www.kqzyfj.com/click-101708885-14102949', cashback_rate: 5, commission_rate: 10 },
+        { title: 'The Secrets of Quantum Physics — Stream Now', description: 'Unravel the mysteries of quantum mechanics in this mind-bending documentary series.', affiliate_url: 'https://www.jdoqocy.com/click-101708885-14102962', cashback_rate: 5, commission_rate: 10 },
+        { title: 'Watch Queens of Ancient Egypt on Curiosity Stream', description: 'Discover the powerful women who ruled ancient Egypt in this new streaming series.', affiliate_url: 'https://www.jdoqocy.com/click-101708885-15585173', cashback_rate: 5, commission_rate: 10 },
+        { title: "Watch Nature's Hidden Miracles on Curiosity Stream", description: 'Witness the extraordinary wonders of the natural world in this stunning new series.', affiliate_url: 'https://www.jdoqocy.com/click-101708885-15595934', cashback_rate: 5, commission_rate: 10 },
+        { title: 'Watch Living With Lions on Curiosity Stream', description: 'An intimate look at life alongside lions in the African wild, streaming now exclusively.', affiliate_url: 'https://www.jdoqocy.com/click-101708885-15632582', cashback_rate: 5, commission_rate: 10 },
+        { title: 'Watch Rescued Chimpanzees of the Congo with Jane Goodall', description: 'Jane Goodall presents the remarkable story of rescued chimpanzees in the Congo.', affiliate_url: 'https://www.jdoqocy.com/click-101708885-15595936', cashback_rate: 5, commission_rate: 10 },
+        { title: 'Blue — Stream Now on Curiosity Stream', description: 'An immersive documentary journey beneath the ocean surface, now streaming.', affiliate_url: 'https://www.anrdoezrs.net/click-101708885-15708561', cashback_rate: 5, commission_rate: 10 },
+        { title: 'Curiosity Stream — Classic Literature and Cinema', description: 'Explore classic literature and cinema through the lens of award-winning documentaries.', affiliate_url: 'https://www.kqzyfj.com/click-101708885-15195983', cashback_rate: 5, commission_rate: 10 },
+        { title: 'Secrets of the Universe 2 — Stream Now on Curiosity Stream', description: 'The acclaimed series returns with more breathtaking explorations of our universe.', affiliate_url: 'https://www.dpbolvw.net/click-101708885-15196572', cashback_rate: 5, commission_rate: 10 },
+        { title: 'Breakthrough: Brain-Computer Interface — Stream Now', description: 'Explore the cutting edge of neurotechnology and brain-computer interfaces in this new documentary.', affiliate_url: 'https://www.dpbolvw.net/click-101708885-17161882', cashback_rate: 5, commission_rate: 10 },
+        { title: 'Blockchain Revolution — Stream Now on Curiosity Stream', description: 'Understand the technology reshaping finance, business, and society in this eye-opening documentary.', affiliate_url: 'https://www.tkqlhce.com/click-101708885-17192225', cashback_rate: 5, commission_rate: 10 },
+        { title: 'Watch Deadly Science Season 2 on Curiosity Stream', description: 'Season 2 of the thrilling science series explores the most dangerous experiments in history.', affiliate_url: 'https://www.jdoqocy.com/click-101708885-16960937', cashback_rate: 5, commission_rate: 10 },
+        { title: 'Marie Tussaud: A Legend in Wax — Stream Now', description: 'The incredible true story behind the world-famous wax museum empire, now streaming.', affiliate_url: 'https://www.anrdoezrs.net/click-101708885-14101861', cashback_rate: 5, commission_rate: 10 },
+        { title: 'Wild Weather With Richard Hammond — Stream Now', description: 'Richard Hammond investigates the science behind the world\'s most extreme weather events.', affiliate_url: 'https://www.dpbolvw.net/click-101708885-14102963', cashback_rate: 5, commission_rate: 10 },
+        { title: 'Watch The Real Wild West on Curiosity Stream', description: 'Separate myth from reality in this gripping documentary series about the American frontier.', affiliate_url: 'https://www.dpbolvw.net/click-101708885-15565269', cashback_rate: 5, commission_rate: 10 },
+        { title: 'Bridging the Expanse — Available Now on Curiosity Stream', description: 'A captivating journey across vast landscapes and cultures, now available to stream.', affiliate_url: 'https://www.anrdoezrs.net/click-101708885-15196578', cashback_rate: 5, commission_rate: 10 },
+      ]
+    );
+
+    // One Day University — premium lecture streaming, ~25% commission, 12% cashback
+    await seedMerchantsOffers(
+      { name: 'One Day University', description: "Stream hundreds of fascinating talks from the nation's top professors on history, science, arts, and more.", website: 'https://www.onedayu.com', category: 'Entertainment' },
+      [
+        { title: 'Watch Hundreds of Fascinating Talks on One Day University', description: "Access hundreds of premium lectures from America's best professors, streaming on-demand.", affiliate_url: 'https://www.dpbolvw.net/click-101708885-15323226', cashback_rate: 12, commission_rate: 25 },
+        { title: 'Subscribe to One Day University for Daily Premium Talks', description: 'Get a new premium university-level talk delivered every day from top professors across the US.', affiliate_url: 'https://www.jdoqocy.com/click-101708885-15323293', cashback_rate: 12, commission_rate: 25 },
+        { title: 'Start Your FREE Trial with One Day University Now!', description: 'Try One Day University free and discover why thousands of lifelong learners love it.', affiliate_url: 'https://www.anrdoezrs.net/click-101708885-15323222', cashback_rate: 12, commission_rate: 25 },
+        { title: "One Day University — Top Professors, World-Class Talks", description: "Learn from the nation's top professors in bite-sized, engaging lecture videos on any device.", affiliate_url: 'https://www.dpbolvw.net/click-101708885-15323233', cashback_rate: 12, commission_rate: 25 },
+      ]
+    );
+
     console.log('Database initialised successfully');
   } catch (error) {
     await client.query('ROLLBACK');
