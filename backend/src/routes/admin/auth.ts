@@ -37,7 +37,7 @@ router.post('/login', async (req, res) => {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
 
-    if (user.is_admin !== 1) {
+    if (!user.is_admin) {
       return res.status(403).json({ error: 'Admin access required' });
     }
 
