@@ -65,6 +65,9 @@ const AdminOffers = () => {
   const [csvDetectedMerchant, setCsvDetectedMerchant] = useState('');
   const [csvCashback, setCsvCashback] = useState('');
   const [csvCommission, setCsvCommission] = useState('');
+  const [csvCashbackType, setCsvCashbackType] = useState<'percentage' | 'flat'>('percentage');
+  const [csvNewMerchantMode, setCsvNewMerchantMode] = useState(false);
+  const [csvNewMerchant, setCsvNewMerchant] = useState({ name: '', description: '', website: '', logo_url: '', category: '' });
   const [csvImporting, setCsvImporting] = useState(false);
   const [csvResult, setCsvResult] = useState<{ imported: number; skipped: number } | null>(null);
   const [formData, setFormData] = useState({
@@ -193,23 +196,28 @@ const AdminOffers = () => {
   const handleCsvFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    setCsvRows([]); setCsvResult(null); setCsvMerchantId(''); setCsvDetectedMerchant(''); setCsvCashback(''); setCsvCommission('');
+    setCsvRows([]); setCsvResult(null); setCsvMerchantId(''); setCsvDetectedMerchant('');
+    setCsvCashback(''); setCsvCommission(''); setCsvCashbackType('percentage');
+    setCsvNewMerchantMode(false); setCsvNewMerchant({ name: '', description: '', website: '', logo_url: '', category: '' });
     const reader = new FileReader();
     reader.onload = (ev) => {
       const text = ev.target?.result as string;
       const lines = text.split('\n').filter(l => l.trim());
       const header = parseCsvLine(lines[0]);
-      const nameIdx     = header.findIndex(h => h === 'NAME');
-      const descIdx     = header.findIndex(h => h === 'DESCRIPTION');
-      const urlIdx      = header.findIndex(h => h === 'CLICK URL');
-      const langIdx     = header.findIndex(h => h === 'LANGUAGE');
-      const advIdx      = header.findIndex(h => h === 'ADVERTISER NAME' || h === 'ADVERTISER');
-      const catIdx      = header.findIndex(h => h === 'CATEGORY' || h === 'CATEGORY NAME');
+      const nameIdx    = header.findIndex(h => h === 'NAME');
+      const descIdx    = header.findIndex(h => h === 'DESCRIPTION');
+      const urlIdx     = header.findIndex(h => h === 'CLICK URL');
+      const langIdx    = header.findIndex(h => h === 'LANGUAGE');
+      const advIdx     = header.findIndex(h => h === 'ADVERTISER NAME' || h === 'ADVERTISER');
+      const advUrlIdx  = header.findIndex(h => h === 'ADVERTISER URL' || h === 'ADVERTISER WEBSITE');
+      const catIdx     = header.findIndex(h => h === 'CATEGORY' || h === 'CATEGORY NAME');
 
-      // If it's a CJ CSV, filter English and map columns
+      // CJ CSV format: has NAME and CLICK URL columns
       if (nameIdx !== -1 && urlIdx !== -1) {
         const rows: CsvRow[] = [];
         let detectedAdvertiser = '';
+        let detectedWebsite = '';
+        let detectedCategory = '';
         for (let i = 1; i < lines.length; i++) {
           const cols = parseCsvLine(lines[i]);
           if (langIdx !== -1 && cols[langIdx] !== 'English') continue;
@@ -218,12 +226,14 @@ const AdminOffers = () => {
           const url      = cols[urlIdx] || '';
           const category = catIdx !== -1 ? cols[catIdx] : '';
           const advName  = advIdx !== -1 ? cols[advIdx] : '';
+          const advUrl   = advUrlIdx !== -1 ? cols[advUrlIdx] : '';
           if (!title || !url) continue;
           if (!detectedAdvertiser && advName) detectedAdvertiser = advName;
+          if (!detectedWebsite && advUrl) detectedWebsite = advUrl;
+          if (!detectedCategory && category) detectedCategory = category;
           rows.push({ title, description: desc, affiliate_link: url, category, selected: true });
         }
         setCsvRows(rows);
-        // Auto-match advertiser name to existing merchant
         if (detectedAdvertiser) {
           setCsvDetectedMerchant(detectedAdvertiser);
           const lower = detectedAdvertiser.toLowerCase();
@@ -232,7 +242,19 @@ const AdminOffers = () => {
             m.name.toLowerCase().includes(lower) ||
             lower.includes(m.name.toLowerCase())
           );
-          if (match) setCsvMerchantId(String(match.id));
+          if (match) {
+            setCsvMerchantId(String(match.id));
+          } else {
+            // No existing merchant match — pre-fill new merchant form
+            setCsvNewMerchantMode(true);
+            setCsvNewMerchant({
+              name: detectedAdvertiser,
+              description: '',
+              website: detectedWebsite,
+              logo_url: '',
+              category: detectedCategory,
+            });
+          }
         }
       } else {
         // Simple CSV: title, description, affiliate_link, category (optional 4th col)
@@ -252,16 +274,34 @@ const AdminOffers = () => {
 
   const handleCsvImport = async () => {
     const selected = csvRows.filter(r => r.selected);
-    if (!csvMerchantId || !csvCashback || selected.length === 0) return;
+    if (!csvCashback || selected.length === 0) return;
+    if (!csvNewMerchantMode && !csvMerchantId) return;
+    if (csvNewMerchantMode && !csvNewMerchant.name.trim()) return;
     setCsvImporting(true);
     try {
+      let merchantId = parseInt(csvMerchantId);
+
+      // Create merchant first if in new-merchant mode
+      if (csvNewMerchantMode) {
+        const mRes = await apiClient.post('/admin/merchants', {
+          name: csvNewMerchant.name.trim(),
+          description: csvNewMerchant.description.trim() || undefined,
+          website_url: csvNewMerchant.website.trim() || undefined,
+          logo_url: csvNewMerchant.logo_url.trim() || undefined,
+          category: csvNewMerchant.category.trim() || undefined,
+        });
+        merchantId = mRes.data.id;
+        await fetchData(); // refresh merchants list
+      }
+
       const payload = selected.map(r => ({
-        merchant_id: parseInt(csvMerchantId),
+        merchant_id: merchantId,
         title: r.title,
         description: r.description,
         affiliate_link: r.affiliate_link,
         cashback_rate: parseFloat(csvCashback),
         commission_rate: csvCommission ? parseFloat(csvCommission) : 0,
+        cashback_type: csvCashbackType,
         category: r.category || null,
       }));
       const res = await apiClient.post('/admin/offers/bulk', { offers: payload });
@@ -385,46 +425,154 @@ const AdminOffers = () => {
         {showCsvModal && (
           <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
             <div className="relative top-8 mx-auto p-6 border max-w-4xl shadow-lg rounded-lg bg-white mb-8">
-              <div className="flex justify-between items-center mb-4">
+              <div className="flex justify-between items-center mb-5">
                 <h3 className="text-lg font-bold text-gray-900">Import Offers from CSV</h3>
                 <button onClick={() => setShowCsvModal(false)} className="text-gray-400 hover:text-gray-600 text-xl font-bold">×</button>
               </div>
 
-              {/* Step 1 — Settings */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
-                <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Merchant *</label>
-                  <select
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
-                    value={csvMerchantId}
-                    onChange={e => setCsvMerchantId(e.target.value)}
-                  >
-                    <option value="">Select merchant</option>
-                    {merchants.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
-                  </select>
-                  {csvDetectedMerchant && (
-                    <p className={`text-xs mt-1 ${csvMerchantId ? 'text-green-600' : 'text-amber-600'}`}>
-                      {csvMerchantId ? `✓ Auto-matched: ${csvDetectedMerchant}` : `⚠ No match for "${csvDetectedMerchant}" — select manually`}
-                    </p>
-                  )}
+              {/* Step 1 — Merchant */}
+              <div className="mb-5">
+                <div className="flex items-center justify-between mb-2">
+                  <h4 className="text-sm font-semibold text-gray-700">Merchant</h4>
+                  <div className="flex gap-3 text-xs">
+                    <button
+                      onClick={() => setCsvNewMerchantMode(false)}
+                      className={`px-3 py-1 rounded-full border ${!csvNewMerchantMode ? 'bg-primary-600 text-white border-primary-600' : 'border-gray-300 text-gray-600 hover:bg-gray-50'}`}
+                    >
+                      Use existing
+                    </button>
+                    <button
+                      onClick={() => setCsvNewMerchantMode(true)}
+                      className={`px-3 py-1 rounded-full border ${csvNewMerchantMode ? 'bg-primary-600 text-white border-primary-600' : 'border-gray-300 text-gray-600 hover:bg-gray-50'}`}
+                    >
+                      + Create new
+                    </button>
+                  </div>
                 </div>
-                <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">User Cashback % *</label>
-                  <input type="number" step="0.1" min="0" className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" value={csvCashback} onChange={e => setCsvCashback(e.target.value)} placeholder="e.g. 2" />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">CJ Commission %</label>
-                  <input type="number" step="0.1" min="0" className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" value={csvCommission} onChange={e => setCsvCommission(e.target.value)} placeholder="e.g. 4" />
-                </div>
+
+                {!csvNewMerchantMode ? (
+                  <div>
+                    <select
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                      value={csvMerchantId}
+                      onChange={e => setCsvMerchantId(e.target.value)}
+                    >
+                      <option value="">Select merchant</option>
+                      {merchants.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
+                    </select>
+                    {csvDetectedMerchant && (
+                      <p className={`text-xs mt-1 ${csvMerchantId ? 'text-green-600' : 'text-amber-600'}`}>
+                        {csvMerchantId ? `✓ Auto-matched: ${csvDetectedMerchant}` : `⚠ No match for "${csvDetectedMerchant}" — select above or create new`}
+                      </p>
+                    )}
+                  </div>
+                ) : (
+                  <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 space-y-3">
+                    <p className="text-xs text-gray-500">A new merchant will be created and linked to these offers.</p>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-xs font-medium text-gray-700 mb-1">Merchant Name *</label>
+                        <input
+                          type="text"
+                          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                          value={csvNewMerchant.name}
+                          onChange={e => setCsvNewMerchant(m => ({ ...m, name: e.target.value }))}
+                          placeholder="e.g. Amazon"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-gray-700 mb-1">Category</label>
+                        <input
+                          type="text"
+                          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                          value={csvNewMerchant.category}
+                          onChange={e => setCsvNewMerchant(m => ({ ...m, category: e.target.value }))}
+                          placeholder="e.g. Shopping"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-gray-700 mb-1">Website URL</label>
+                        <input
+                          type="text"
+                          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                          value={csvNewMerchant.website}
+                          onChange={e => setCsvNewMerchant(m => ({ ...m, website: e.target.value }))}
+                          placeholder="https://example.com"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-gray-700 mb-1">Logo URL</label>
+                        <input
+                          type="text"
+                          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                          value={csvNewMerchant.logo_url}
+                          onChange={e => setCsvNewMerchant(m => ({ ...m, logo_url: e.target.value }))}
+                          placeholder="https://example.com/logo.png"
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 mb-1">Description</label>
+                      <textarea
+                        rows={2}
+                        className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                        value={csvNewMerchant.description}
+                        onChange={e => setCsvNewMerchant(m => ({ ...m, description: e.target.value }))}
+                        placeholder="Short description of this merchant"
+                      />
+                    </div>
+                  </div>
+                )}
               </div>
 
-              {csvCashback && csvCommission && parseFloat(csvCommission) > 0 && (
-                <div className="text-xs text-green-700 bg-green-50 px-3 py-2 rounded-md mb-3 inline-block">
-                  Your margin: {(parseFloat(csvCommission) - parseFloat(csvCashback)).toFixed(1)}% per transaction
+              {/* Step 2 — Commission Settings */}
+              <div className="mb-5">
+                <h4 className="text-sm font-semibold text-gray-700 mb-2">Commission Settings</h4>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">Cashback Type</label>
+                    <select
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                      value={csvCashbackType}
+                      onChange={e => setCsvCashbackType(e.target.value as 'percentage' | 'flat')}
+                    >
+                      <option value="percentage">Percentage (%)</option>
+                      <option value="flat">Flat amount ($)</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">
+                      User Cashback {csvCashbackType === 'percentage' ? '(%)' : '($)'} *
+                    </label>
+                    <input
+                      type="number" step="0.01" min="0"
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                      value={csvCashback}
+                      onChange={e => setCsvCashback(e.target.value)}
+                      placeholder={csvCashbackType === 'percentage' ? 'e.g. 5' : 'e.g. 3.00'}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">
+                      CJ Commission {csvCashbackType === 'percentage' ? '(%)' : '($)'}
+                    </label>
+                    <input
+                      type="number" step="0.01" min="0"
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                      value={csvCommission}
+                      onChange={e => setCsvCommission(e.target.value)}
+                      placeholder={csvCashbackType === 'percentage' ? 'e.g. 10' : 'e.g. 10.00'}
+                    />
+                  </div>
                 </div>
-              )}
+                {csvCashback && csvCommission && parseFloat(csvCommission) > 0 && csvCashbackType === 'percentage' && (
+                  <p className="text-xs text-green-700 bg-green-50 px-3 py-2 rounded-md mt-2 inline-block">
+                    Margin: {(parseFloat(csvCommission) - parseFloat(csvCashback)).toFixed(2)}% per transaction
+                  </p>
+                )}
+              </div>
 
-              {/* Step 2 — Preview */}
+              {/* Step 3 — Preview */}
               {csvRows.length > 0 && (
                 <>
                   <div className="flex items-center justify-between mb-2">
@@ -435,14 +583,14 @@ const AdminOffers = () => {
                       <button onClick={() => toggleAll(false)} className="text-gray-500 hover:underline">Deselect all</button>
                     </div>
                   </div>
-                  <div className="border border-gray-200 rounded-lg overflow-hidden mb-4 max-h-80 overflow-y-auto">
+                  <div className="border border-gray-200 rounded-lg overflow-hidden mb-4 max-h-72 overflow-y-auto">
                     <table className="min-w-full text-xs divide-y divide-gray-200">
                       <thead className="bg-gray-50 sticky top-0">
                         <tr>
                           <th className="px-3 py-2 text-left w-8"></th>
                           <th className="px-3 py-2 text-left font-medium text-gray-600">Title</th>
                           <th className="px-3 py-2 text-left font-medium text-gray-600">Category</th>
-                          <th className="px-3 py-2 text-left font-medium text-gray-600 w-64">Affiliate Link</th>
+                          <th className="px-3 py-2 text-left font-medium text-gray-600 w-56">Affiliate Link</th>
                         </tr>
                       </thead>
                       <tbody className="bg-white divide-y divide-gray-100">
@@ -469,7 +617,12 @@ const AdminOffers = () => {
                   <div className="flex gap-3">
                     <button
                       onClick={handleCsvImport}
-                      disabled={csvImporting || !csvMerchantId || !csvCashback || csvRows.filter(r => r.selected).length === 0}
+                      disabled={
+                        csvImporting || !csvCashback ||
+                        (!csvNewMerchantMode && !csvMerchantId) ||
+                        (csvNewMerchantMode && !csvNewMerchant.name.trim()) ||
+                        csvRows.filter(r => r.selected).length === 0
+                      }
                       className="bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white text-sm font-medium px-5 py-2 rounded-lg"
                     >
                       {csvImporting ? 'Importing...' : `Import ${csvRows.filter(r => r.selected).length} Offers`}
