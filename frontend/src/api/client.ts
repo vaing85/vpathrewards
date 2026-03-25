@@ -61,8 +61,21 @@ apiClient.interceptors.response.use(
     const originalRequest = error.config;
     const data = error.response?.data;
 
-    // Reset cached CSRF token on 403 (server may have rotated it)
-    if (error.response?.status === 403) csrfToken = null;
+    // Reset cached CSRF token on 403 and retry once if it was a CSRF failure
+    if (error.response?.status === 403) {
+      csrfToken = null;
+      if (
+        error.response?.data?.error === 'CSRF validation failed' &&
+        !originalRequest._csrfRetried
+      ) {
+        originalRequest._csrfRetried = true;
+        const method = (originalRequest.method ?? 'get').toLowerCase();
+        if (!['get', 'head', 'options'].includes(method)) {
+          originalRequest.headers['x-csrf-token'] = await getCsrfToken();
+        }
+        return apiClient(originalRequest);
+      }
+    }
 
     // Silently refresh once when the access token has expired
     if (
