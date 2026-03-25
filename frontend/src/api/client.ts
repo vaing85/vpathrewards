@@ -26,6 +26,15 @@ apiClient.interceptors.request.use(async (config: InternalAxiosRequestConfig) =>
   if (!['get', 'head', 'options'].includes(method)) {
     config.headers['x-csrf-token'] = await getCsrfToken();
   }
+
+  // Attach admin Bearer token for all /admin routes so auth works cross-origin
+  // regardless of whether the SameSite cookie reaches the server.
+  const url = config.url ?? '';
+  if (url.includes('/admin/') || url.startsWith('/admin')) {
+    const adminToken = sessionStorage.getItem('admin_token');
+    if (adminToken) config.headers['Authorization'] = `Bearer ${adminToken}`;
+  }
+
   return config;
 });
 
