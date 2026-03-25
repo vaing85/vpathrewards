@@ -518,17 +518,6 @@ export const initDatabase = async () => {
       ]
     );
 
-    // One Day University — premium lecture streaming, ~25% commission, 12% cashback
-    await seedMerchantsOffers(
-      { name: 'One Day University', description: "Stream hundreds of fascinating talks from the nation's top professors on history, science, arts, and more.", website: 'https://www.onedayu.com', category: 'Entertainment' },
-      [
-        { title: 'Watch Hundreds of Fascinating Talks on One Day University', description: "Access hundreds of premium lectures from America's best professors, streaming on-demand.", affiliate_url: 'https://www.dpbolvw.net/click-101708885-15323226', cashback_rate: 12, commission_rate: 25 },
-        { title: 'Subscribe to One Day University for Daily Premium Talks', description: 'Get a new premium university-level talk delivered every day from top professors across the US.', affiliate_url: 'https://www.jdoqocy.com/click-101708885-15323293', cashback_rate: 12, commission_rate: 25 },
-        { title: 'Start Your FREE Trial with One Day University Now!', description: 'Try One Day University free and discover why thousands of lifelong learners love it.', affiliate_url: 'https://www.anrdoezrs.net/click-101708885-15323222', cashback_rate: 12, commission_rate: 25 },
-        { title: "One Day University — Top Professors, World-Class Talks", description: "Learn from the nation's top professors in bite-sized, engaging lecture videos on any device.", affiliate_url: 'https://www.dpbolvw.net/click-101708885-15323233', cashback_rate: 12, commission_rate: 25 },
-      ]
-    );
-
     // E-file.com — 30% CJ commission on paid tax preparation (120-day referral window, US traffic only)
     // Offering 15% cashback to users (50% of commission)
     await seedMerchantsOffers(
