@@ -9,10 +9,12 @@ export interface AdminRequest extends Request {
 }
 
 export const authenticateAdmin = async (req: AdminRequest, res: Response, next: NextFunction) => {
-  // Prefer httpOnly cookie; fall back to Authorization header for API clients
-  const cookieToken = req.cookies?.admin_token;
+  // Admin routes require a Bearer JWT in the Authorization header.
+  // Cookie-based fallback is intentionally removed: the Bearer token lives in
+  // sessionStorage (not readable cross-origin), which provides equivalent CSRF
+  // protection and avoids cross-origin third-party cookie restrictions.
   const authHeader = req.headers['authorization'];
-  const token = cookieToken || (authHeader && authHeader.split(' ')[1]);
+  const token = authHeader && authHeader.split(' ')[1];
 
   if (!token) {
     return res.status(401).json({ error: 'Access token required' });
