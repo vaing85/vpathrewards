@@ -85,9 +85,11 @@ export const validateWithdrawal = [
     .withMessage('Amount must be at least $10.00'),
   body('payment_method')
     .trim()
-    .isIn(['paypal', 'bank_transfer', 'venmo', 'zelle'])
+    .isIn(['paypal', 'bank_transfer', 'venmo', 'cash_app'])
     .withMessage('Invalid payment method'),
+  // bank_transfer uses Stripe Connect — no manual payment_details required
   body('payment_details')
+    .if(body('payment_method').not().equals('bank_transfer'))
     .trim()
     .isLength({ min: 3, max: 200 })
     .withMessage('Payment details must be between 3 and 200 characters'),
