@@ -122,11 +122,11 @@ export const validateMerchant = [
     .isLength({ max: 100 })
     .withMessage('Category must be less than 100 characters'),
   body('website_url')
-    .optional()
+    .optional({ values: 'falsy' })
     .isURL()
     .withMessage('Website URL must be a valid URL'),
   body('logo_url')
-    .optional()
+    .optional({ values: 'falsy' })
     .isURL()
     .withMessage('Logo URL must be a valid URL'),
   validate
