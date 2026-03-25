@@ -520,8 +520,7 @@ export const initDatabase = async () => {
 
     // E-file.com — 30% CJ commission on paid tax preparation (120-day referral window, US traffic only)
     // Offering 15% cashback to users (50% of commission)
-    await seedMerchantsOffers(
-      { name: 'E-file.com', description: 'File your federal and state taxes online quickly and affordably — up to 50% cheaper than the competition.', website: 'https://www.e-file.com', category: 'Tax Services' },
+    await seedMerchantsOffers(      { name: 'E-file.com', description: 'File your federal and state taxes online quickly and affordably — up to 50% cheaper than the competition.', website: 'https://www.e-file.com', category: 'Tax Services' },
       [
         { title: 'Start Filing Your Taxes Here', description: 'File your taxes online quickly and easily at E-file.com — one of the most affordable e-filing services available.', affiliate_url: 'https://www.jdoqocy.com/click-101708885-11917138', cashback_rate: 15, commission_rate: 30 },
         { title: 'E-file a State Tax Return', description: 'File your state tax return online in minutes with E-file.com. Fast, secure, and affordable.', affiliate_url: 'https://www.jdoqocy.com/click-101708885-11917140', cashback_rate: 15, commission_rate: 30 },
@@ -539,6 +538,15 @@ export const initDatabase = async () => {
         { title: 'Save 20% at E-file.com', description: 'Get 20% off your tax filing at E-file.com. The affordable way to file federal and state returns.', affiliate_url: 'https://www.anrdoezrs.net/click-101708885-11917168', cashback_rate: 15, commission_rate: 30 },
         { title: '20% Off With Coupon Code SAVE24', description: 'Use coupon code SAVE24 at E-file.com to save 20% on your tax filing this season.', affiliate_url: 'https://www.jdoqocy.com/click-101708885-11917173', cashback_rate: 15, commission_rate: 30 },
         { title: 'File Your IRS Taxes Free — E-file.com Basic', description: 'Qualify for free federal filing with E-file.com Basic. Simple returns filed at no cost.', affiliate_url: 'https://www.kqzyfj.com/click-101708885-17233815', cashback_rate: 15, commission_rate: 30 },
+      ]
+    );
+
+    // Temu — 30% CJ commission for new users (3% returning), 1-day referral window
+    // Offering 20% cashback to users; admin margin 10%
+    await seedMerchantsOffers(
+      { name: 'Temu', description: 'Shop thousands of products at incredibly low prices with fast worldwide delivery on Temu.', website: 'https://www.temu.com', category: 'Shopping' },
+      [
+        { title: 'Shop Temu — Incredible Deals Every Day', description: 'Browse millions of products at unbeatable prices. Free shipping on orders over $0. New users get up to 30% off.', affiliate_url: 'https://www.tkqlhce.com/click-101708885-1573663', cashback_rate: 20, commission_rate: 30 },
       ]
     );
 
