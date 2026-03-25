@@ -158,12 +158,28 @@ router.delete('/:id', authenticateAdmin, async (req: AdminRequest, res) => {
       return res.status(404).json({ error: 'User not found' });
     }
 
-    if ((user as any).is_admin === 1) {
+    if ((user as any).is_admin) {
       return res.status(400).json({ error: 'Cannot delete admin users' });
     }
 
-    await dbRun('DELETE FROM cashback_transactions WHERE user_id = ?', [req.params.id]);
-    await dbRun('DELETE FROM users WHERE id = ?', [req.params.id]);
+    const id = req.params.id;
+
+    // Remove all FK-dependent rows in dependency order before deleting the user.
+    // referral_earnings references cashback_transactions, so it goes first.
+    await dbRun('DELETE FROM referral_earnings WHERE referrer_id = ? OR referred_id = ?', [id, id]);
+    await dbRun('DELETE FROM cashback_transactions WHERE user_id = ?', [id]);
+    // Nullable FKs: NULL out rather than delete so click/conversion history is preserved.
+    await dbRun('UPDATE conversions SET user_id = NULL WHERE user_id = ?', [id]);
+    await dbRun('UPDATE affiliate_clicks SET user_id = NULL WHERE user_id = ?', [id]);
+    await dbRun('DELETE FROM withdrawals WHERE user_id = ?', [id]);
+    await dbRun('DELETE FROM user_favorites WHERE user_id = ?', [id]);
+    await dbRun('DELETE FROM merchant_reviews WHERE user_id = ?', [id]);
+    await dbRun('DELETE FROM cashback_goals WHERE user_id = ?', [id]);
+    await dbRun('DELETE FROM subscriptions WHERE user_id = ?', [id]);
+    await dbRun('DELETE FROM referral_relationships WHERE referrer_id = ? OR referred_id = ?', [id, id]);
+    await dbRun('DELETE FROM user_referral_codes WHERE user_id = ?', [id]);
+    await dbRun('DELETE FROM refresh_tokens WHERE user_id = ?', [id]);
+    await dbRun('DELETE FROM users WHERE id = ?', [id]);
 
     auditLog({
       adminId: req.userId!,
