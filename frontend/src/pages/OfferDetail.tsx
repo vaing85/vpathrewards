@@ -103,7 +103,7 @@ const OfferDetail = () => {
                 className="w-20 h-20 object-contain rounded"
                 width={80}
                 height={80}
-                fallback="https://via.placeholder.com/80"
+                fallback="https://placehold.co/80"
               />
             )}
             <div className="flex-1">
