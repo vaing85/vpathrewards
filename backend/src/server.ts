@@ -138,6 +138,14 @@ const { generateCsrfToken, doubleCsrfProtection } = doubleCsrf({
     path: '/',
   },
   getCsrfTokenFromRequest: (req) => req.headers['x-csrf-token'] as string,
+  // Login/register routes are exempt: CSRF on a login endpoint provides no
+  // meaningful protection because an attacker still needs valid credentials.
+  // Skipping avoids cross-domain cookie timing races on the first page load.
+  skipCsrfProtection: (req) =>
+    req.method === 'POST' &&
+    (req.path === '/api/admin/auth/login' ||
+     req.path === '/api/auth/login' ||
+     req.path === '/api/auth/register'),
 });
 
 // Expose token-generation endpoint (GET is safe, no protection needed)
