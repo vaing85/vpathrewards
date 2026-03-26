@@ -43,7 +43,7 @@ function setRefreshCookie(res: express.Response, token: string) {
 // Token issuance (stores hashed refresh token in DB, returns both tokens)
 // ---------------------------------------------------------------------------
 
-async function issueTokens(res: express.Response, userId: number) {
+async function issueTokens(res: express.Response, userId: number): Promise<string> {
   // Short-lived JWT access token
   const accessToken = jwt.sign(
     { userId },
@@ -63,6 +63,7 @@ async function issueTokens(res: express.Response, userId: number) {
 
   setAccessCookie(res, accessToken);
   setRefreshCookie(res, refreshToken);
+  return accessToken;
 }
 
 // ---------------------------------------------------------------------------
@@ -87,8 +88,8 @@ router.post('/refresh', async (req: express.Request, res: express.Response) => {
 
   // Rotate: delete old token, issue new pair
   await dbRun('DELETE FROM refresh_tokens WHERE id = ?', [stored.id]);
-  await issueTokens(res, stored.user_id);
-  res.json({ ok: true });
+  const token = await issueTokens(res, stored.user_id);
+  res.json({ ok: true, token });
 });
 
 // Current user (validates cookie / Authorization header)
@@ -161,13 +162,13 @@ router.post('/register', validateRegister, async (req: express.Request, res: exp
       [userId, userReferralCode]
     );
 
-    await issueTokens(res, userId);
+    const token = await issueTokens(res, userId);
 
     sendEmailToUser(userId, email, 'welcome', { name }, 'email').catch(err => {
       console.error('Failed to send welcome email:', err);
     });
 
-    res.status(201).json({ user: { id: userId, email, name, total_earnings: 0 } });
+    res.status(201).json({ token, user: { id: userId, email, name, total_earnings: 0 } });
   } catch (error) {
     console.error('Registration error:', error);
     res.status(500).json({ error: 'Internal server error' });
@@ -189,9 +190,10 @@ router.post('/login', validateLogin, async (req: express.Request, res: express.R
     const validPassword = await bcrypt.compare(password, user.password);
     if (!validPassword) return res.status(401).json({ error: 'Invalid credentials' });
 
-    await issueTokens(res, user.id);
+    const token = await issueTokens(res, user.id);
 
     res.json({
+      token,
       user: {
         id: user.id,
         email: user.email,

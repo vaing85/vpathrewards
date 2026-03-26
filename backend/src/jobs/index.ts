@@ -16,23 +16,27 @@
 import affiliateSyncJob from './affiliateSync.job';
 import payoutProcessorJob from './payoutProcessor.job';
 import trackingProcessorJob from './trackingProcessor.job';
+import linkCheckerJob from './linkChecker.job';
 import type { JobDefinition, JobResult } from './types';
 
 export type { JobContext, JobResult, JobDefinition } from './types';
 export { default as affiliateSyncJob } from './affiliateSync.job';
 export { default as payoutProcessorJob } from './payoutProcessor.job';
 export { default as trackingProcessorJob } from './trackingProcessor.job';
+export { default as linkCheckerJob } from './linkChecker.job';
 
 export const JOB_NAMES = {
   AFFILIATE_SYNC: affiliateSyncJob.name,
   PAYOUT_PROCESSOR: payoutProcessorJob.name,
-  TRACKING_PROCESSOR: trackingProcessorJob.name
+  TRACKING_PROCESSOR: trackingProcessorJob.name,
+  LINK_CHECKER: linkCheckerJob.name,
 } as const;
 
 const JOB_REGISTRY: Record<string, JobDefinition<unknown, unknown>> = {
   [affiliateSyncJob.name]: affiliateSyncJob as JobDefinition<unknown, unknown>,
   [payoutProcessorJob.name]: payoutProcessorJob as JobDefinition<unknown, unknown>,
-  [trackingProcessorJob.name]: trackingProcessorJob as JobDefinition<unknown, unknown>
+  [trackingProcessorJob.name]: trackingProcessorJob as JobDefinition<unknown, unknown>,
+  [linkCheckerJob.name]: linkCheckerJob as JobDefinition<unknown, unknown>,
 };
 
 /**
