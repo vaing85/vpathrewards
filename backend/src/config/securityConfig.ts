@@ -52,7 +52,7 @@ export const securityConfig = {
     },
     auth: {
       windowMs: 15 * 60 * 1000,
-      max: isProduction ? 20 : 50,
+      max: isProduction ? 50 : 100,
     },
     password: {
       windowMs: 60 * 60 * 1000,
