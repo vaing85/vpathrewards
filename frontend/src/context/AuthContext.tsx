@@ -31,6 +31,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const login = async (email: string, password: string) => {
     const response = await apiClient.post('/auth/login', { email, password });
+    if (response.data.token) sessionStorage.setItem('user_token', response.data.token);
     setUser(response.data.user);
   };
 
@@ -41,13 +42,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       name,
       referral_code: referralCode,
     });
+    if (response.data.token) sessionStorage.setItem('user_token', response.data.token);
     setUser(response.data.user);
   };
 
   const logout = async () => {
     await apiClient.post('/auth/logout').catch(() => {});
     setUser(null);
-    // Clear any legacy localStorage entries from previous versions
+    sessionStorage.removeItem('user_token');
     localStorage.removeItem('token');
     localStorage.removeItem('user');
   };
