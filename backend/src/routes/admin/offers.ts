@@ -242,7 +242,13 @@ router.delete('/:id', authenticateAdmin, async (req, res) => {
       return res.status(404).json({ error: 'Offer not found' });
     }
 
+    // Remove related records before deleting the offer to avoid FK constraint errors
+    await dbRun('DELETE FROM user_favorites WHERE offer_id = ?', [req.params.id]);
+    await dbRun('DELETE FROM affiliate_clicks WHERE offer_id = ?', [req.params.id]);
+    await dbRun('DELETE FROM conversions WHERE offer_id = ?', [req.params.id]);
+    await dbRun('DELETE FROM cashback_transactions WHERE offer_id = ?', [req.params.id]);
     await dbRun('DELETE FROM offers WHERE id = ?', [req.params.id]);
+
     res.json({ message: 'Offer deleted successfully' });
   } catch (error) {
     console.error('Error deleting offer:', error);
