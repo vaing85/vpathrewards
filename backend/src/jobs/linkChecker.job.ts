@@ -1,0 +1,169 @@
+/**
+ * Link checker job: verify all active offer affiliate URLs are still reachable.
+ * Marks broken/expired links in the DB and notifies admin via email.
+ * Run daily via node-cron.
+ */
+import { dbAll, dbRun } from '../database';
+import { sendAdminNotification } from '../utils/emailService';
+import type { JobContext, JobDefinition, JobResult } from './types';
+
+export interface LinkCheckerPayload {
+  /** Check only a specific offer by ID */
+  offerId?: number;
+  /** If true, do not update DB or send email */
+  dryRun?: boolean;
+}
+
+export interface LinkCheckerResult {
+  total: number;
+  ok: number;
+  broken: number;
+  expired: number;
+  unknown: number;
+  brokenOffers: Array<{ id: number; title: string; url: string; reason: string }>;
+}
+
+const BROWSER_HEADERS = {
+  'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+  'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+  'Accept-Language': 'en-US,en;q=0.5',
+};
+
+// CJ affiliate domains — if we end up here after redirect, link is broken
+const CJ_DOMAINS = ['cj.com', 'commission.junction.com', 'cj-sandbox.com'];
+
+async function checkUrl(url: string): Promise<{ status: 'ok' | 'broken' | 'unknown'; reason?: string }> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 15000);
+
+  try {
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: BROWSER_HEADERS,
+      redirect: 'follow',
+      signal: controller.signal,
+    });
+
+    clearTimeout(timeout);
+
+    const finalUrl = response.url;
+
+    // If final URL landed on a CJ domain, the link is deactivated
+    if (CJ_DOMAINS.some(domain => finalUrl.includes(domain))) {
+      return { status: 'broken', reason: 'Redirected to CJ error page — link deactivated' };
+    }
+
+    if (response.status === 404) {
+      return { status: 'broken', reason: `404 Not Found at ${finalUrl}` };
+    }
+
+    if (response.status >= 400) {
+      return { status: 'broken', reason: `HTTP ${response.status} at ${finalUrl}` };
+    }
+
+    return { status: 'ok' };
+  } catch (err: any) {
+    clearTimeout(timeout);
+    if (err?.name === 'AbortError') {
+      return { status: 'unknown', reason: 'Request timed out after 15s' };
+    }
+    return { status: 'unknown', reason: err?.message || 'Network error' };
+  }
+}
+
+const linkCheckerJob: JobDefinition<LinkCheckerPayload, LinkCheckerResult> = {
+  name: 'link-checker',
+
+  async run(payload: LinkCheckerPayload = {}, _ctx?: JobContext): Promise<JobResult<LinkCheckerResult>> {
+    const { dryRun = false, offerId } = payload;
+
+    const query = offerId
+      ? 'SELECT id, title, affiliate_link, end_date FROM offers WHERE is_active = 1 AND id = $1'
+      : 'SELECT id, title, affiliate_link, end_date FROM offers WHERE is_active = 1';
+
+    const params = offerId ? [offerId] : [];
+    const offers = await dbAll(query, params) as Array<{
+      id: number;
+      title: string;
+      affiliate_link: string;
+      end_date: string | null;
+    }>;
+
+    const result: LinkCheckerResult = {
+      total: offers.length,
+      ok: 0,
+      broken: 0,
+      expired: 0,
+      unknown: 0,
+      brokenOffers: [],
+    };
+
+    for (const offer of offers) {
+      const now = new Date();
+
+      // Check end_date expiry first
+      if (offer.end_date && new Date(offer.end_date) < now) {
+        result.expired++;
+        result.brokenOffers.push({
+          id: offer.id,
+          title: offer.title,
+          url: offer.affiliate_link,
+          reason: `Expired on ${offer.end_date}`,
+        });
+
+        if (!dryRun) {
+          await dbRun(
+            'UPDATE offers SET link_status = $1, link_last_checked = NOW(), link_error = $2 WHERE id = $3',
+            ['expired', `Expired on ${offer.end_date}`, offer.id]
+          );
+        }
+        continue;
+      }
+
+      // Check the URL
+      const check = await checkUrl(offer.affiliate_link);
+
+      if (!dryRun) {
+        await dbRun(
+          'UPDATE offers SET link_status = $1, link_last_checked = NOW(), link_error = $2 WHERE id = $3',
+          [check.status, check.reason || null, offer.id]
+        );
+      }
+
+      if (check.status === 'ok') {
+        result.ok++;
+      } else if (check.status === 'broken') {
+        result.broken++;
+        result.brokenOffers.push({
+          id: offer.id,
+          title: offer.title,
+          url: offer.affiliate_link,
+          reason: check.reason || 'Broken link',
+        });
+      } else {
+        result.unknown++;
+      }
+
+      // Small delay between requests to avoid hammering servers
+      await new Promise(resolve => setTimeout(resolve, 500));
+    }
+
+    // Send admin notification if any broken/expired links found
+    if (!dryRun && result.brokenOffers.length > 0) {
+      const adminEmail = process.env.ADMIN_EMAIL;
+      if (adminEmail) {
+        await sendAdminNotification(adminEmail, 'brokenLinks', {
+          brokenCount: result.broken + result.expired,
+          offers: result.brokenOffers,
+          checkedAt: new Date().toLocaleString(),
+        }).catch(err => console.error('Failed to send admin notification:', err));
+      }
+    }
+
+    console.log(`[link-checker] Done — total: ${result.total}, ok: ${result.ok}, broken: ${result.broken}, expired: ${result.expired}, unknown: ${result.unknown}`);
+
+    return { ok: true, data: result };
+  },
+};
+
+export default linkCheckerJob;

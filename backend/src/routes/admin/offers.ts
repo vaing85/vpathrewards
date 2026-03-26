@@ -217,6 +217,24 @@ router.post('/bulk', authenticateAdmin, async (req: express.Request, res: expres
   }
 });
 
+// Get all broken/expired offers detected by link checker
+router.get('/link-status/broken', authenticateAdmin, async (_req, res) => {
+  try {
+    const offers = await dbAll(`
+      SELECT o.id, o.title, o.affiliate_link, o.link_status, o.link_last_checked, o.link_error, o.is_active,
+             m.name as merchant_name
+      FROM offers o
+      JOIN merchants m ON o.merchant_id = m.id
+      WHERE o.link_status IN ('broken', 'expired')
+      ORDER BY o.link_last_checked DESC
+    `, []);
+    res.json({ data: offers });
+  } catch (error) {
+    console.error('Error fetching broken offers:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 router.delete('/:id', authenticateAdmin, async (req, res) => {
   try {
     const offer = await dbGet('SELECT * FROM offers WHERE id = ?', [req.params.id]);

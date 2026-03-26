@@ -56,6 +56,8 @@ import subscriptionRoutes from './routes/subscriptions';
 import webhookRoutes from './routes/webhooks';
 import supportRoutes from './routes/support';
 import { errorHandler } from './middleware/errorHandler';
+import cron from 'node-cron';
+import { linkCheckerJob } from './jobs';
 
 const app = express();
 const PORT = appConfig.port;
@@ -216,6 +218,13 @@ app.use(errorHandler);
 
 // Initialize database and start server
 initDatabase().then(() => {
+  // Daily link checker — runs at 2:00 AM server time
+  cron.schedule('0 2 * * *', () => {
+    console.log('[cron] Running daily link checker...');
+    linkCheckerJob.run({}, { jobId: 'cron-daily', attempt: 0 })
+      .catch(err => console.error('[cron] Link checker error:', err));
+  });
+
   app.listen(PORT, () => {
     console.log('='.repeat(60));
     console.log(`🚀 V PATHing Rewards API Server`);
