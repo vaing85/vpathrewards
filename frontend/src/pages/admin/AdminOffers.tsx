@@ -20,6 +20,16 @@ interface Offer {
   excluded_states?: string;
 }
 
+interface BrokenOffer {
+  id: number;
+  title: string;
+  affiliate_link: string;
+  link_status: string;
+  link_last_checked: string;
+  link_error: string;
+  merchant_name: string;
+}
+
 interface Merchant {
   id: number;
   name: string;
@@ -56,6 +66,9 @@ const AdminOffers = () => {
   const [editingOffer, setEditingOffer] = useState<Offer | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [pagination, setPagination] = useState<any>(null);
+  const [brokenOffers, setBrokenOffers] = useState<BrokenOffer[]>([]);
+  const [showBrokenOnly, setShowBrokenOnly] = useState(false);
+  const [runningCheck, setRunningCheck] = useState(false);
 
   // CSV import state
   const csvFileRef = useRef<HTMLInputElement>(null);
@@ -92,6 +105,27 @@ const AdminOffers = () => {
     fetchData();
   }, [isAuthenticated, navigate, currentPage]);
 
+  const fetchBrokenOffers = async () => {
+    try {
+      const res = await apiClient.get('/admin/offers/link-status/broken');
+      setBrokenOffers(res.data?.data || []);
+    } catch {
+      // silently ignore — link checker may not have run yet
+    }
+  };
+
+  const handleRunLinkCheck = async () => {
+    setRunningCheck(true);
+    try {
+      await apiClient.post('/admin/jobs/run', { jobName: 'link-checker' });
+      await fetchBrokenOffers();
+    } catch (err) {
+      console.error('Link check failed:', err);
+    } finally {
+      setRunningCheck(false);
+    }
+  };
+
   const fetchData = async () => {
     try {
       const [offersRes, merchantsRes] = await Promise.all([
@@ -119,6 +153,7 @@ const AdminOffers = () => {
     } finally {
       setLoading(false);
     }
+    fetchBrokenOffers();
   };
 
   const handleOpenModal = (offer?: Offer) => {
@@ -327,6 +362,13 @@ const AdminOffers = () => {
           <div className="flex gap-2">
             <input ref={csvFileRef} type="file" accept=".csv" onChange={handleCsvFile} className="hidden" />
             <button
+              onClick={handleRunLinkCheck}
+              disabled={runningCheck}
+              className="bg-yellow-500 hover:bg-yellow-600 disabled:opacity-50 text-white px-4 py-2 rounded-lg text-sm font-medium"
+            >
+              {runningCheck ? 'Checking…' : '🔗 Check Links'}
+            </button>
+            <button
               onClick={() => csvFileRef.current?.click()}
               className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-medium"
             >
@@ -340,6 +382,97 @@ const AdminOffers = () => {
             </button>
           </div>
         </div>
+
+        {/* Broken Links Banner */}
+        {brokenOffers.length > 0 && (
+          <div className="mb-6 rounded-lg border border-red-200 bg-red-50 p-4">
+            <div className="flex items-center justify-between flex-wrap gap-3">
+              <div className="flex items-center gap-3">
+                <span className="text-red-600 text-xl">⚠</span>
+                <div>
+                  <p className="font-semibold text-red-800">
+                    {brokenOffers.length} offer{brokenOffers.length !== 1 ? 's' : ''} with broken or expired links
+                  </p>
+                  <p className="text-sm text-red-600">Review and deactivate or update these offers.</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setShowBrokenOnly(v => !v)}
+                  className="text-sm px-3 py-1.5 rounded border border-red-300 text-red-700 hover:bg-red-100"
+                >
+                  {showBrokenOnly ? 'Hide details' : 'Show details'}
+                </button>
+                <button
+                  onClick={handleRunLinkCheck}
+                  disabled={runningCheck}
+                  className="text-sm px-3 py-1.5 rounded bg-red-600 hover:bg-red-700 text-white disabled:opacity-50"
+                >
+                  {runningCheck ? 'Checking…' : 'Run Check Now'}
+                </button>
+              </div>
+            </div>
+
+            {showBrokenOnly && (
+              <div className="mt-4 overflow-x-auto">
+                <table className="min-w-full text-sm divide-y divide-red-200">
+                  <thead>
+                    <tr className="text-left text-xs font-medium text-red-700 uppercase">
+                      <th className="pb-2 pr-4">ID</th>
+                      <th className="pb-2 pr-4">Merchant</th>
+                      <th className="pb-2 pr-4">Title</th>
+                      <th className="pb-2 pr-4">Status</th>
+                      <th className="pb-2 pr-4">Error / Reason</th>
+                      <th className="pb-2 pr-4">Last Checked</th>
+                      <th className="pb-2">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-red-100">
+                    {brokenOffers.map(bo => (
+                      <tr key={bo.id} className="align-top">
+                        <td className="py-2 pr-4 text-gray-500">{bo.id}</td>
+                        <td className="py-2 pr-4 font-medium text-gray-800">{bo.merchant_name || '—'}</td>
+                        <td className="py-2 pr-4 text-gray-700 max-w-xs truncate" title={bo.title}>{bo.title}</td>
+                        <td className="py-2 pr-4">
+                          <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${
+                            bo.link_status === 'expired'
+                              ? 'bg-yellow-100 text-yellow-800'
+                              : 'bg-red-100 text-red-800'
+                          }`}>
+                            {bo.link_status}
+                          </span>
+                        </td>
+                        <td className="py-2 pr-4 text-gray-500 max-w-xs truncate" title={bo.link_error}>{bo.link_error || '—'}</td>
+                        <td className="py-2 pr-4 text-gray-400 whitespace-nowrap">
+                          {bo.link_last_checked ? new Date(bo.link_last_checked).toLocaleString() : '—'}
+                        </td>
+                        <td className="py-2 whitespace-nowrap space-x-2">
+                          <button
+                            onClick={() => handleOpenModal(offers.find(o => o.id === bo.id))}
+                            className="text-primary-600 hover:text-primary-900 text-xs"
+                          >
+                            Edit
+                          </button>
+                          <button
+                            onClick={async () => {
+                              try {
+                                await apiClient.put(`/admin/offers/${bo.id}`, { is_active: false });
+                                fetchData();
+                              } catch {}
+                            }}
+                            className="text-red-600 hover:text-red-900 text-xs"
+                          >
+                            Deactivate
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        )}
 
         {loading ? (
           <div className="text-center py-12">Loading...</div>
