@@ -10,8 +10,8 @@ interface User {
 
 interface AuthContextType {
   user: User | null;
-  login: (email: string, password: string) => Promise<void>;
-  register: (email: string, password: string, name: string, referralCode?: string) => Promise<void>;
+  login: (email: string, password: string, turnstileToken?: string) => Promise<void>;
+  register: (email: string, password: string, name: string, referralCode?: string, turnstileToken?: string) => Promise<void>;
   logout: () => Promise<void>;
   updateUser: (user: User) => void;
   isAuthenticated: boolean;
@@ -29,18 +29,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       .catch(() => setUser(null));
   }, []);
 
-  const login = async (email: string, password: string) => {
-    const response = await apiClient.post('/auth/login', { email, password });
+  const login = async (email: string, password: string, turnstileToken?: string) => {
+    const response = await apiClient.post('/auth/login', { email, password, turnstileToken });
     if (response.data.token) sessionStorage.setItem('user_token', response.data.token);
     setUser(response.data.user);
   };
 
-  const register = async (email: string, password: string, name: string, referralCode?: string) => {
+  const register = async (email: string, password: string, name: string, referralCode?: string, turnstileToken?: string) => {
     const response = await apiClient.post('/auth/register', {
       email,
       password,
       name,
       referral_code: referralCode,
+      turnstileToken,
     });
     if (response.data.token) sessionStorage.setItem('user_token', response.data.token);
     setUser(response.data.user);
