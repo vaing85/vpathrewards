@@ -113,7 +113,7 @@ const linkCheckerJob: JobDefinition<LinkCheckerPayload, LinkCheckerResult> = {
 
         if (!dryRun) {
           await dbRun(
-            'UPDATE offers SET link_status = $1, link_last_checked = NOW(), link_error = $2 WHERE id = $3',
+            'UPDATE offers SET link_status = $1, link_last_checked = NOW(), link_error = $2, is_active = 0 WHERE id = $3',
             ['expired', `Expired on ${offer.end_date}`, offer.id]
           );
         }
@@ -124,10 +124,14 @@ const linkCheckerJob: JobDefinition<LinkCheckerPayload, LinkCheckerResult> = {
       const check = await checkUrl(offer.affiliate_link);
 
       if (!dryRun) {
-        await dbRun(
-          'UPDATE offers SET link_status = $1, link_last_checked = NOW(), link_error = $2 WHERE id = $3',
-          [check.status, check.reason || null, offer.id]
-        );
+        const isActive = check.status === 'ok' ? 1 : check.status === 'broken' ? 0 : null;
+        const updateQuery = isActive !== null
+          ? 'UPDATE offers SET link_status = $1, link_last_checked = NOW(), link_error = $2, is_active = $3 WHERE id = $4'
+          : 'UPDATE offers SET link_status = $1, link_last_checked = NOW(), link_error = $2 WHERE id = $3';
+        const updateParams = isActive !== null
+          ? [check.status, check.reason || null, isActive, offer.id]
+          : [check.status, check.reason || null, offer.id];
+        await dbRun(updateQuery, updateParams);
       }
 
       if (check.status === 'ok') {
