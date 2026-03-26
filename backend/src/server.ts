@@ -158,7 +158,8 @@ const { generateCsrfToken, doubleCsrfProtection } = doubleCsrf({
     return req.method === 'POST' &&
       (req.path === '/api/auth/login' ||
        req.path === '/api/auth/register' ||
-       req.path === '/api/auth/refresh');
+       req.path === '/api/auth/refresh' ||
+       req.path === '/api/auth/logout');
   },
 });
 
