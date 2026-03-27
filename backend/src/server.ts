@@ -221,9 +221,9 @@ app.use(errorHandler);
 
 // Initialize database and start server
 initDatabase().then(() => {
-  // Daily link checker — runs at 2:00 AM server time
-  cron.schedule('0 2 * * *', () => {
-    console.log('[cron] Running daily link checker...');
+  // Link checker — runs every 4 hours
+  cron.schedule('0 */4 * * *', () => {
+    console.log('[cron] Running link checker...');
     linkCheckerJob.run({}, { jobId: 'cron-daily', attempt: 0 })
       .catch(err => console.error('[cron] Link checker error:', err));
   });
