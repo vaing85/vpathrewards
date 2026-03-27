@@ -5,6 +5,7 @@
  */
 import { dbAll, dbRun } from '../database';
 import { sendAdminNotification } from '../utils/emailService';
+import { startProgress, incrementProgress, clearProgress } from './progress';
 import type { JobContext, JobDefinition, JobResult } from './types';
 
 export interface LinkCheckerPayload {
@@ -116,6 +117,8 @@ const linkCheckerJob: JobDefinition<LinkCheckerPayload, LinkCheckerResult> = {
       brokenOffers: [],
     };
 
+    startProgress('link-checker', offers.length);
+
     for (const offer of offers) {
       const now = new Date();
 
@@ -166,9 +169,13 @@ const linkCheckerJob: JobDefinition<LinkCheckerPayload, LinkCheckerResult> = {
         result.unknown++;
       }
 
+      incrementProgress();
+
       // Small delay between requests to avoid hammering servers
       await new Promise(resolve => setTimeout(resolve, 500));
     }
+
+    clearProgress();
 
     // Send admin notification if any broken/expired links found
     if (!dryRun && result.brokenOffers.length > 0) {
