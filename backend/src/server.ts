@@ -152,6 +152,14 @@ const { generateCsrfToken, doubleCsrfProtection } = doubleCsrf({
     // cookies (Chrome 120+, Safari ITP) in cross-origin API setups.
     if (req.path.startsWith('/api/admin/')) return true;
 
+    // Requests with a Bearer token are inherently CSRF-safe: a cross-site
+    // attacker cannot read sessionStorage from a different origin, so they
+    // cannot forge the Authorization header. This covers all authenticated
+    // user routes (profile, subscriptions, cashback, etc.) in the cross-origin
+    // setup where third-party cookie blocking prevents the CSRF cookie from
+    // being sent back.
+    if (req.headers.authorization?.startsWith('Bearer ')) return true;
+
     // Login/register/refresh are exempt: either CSRF provides no meaningful
     // protection (login needs credentials; refresh uses httpOnly cookie), or
     // they are the first request in a session before a CSRF token exists.
