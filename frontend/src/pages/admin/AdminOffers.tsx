@@ -391,7 +391,7 @@ const AdminOffers = () => {
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="flex justify-between items-center mb-8">
+        <div className="flex justify-between items-center mb-4">
           <h1 className="text-3xl font-bold text-gray-800">Offers</h1>
           <div className="flex gap-2">
             <input ref={csvFileRef} type="file" accept=".csv" onChange={handleCsvFile} className="hidden" />
@@ -416,6 +416,33 @@ const AdminOffers = () => {
             </button>
           </div>
         </div>
+
+        {/* Link Check Progress Bar */}
+        {runningCheck && (
+          <div className="mb-6 bg-yellow-50 border border-yellow-300 rounded-lg px-5 py-4">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-sm font-semibold text-yellow-800">Checking affiliate links...</span>
+              <span className="text-sm font-medium text-yellow-700">
+                {checkProgress ? `${checkProgress.processed} / ${checkProgress.total}` : 'Starting…'}
+              </span>
+            </div>
+            <div className="w-full bg-yellow-200 rounded-full h-3 overflow-hidden">
+              <div
+                className="bg-yellow-500 h-3 rounded-full transition-all duration-500"
+                style={{
+                  width: checkProgress && checkProgress.total > 0
+                    ? `${Math.round((checkProgress.processed / checkProgress.total) * 100)}%`
+                    : '4%'
+                }}
+              />
+            </div>
+            {checkProgress && checkProgress.total > 0 && (
+              <p className="text-xs text-yellow-600 mt-1">
+                {Math.round((checkProgress.processed / checkProgress.total) * 100)}% complete
+              </p>
+            )}
+          </div>
+        )}
 
         {/* Broken Links Banner */}
         {brokenOffers.length > 0 && (
@@ -511,33 +538,6 @@ const AdminOffers = () => {
                   </tbody>
                 </table>
               </div>
-            )}
-          </div>
-        )}
-
-        {/* Link Check Progress Bar */}
-        {runningCheck && (
-          <div className="mb-6 bg-white rounded-lg shadow px-5 py-4">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-sm font-medium text-gray-700">Checking affiliate links...</span>
-              <span className="text-sm text-gray-500">
-                {checkProgress ? `${checkProgress.processed} / ${checkProgress.total}` : 'Starting...'}
-              </span>
-            </div>
-            <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
-              <div
-                className="bg-yellow-500 h-3 rounded-full transition-all duration-500"
-                style={{
-                  width: checkProgress && checkProgress.total > 0
-                    ? `${Math.round((checkProgress.processed / checkProgress.total) * 100)}%`
-                    : '0%'
-                }}
-              />
-            </div>
-            {checkProgress && checkProgress.total > 0 && (
-              <p className="text-xs text-gray-400 mt-1">
-                {Math.round((checkProgress.processed / checkProgress.total) * 100)}% complete
-              </p>
             )}
           </div>
         )}
