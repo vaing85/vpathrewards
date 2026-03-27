@@ -1,5 +1,5 @@
 // Minimal service worker for PWA (Phase 3) - caches app shell for offline
-const CACHE_NAME = 'cashback-app-v1';
+const CACHE_NAME = 'cashback-app-v2';
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
