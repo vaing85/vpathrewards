@@ -2,6 +2,14 @@ import express from 'express';
 import { authenticateAdmin, AdminRequest } from '../../middleware/adminAuth';
 import { dbAll, dbGet, dbRun } from '../../database';
 import { sendEmailToUser } from '../../utils/emailService';
+import { auditLog } from '../../middleware/auditLog';
+import { safeDecrypt } from '../../utils/encryption';
+import { createTransfer } from '../../services/stripeConnect';
+
+function decryptRow<T extends { payment_details?: string }>(row: T): T {
+  if (row?.payment_details) return { ...row, payment_details: safeDecrypt(row.payment_details) };
+  return row;
+}
 
 const router = express.Router();
 
@@ -22,15 +30,19 @@ router.get('/', authenticateAdmin, async (req, res) => {
     `;
     
     const params: any[] = [];
-    
+    const ALLOWED_STATUSES = ['pending', 'approved', 'processing', 'completed', 'rejected'];
+
     if (status) {
+      if (!ALLOWED_STATUSES.includes(status as string)) {
+        return res.status(400).json({ error: `Invalid status. Must be one of: ${ALLOWED_STATUSES.join(', ')}` });
+      }
       query += ` WHERE w.status = ?`;
       params.push(status);
     }
     
     query += ` ORDER BY w.requested_at DESC`;
     
-    const withdrawals = await dbAll(query, params);
+    const withdrawals = (await dbAll(query, params)).map(decryptRow);
     res.json(withdrawals);
   } catch (error) {
     console.error('Error fetching withdrawals:', error);
@@ -56,7 +68,7 @@ router.get('/:id', authenticateAdmin, async (req, res) => {
     if (!withdrawal) {
       return res.status(404).json({ error: 'Withdrawal not found' });
     }
-    res.json(withdrawal);
+    res.json(decryptRow(withdrawal));
   } catch (error) {
     console.error('Error fetching withdrawal:', error);
     res.status(500).json({ error: 'Internal server error' });
@@ -93,7 +105,60 @@ router.put('/:id/status', authenticateAdmin, async (req: AdminRequest, res) => {
       }
     }
 
-    // If completing, deduct from user's total earnings
+    // If setting to 'processing' for a bank_transfer, trigger Stripe transfer automatically
+    if (status === 'processing' && withdrawal.payment_method === 'bank_transfer') {
+      const user = await dbGet(
+        'SELECT stripe_account_id FROM users WHERE id = ?',
+        [withdrawal.user_id]
+      ) as { stripe_account_id?: string } | undefined;
+
+      if (!user?.stripe_account_id) {
+        return res.status(400).json({
+          error: 'User has not connected a bank account via Stripe. Ask them to connect at /withdrawals.',
+        });
+      }
+
+      const transfer = await createTransfer(
+        user.stripe_account_id,
+        withdrawal.amount,
+        Number(req.params.id)
+      );
+
+      if (!transfer.success) {
+        return res.status(400).json({ error: `Stripe transfer failed: ${transfer.error}` });
+      }
+
+      // Transfer succeeded — go straight to completed
+      await dbRun(
+        `UPDATE withdrawals SET status = 'completed', admin_notes = ?, processed_by = ?, processed_at = NOW() WHERE id = ?`,
+        [`Stripe transfer: ${transfer.transferId}`, req.userId, req.params.id]
+      );
+      await dbRun(
+        'UPDATE users SET total_earnings = total_earnings - ? WHERE id = ?',
+        [withdrawal.amount, withdrawal.user_id]
+      );
+
+      const completed = await dbGet(`
+        SELECT w.*, u.name as user_name, u.email as user_email, admin.name as processed_by_name
+        FROM withdrawals w
+        JOIN users u ON w.user_id = u.id
+        LEFT JOIN users admin ON w.processed_by = admin.id
+        WHERE w.id = ?
+      `, [req.params.id]) as any;
+
+      sendEmailToUser(completed.user_id, completed.user_email, 'withdrawalStatus', {
+        name: completed.user_name, amount: completed.amount, status: 'completed',
+        adminNotes: `Paid via Stripe — transfer ID: ${transfer.transferId}`,
+      }, 'withdrawal').catch(() => {});
+
+      auditLog({ adminId: req.userId!, action: 'UPDATE_WITHDRAWAL_STATUS', resource: 'withdrawal',
+        resourceId: req.params.id, details: { newStatus: 'completed', previousStatus: withdrawal.status,
+        stripeTransferId: transfer.transferId }, req });
+
+      return res.json(completed ? decryptRow(completed) : completed);
+    }
+
+    // If completing manually (non-bank_transfer), deduct from user's total earnings
     if (status === 'completed' && withdrawal.status !== 'completed') {
       await dbRun(
         'UPDATE users SET total_earnings = total_earnings - ? WHERE id = ?',
@@ -129,6 +194,8 @@ router.put('/:id/status', authenticateAdmin, async (req: AdminRequest, res) => {
       WHERE w.id = ?
     `, [req.params.id]) as any;
 
+    const decrypted = updated ? decryptRow(updated) : updated;
+
     // Send withdrawal status email (async, don't wait)
     if (updated && updated.user_email && updated.status !== 'pending') {
       sendEmailToUser(
@@ -147,7 +214,16 @@ router.put('/:id/status', authenticateAdmin, async (req: AdminRequest, res) => {
       });
     }
 
-    res.json(updated);
+    auditLog({
+      adminId: req.userId!,
+      action: 'UPDATE_WITHDRAWAL_STATUS',
+      resource: 'withdrawal',
+      resourceId: req.params.id,
+      details: { newStatus: status, previousStatus: withdrawal.status, adminNotes: admin_notes },
+      req,
+    });
+
+    res.json(decrypted);
   } catch (error) {
     console.error('Error updating withdrawal status:', error);
     res.status(500).json({ error: 'Internal server error' });

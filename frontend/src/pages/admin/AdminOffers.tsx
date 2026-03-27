@@ -10,23 +10,37 @@ interface Offer {
   title: string;
   description?: string;
   cashback_rate: number;
+  cashback_type?: string;
   commission_rate: number;
   terms?: string;
   affiliate_link: string;
   is_active: number;
   merchant_name?: string;
   end_date?: string;
+  excluded_states?: string;
+}
+
+interface BrokenOffer {
+  id: number;
+  title: string;
+  affiliate_link: string;
+  link_status: string;
+  link_last_checked: string;
+  link_error: string;
+  merchant_name: string;
 }
 
 interface Merchant {
   id: number;
   name: string;
+  category?: string;
 }
 
 interface CsvRow {
   title: string;
   description: string;
   affiliate_link: string;
+  category: string;
   selected: boolean;
 }
 
@@ -57,14 +71,25 @@ const AdminOffers = () => {
   const [editingOffer, setEditingOffer] = useState<Offer | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [pagination, setPagination] = useState<any>(null);
+  const [brokenOffers, setBrokenOffers] = useState<BrokenOffer[]>([]);
+  const [showBrokenOnly, setShowBrokenOnly] = useState(false);
+  const [runningCheck, setRunningCheck] = useState(false);
+  const [checkProgress, setCheckProgress] = useState<{ total: number; processed: number } | null>(null);
+  const [deletingBroken, setDeletingBroken] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [merchantFilter, setMerchantFilter] = useState('');
 
   // CSV import state
   const csvFileRef = useRef<HTMLInputElement>(null);
   const [showCsvModal, setShowCsvModal] = useState(false);
   const [csvRows, setCsvRows] = useState<CsvRow[]>([]);
   const [csvMerchantId, setCsvMerchantId] = useState('');
+  const [csvDetectedMerchant, setCsvDetectedMerchant] = useState('');
   const [csvCashback, setCsvCashback] = useState('');
   const [csvCommission, setCsvCommission] = useState('');
+  const [csvCashbackType, setCsvCashbackType] = useState<'percentage' | 'flat'>('percentage');
+  const [csvNewMerchantMode, setCsvNewMerchantMode] = useState(false);
+  const [csvNewMerchant, setCsvNewMerchant] = useState({ name: '', description: '', website: '', logo_url: '', category: '' });
   const [csvImporting, setCsvImporting] = useState(false);
   const [csvResult, setCsvResult] = useState<{ imported: number; skipped: number } | null>(null);
   const [formData, setFormData] = useState({
@@ -72,11 +97,13 @@ const AdminOffers = () => {
     title: '',
     description: '',
     cashback_rate: '',
+    cashback_type: 'percentage',
     commission_rate: '',
     terms: '',
     affiliate_link: '',
     is_active: true,
     end_date: '',
+    excluded_states: '',
   });
 
   useEffect(() => {
@@ -86,6 +113,56 @@ const AdminOffers = () => {
     }
     fetchData();
   }, [isAuthenticated, navigate, currentPage]);
+
+  const fetchBrokenOffers = async () => {
+    try {
+      const res = await apiClient.get('/admin/offers/link-status/broken');
+      setBrokenOffers(res.data?.data || []);
+    } catch {
+      // silently ignore — link checker may not have run yet
+    }
+  };
+
+  const handleRunLinkCheck = async () => {
+    setRunningCheck(true);
+    setCheckProgress(null);
+
+    // Start polling for progress
+    const pollInterval = setInterval(async () => {
+      try {
+        const res = await apiClient.get('/admin/jobs/progress');
+        if (res.data?.running) {
+          setCheckProgress({ total: res.data.total, processed: res.data.processed });
+        }
+      } catch {}
+    }, 2000);
+
+    try {
+      await apiClient.post('/admin/jobs/run', { jobName: 'link-checker' });
+      await fetchBrokenOffers();
+    } catch (err) {
+      console.error('Link check failed:', err);
+    } finally {
+      clearInterval(pollInterval);
+      setRunningCheck(false);
+      setCheckProgress(null);
+    }
+  };
+
+  const handleDeleteAllBroken = async () => {
+    if (!confirm(`Delete all ${brokenOffers.length} broken/expired offers? This cannot be undone.`)) return;
+    setDeletingBroken(true);
+    try {
+      await apiClient.delete('/admin/offers/broken');
+      setBrokenOffers([]);
+      fetchData();
+    } catch (err) {
+      console.error('Delete broken failed:', err);
+      alert('Failed to delete broken offers. Please try again.');
+    } finally {
+      setDeletingBroken(false);
+    }
+  };
 
   const fetchData = async () => {
     try {
@@ -114,6 +191,7 @@ const AdminOffers = () => {
     } finally {
       setLoading(false);
     }
+    fetchBrokenOffers();
   };
 
   const handleOpenModal = (offer?: Offer) => {
@@ -124,11 +202,13 @@ const AdminOffers = () => {
         title: offer.title,
         description: offer.description || '',
         cashback_rate: offer.cashback_rate.toString(),
+        cashback_type: offer.cashback_type || 'percentage',
         commission_rate: offer.commission_rate?.toString() || '',
         terms: offer.terms || '',
         affiliate_link: offer.affiliate_link,
         is_active: offer.is_active === 1,
         end_date: offer.end_date ? offer.end_date.slice(0, 10) : '',
+        excluded_states: offer.excluded_states || '',
       });
     } else {
       setEditingOffer(null);
@@ -137,11 +217,13 @@ const AdminOffers = () => {
         title: '',
         description: '',
         cashback_rate: '',
+        cashback_type: 'percentage',
         commission_rate: '',
         terms: '',
         affiliate_link: '',
         is_active: true,
         end_date: '',
+        excluded_states: '',
       });
     }
     setShowModal(true);
@@ -160,6 +242,7 @@ const AdminOffers = () => {
         merchant_id: parseInt(formData.merchant_id),
         cashback_rate: parseFloat(formData.cashback_rate),
         commission_rate: formData.commission_rate ? parseFloat(formData.commission_rate) : 0,
+        excluded_states: formData.excluded_states.trim().toUpperCase() || null,
       };
       if (editingOffer) {
         await apiClient.put(`/admin/offers/${editingOffer.id}`, payload);
@@ -186,38 +269,74 @@ const AdminOffers = () => {
   const handleCsvFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    setCsvRows([]); setCsvResult(null); setCsvMerchantId(''); setCsvCashback(''); setCsvCommission('');
+    setCsvRows([]); setCsvResult(null); setCsvMerchantId(''); setCsvDetectedMerchant('');
+    setCsvCashback(''); setCsvCommission(''); setCsvCashbackType('percentage');
+    setCsvNewMerchantMode(false); setCsvNewMerchant({ name: '', description: '', website: '', logo_url: '', category: '' });
     const reader = new FileReader();
     reader.onload = (ev) => {
       const text = ev.target?.result as string;
       const lines = text.split('\n').filter(l => l.trim());
       const delim = detectDelimiter(lines[0]);
       const header = parseCsvLine(lines[0], delim);
-      const nameIdx = header.findIndex(h => h === 'NAME');
-      const descIdx = header.findIndex(h => h === 'DESCRIPTION');
-      const urlIdx  = header.findIndex(h => h === 'CLICK URL');
-      const langIdx = header.findIndex(h => h === 'LANGUAGE');
+      const nameIdx    = header.findIndex(h => h === 'NAME');
+      const descIdx    = header.findIndex(h => h === 'DESCRIPTION');
+      const urlIdx     = header.findIndex(h => h === 'CLICK URL');
+      const langIdx    = header.findIndex(h => h === 'LANGUAGE');
+      const advIdx     = header.findIndex(h => h === 'ADVERTISER NAME' || h === 'ADVERTISER');
+      const advUrlIdx  = header.findIndex(h => h === 'ADVERTISER URL' || h === 'ADVERTISER WEBSITE');
+      const catIdx     = header.findIndex(h => h === 'CATEGORY' || h === 'CATEGORY NAME');
 
-      // If it's a CJ CSV/TSV, filter English and map columns
+      // CJ CSV/TSV format: has NAME and CLICK URL columns
       if (nameIdx !== -1 && urlIdx !== -1) {
         const rows: CsvRow[] = [];
+        let detectedAdvertiser = '';
+        let detectedWebsite = '';
+        let detectedCategory = '';
         for (let i = 1; i < lines.length; i++) {
           const cols = parseCsvLine(lines[i], delim);
           if (langIdx !== -1 && cols[langIdx] !== 'English') continue;
-          const title = cols[nameIdx] || '';
-          const desc  = descIdx !== -1 ? cols[descIdx] : '';
-          const url   = cols[urlIdx] || '';
+          const title    = cols[nameIdx] || '';
+          const desc     = descIdx !== -1 ? cols[descIdx] : '';
+          const url      = cols[urlIdx] || '';
+          const category = catIdx !== -1 ? cols[catIdx] : '';
+          const advName  = advIdx !== -1 ? cols[advIdx] : '';
+          const advUrl   = advUrlIdx !== -1 ? cols[advUrlIdx] : '';
           if (!title || !url) continue;
-          rows.push({ title, description: desc, affiliate_link: url, selected: true });
+          if (!detectedAdvertiser && advName) detectedAdvertiser = advName;
+          if (!detectedWebsite && advUrl) detectedWebsite = advUrl;
+          if (!detectedCategory && category) detectedCategory = category;
+          rows.push({ title, description: desc, affiliate_link: url, category, selected: true });
         }
         setCsvRows(rows);
+        if (detectedAdvertiser) {
+          setCsvDetectedMerchant(detectedAdvertiser);
+          const lower = detectedAdvertiser.toLowerCase();
+          const match = merchants.find(m =>
+            m.name.toLowerCase() === lower ||
+            m.name.toLowerCase().includes(lower) ||
+            lower.includes(m.name.toLowerCase())
+          );
+          if (match) {
+            setCsvMerchantId(String(match.id));
+          } else {
+            // No existing merchant match — pre-fill new merchant form
+            setCsvNewMerchantMode(true);
+            setCsvNewMerchant({
+              name: detectedAdvertiser,
+              description: '',
+              website: detectedWebsite,
+              logo_url: '',
+              category: detectedCategory,
+            });
+          }
+        }
       } else {
-        // Simple CSV: title, description, affiliate_link
+        // Simple CSV: title, description, affiliate_link, category (optional 4th col)
         const rows: CsvRow[] = [];
         for (let i = 1; i < lines.length; i++) {
           const cols = parseCsvLine(lines[i], delim);
           if (!cols[0] || !cols[2]) continue;
-          rows.push({ title: cols[0], description: cols[1] || '', affiliate_link: cols[2], selected: true });
+          rows.push({ title: cols[0], description: cols[1] || '', affiliate_link: cols[2], category: cols[3] || '', selected: true });
         }
         setCsvRows(rows);
       }
@@ -229,16 +348,35 @@ const AdminOffers = () => {
 
   const handleCsvImport = async () => {
     const selected = csvRows.filter(r => r.selected);
-    if (!csvMerchantId || !csvCashback || selected.length === 0) return;
+    if (!csvCashback || selected.length === 0) return;
+    if (!csvNewMerchantMode && !csvMerchantId) return;
+    if (csvNewMerchantMode && !csvNewMerchant.name.trim()) return;
     setCsvImporting(true);
     try {
+      let merchantId = parseInt(csvMerchantId);
+
+      // Create merchant first if in new-merchant mode
+      if (csvNewMerchantMode) {
+        const mRes = await apiClient.post('/admin/merchants', {
+          name: csvNewMerchant.name.trim(),
+          description: csvNewMerchant.description.trim() || undefined,
+          website_url: csvNewMerchant.website.trim() || undefined,
+          logo_url: csvNewMerchant.logo_url.trim() || undefined,
+          category: csvNewMerchant.category.trim() || undefined,
+        });
+        merchantId = mRes.data.id;
+        await fetchData(); // refresh merchants list
+      }
+
       const payload = selected.map(r => ({
-        merchant_id: parseInt(csvMerchantId),
+        merchant_id: merchantId,
         title: r.title,
         description: r.description,
         affiliate_link: r.affiliate_link,
         cashback_rate: parseFloat(csvCashback),
         commission_rate: csvCommission ? parseFloat(csvCommission) : 0,
+        cashback_type: csvCashbackType,
+        category: r.category || null,
       }));
       const res = await apiClient.post('/admin/offers/bulk', { offers: payload });
       setCsvResult(res.data);
@@ -258,10 +396,17 @@ const AdminOffers = () => {
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="flex justify-between items-center mb-8">
+        <div className="flex justify-between items-center mb-4">
           <h1 className="text-3xl font-bold text-gray-800">Offers</h1>
           <div className="flex gap-2">
             <input ref={csvFileRef} type="file" accept=".csv" onChange={handleCsvFile} className="hidden" />
+            <button
+              onClick={handleRunLinkCheck}
+              disabled={runningCheck}
+              className="bg-yellow-500 hover:bg-yellow-600 disabled:opacity-50 text-white px-4 py-2 rounded-lg text-sm font-medium"
+            >
+              {runningCheck ? 'Checking…' : '🔗 Check Links'}
+            </button>
             <button
               onClick={() => csvFileRef.current?.click()}
               className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-medium"
@@ -276,6 +421,176 @@ const AdminOffers = () => {
             </button>
           </div>
         </div>
+
+        {/* Link Check Progress Bar */}
+        {runningCheck && (
+          <div className="mb-6 bg-yellow-50 border border-yellow-300 rounded-lg px-5 py-4">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-sm font-semibold text-yellow-800">Checking affiliate links...</span>
+              <span className="text-sm font-medium text-yellow-700">
+                {checkProgress ? `${checkProgress.processed} / ${checkProgress.total}` : 'Starting…'}
+              </span>
+            </div>
+            <div className="w-full bg-yellow-200 rounded-full h-3 overflow-hidden">
+              <div
+                className="bg-yellow-500 h-3 rounded-full transition-all duration-500"
+                style={{
+                  width: checkProgress && checkProgress.total > 0
+                    ? `${Math.round((checkProgress.processed / checkProgress.total) * 100)}%`
+                    : '4%'
+                }}
+              />
+            </div>
+            {checkProgress && checkProgress.total > 0 && (
+              <p className="text-xs text-yellow-600 mt-1">
+                {Math.round((checkProgress.processed / checkProgress.total) * 100)}% complete
+              </p>
+            )}
+          </div>
+        )}
+
+        {/* Broken Links Banner */}
+        {brokenOffers.length > 0 && (
+          <div className="mb-6 rounded-lg border border-red-200 bg-red-50 p-4">
+            <div className="flex items-center justify-between flex-wrap gap-3">
+              <div className="flex items-center gap-3">
+                <span className="text-red-600 text-xl">⚠</span>
+                <div>
+                  <p className="font-semibold text-red-800">
+                    {brokenOffers.length} offer{brokenOffers.length !== 1 ? 's' : ''} with broken or expired links
+                  </p>
+                  <p className="text-sm text-red-600">Review and deactivate or update these offers.</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <button
+                  onClick={() => setShowBrokenOnly(v => !v)}
+                  className="text-sm px-3 py-1.5 rounded border border-red-300 text-red-700 hover:bg-red-100"
+                >
+                  {showBrokenOnly ? 'Hide details' : 'Show details'}
+                </button>
+                <button
+                  onClick={handleRunLinkCheck}
+                  disabled={runningCheck}
+                  className="text-sm px-3 py-1.5 rounded bg-red-600 hover:bg-red-700 text-white disabled:opacity-50"
+                >
+                  {runningCheck ? 'Checking…' : 'Re-check Now'}
+                </button>
+                <button
+                  onClick={handleDeleteAllBroken}
+                  disabled={deletingBroken}
+                  className="text-sm px-3 py-1.5 rounded bg-gray-800 hover:bg-gray-900 text-white disabled:opacity-50"
+                >
+                  {deletingBroken ? 'Deleting…' : `🗑 Delete All (${brokenOffers.length})`}
+                </button>
+              </div>
+            </div>
+
+            {showBrokenOnly && (
+              <div className="mt-4 overflow-x-auto">
+                <table className="min-w-full text-sm divide-y divide-red-200">
+                  <thead>
+                    <tr className="text-left text-xs font-medium text-red-700 uppercase">
+                      <th className="pb-2 pr-4">ID</th>
+                      <th className="pb-2 pr-4">Merchant</th>
+                      <th className="pb-2 pr-4">Title</th>
+                      <th className="pb-2 pr-4">Status</th>
+                      <th className="pb-2 pr-4">Error / Reason</th>
+                      <th className="pb-2 pr-4">Last Checked</th>
+                      <th className="pb-2">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-red-100">
+                    {brokenOffers.map(bo => (
+                      <tr key={bo.id} className="align-top">
+                        <td className="py-2 pr-4 text-gray-500">{bo.id}</td>
+                        <td className="py-2 pr-4 font-medium text-gray-800">{bo.merchant_name || '—'}</td>
+                        <td className="py-2 pr-4 text-gray-700 max-w-xs truncate" title={bo.title}>{bo.title}</td>
+                        <td className="py-2 pr-4">
+                          <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${
+                            bo.link_status === 'expired'
+                              ? 'bg-yellow-100 text-yellow-800'
+                              : 'bg-red-100 text-red-800'
+                          }`}>
+                            {bo.link_status}
+                          </span>
+                        </td>
+                        <td className="py-2 pr-4 text-gray-500 max-w-xs truncate" title={bo.link_error}>{bo.link_error || '—'}</td>
+                        <td className="py-2 pr-4 text-gray-400 whitespace-nowrap">
+                          {bo.link_last_checked ? new Date(bo.link_last_checked).toLocaleString() : '—'}
+                        </td>
+                        <td className="py-2 whitespace-nowrap space-x-2">
+                          <button
+                            onClick={() => handleOpenModal(offers.find(o => o.id === bo.id))}
+                            className="text-primary-600 hover:text-primary-900 text-xs"
+                          >
+                            Edit
+                          </button>
+                          <button
+                            onClick={async () => {
+                              try {
+                                await apiClient.put(`/admin/offers/${bo.id}`, { is_active: false });
+                                fetchData();
+                              } catch {}
+                            }}
+                            className="text-red-600 hover:text-red-900 text-xs"
+                          >
+                            Deactivate
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Stats Bar */}
+        {!loading && (
+          <div className="grid grid-cols-3 gap-4 mb-6">
+            <div className="bg-white rounded-lg shadow px-5 py-4">
+              <p className="text-xs text-gray-500 uppercase font-medium">Total Offers</p>
+              <p className="text-2xl font-bold text-gray-800">{pagination?.total ?? offers.length}</p>
+            </div>
+            <div className="bg-white rounded-lg shadow px-5 py-4">
+              <p className="text-xs text-gray-500 uppercase font-medium">Active</p>
+              <p className="text-2xl font-bold text-green-600">{offers.filter(o => o.is_active === 1).length}</p>
+            </div>
+            <div className="bg-white rounded-lg shadow px-5 py-4">
+              <p className="text-xs text-gray-500 uppercase font-medium">Inactive</p>
+              <p className="text-2xl font-bold text-gray-400">{offers.filter(o => o.is_active !== 1).length}</p>
+            </div>
+          </div>
+        )}
+
+        {/* Search & Filter */}
+        {!loading && (
+          <div className="flex gap-3 mb-4 flex-wrap">
+            <input
+              type="text"
+              placeholder="Search offers..."
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              className="flex-1 min-w-48 border border-gray-300 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+            />
+            <select
+              value={merchantFilter}
+              onChange={e => setMerchantFilter(e.target.value)}
+              className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+            >
+              <option value="">All Merchants</option>
+              {Array.from(new Set(merchants.map(m => m.category || 'Uncategorized'))).sort().map(cat => (
+                <optgroup key={cat} label={cat}>
+                  {merchants.filter(m => (m.category || 'Uncategorized') === cat).map(m => (
+                    <option key={m.id} value={m.id}>{m.name}</option>
+                  ))}
+                </optgroup>
+              ))}
+            </select>
+          </div>
+        )}
 
         {loading ? (
           <div className="text-center py-12">Loading...</div>
@@ -295,7 +610,12 @@ const AdminOffers = () => {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {offers.map((offer) => (
+                {offers.filter(o => {
+                  const q = searchQuery.toLowerCase();
+                  const matchSearch = !q || o.title.toLowerCase().includes(q) || (o.merchant_name || '').toLowerCase().includes(q);
+                  const matchMerchant = !merchantFilter || o.merchant_id === parseInt(merchantFilter);
+                  return matchSearch && matchMerchant;
+                }).map((offer) => (
                   <tr key={offer.id}>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                       {offer.merchant_name}
@@ -361,41 +681,160 @@ const AdminOffers = () => {
         {showCsvModal && (
           <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
             <div className="relative top-8 mx-auto p-6 border max-w-4xl shadow-lg rounded-lg bg-white mb-8">
-              <div className="flex justify-between items-center mb-4">
+              <div className="flex justify-between items-center mb-5">
                 <h3 className="text-lg font-bold text-gray-900">Import Offers from CSV</h3>
                 <button onClick={() => setShowCsvModal(false)} className="text-gray-400 hover:text-gray-600 text-xl font-bold">×</button>
               </div>
 
-              {/* Step 1 — Settings */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
-                <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Merchant *</label>
-                  <select
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
-                    value={csvMerchantId}
-                    onChange={e => setCsvMerchantId(e.target.value)}
-                  >
-                    <option value="">Select merchant</option>
-                    {merchants.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
-                  </select>
+              {/* Step 1 — Merchant */}
+              <div className="mb-5">
+                <div className="flex items-center justify-between mb-2">
+                  <h4 className="text-sm font-semibold text-gray-700">Merchant</h4>
+                  <div className="flex gap-3 text-xs">
+                    <button
+                      onClick={() => setCsvNewMerchantMode(false)}
+                      className={`px-3 py-1 rounded-full border ${!csvNewMerchantMode ? 'bg-primary-600 text-white border-primary-600' : 'border-gray-300 text-gray-600 hover:bg-gray-50'}`}
+                    >
+                      Use existing
+                    </button>
+                    <button
+                      onClick={() => setCsvNewMerchantMode(true)}
+                      className={`px-3 py-1 rounded-full border ${csvNewMerchantMode ? 'bg-primary-600 text-white border-primary-600' : 'border-gray-300 text-gray-600 hover:bg-gray-50'}`}
+                    >
+                      + Create new
+                    </button>
+                  </div>
                 </div>
-                <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">User Cashback % *</label>
-                  <input type="number" step="0.1" min="0" className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" value={csvCashback} onChange={e => setCsvCashback(e.target.value)} placeholder="e.g. 2" />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">CJ Commission %</label>
-                  <input type="number" step="0.1" min="0" className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" value={csvCommission} onChange={e => setCsvCommission(e.target.value)} placeholder="e.g. 4" />
-                </div>
+
+                {!csvNewMerchantMode ? (
+                  <div>
+                    <select
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                      value={csvMerchantId}
+                      onChange={e => setCsvMerchantId(e.target.value)}
+                    >
+                      <option value="">Select merchant</option>
+                      {Array.from(new Set(merchants.map(m => m.category || 'Uncategorized'))).sort().map(cat => (
+                        <optgroup key={cat} label={cat}>
+                          {merchants.filter(m => (m.category || 'Uncategorized') === cat).map(m => (
+                            <option key={m.id} value={m.id}>{m.name}</option>
+                          ))}
+                        </optgroup>
+                      ))}
+                    </select>
+                    {csvDetectedMerchant && (
+                      <p className={`text-xs mt-1 ${csvMerchantId ? 'text-green-600' : 'text-amber-600'}`}>
+                        {csvMerchantId ? `✓ Auto-matched: ${csvDetectedMerchant}` : `⚠ No match for "${csvDetectedMerchant}" — select above or create new`}
+                      </p>
+                    )}
+                  </div>
+                ) : (
+                  <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 space-y-3">
+                    <p className="text-xs text-gray-500">A new merchant will be created and linked to these offers.</p>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-xs font-medium text-gray-700 mb-1">Merchant Name *</label>
+                        <input
+                          type="text"
+                          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                          value={csvNewMerchant.name}
+                          onChange={e => setCsvNewMerchant(m => ({ ...m, name: e.target.value }))}
+                          placeholder="e.g. Amazon"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-gray-700 mb-1">Category</label>
+                        <input
+                          type="text"
+                          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                          value={csvNewMerchant.category}
+                          onChange={e => setCsvNewMerchant(m => ({ ...m, category: e.target.value }))}
+                          placeholder="e.g. Shopping"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-gray-700 mb-1">Website URL</label>
+                        <input
+                          type="text"
+                          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                          value={csvNewMerchant.website}
+                          onChange={e => setCsvNewMerchant(m => ({ ...m, website: e.target.value }))}
+                          placeholder="https://example.com"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-gray-700 mb-1">Logo URL</label>
+                        <input
+                          type="text"
+                          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                          value={csvNewMerchant.logo_url}
+                          onChange={e => setCsvNewMerchant(m => ({ ...m, logo_url: e.target.value }))}
+                          placeholder="https://example.com/logo.png"
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 mb-1">Description</label>
+                      <textarea
+                        rows={2}
+                        className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                        value={csvNewMerchant.description}
+                        onChange={e => setCsvNewMerchant(m => ({ ...m, description: e.target.value }))}
+                        placeholder="Short description of this merchant"
+                      />
+                    </div>
+                  </div>
+                )}
               </div>
 
-              {csvCashback && csvCommission && parseFloat(csvCommission) > 0 && (
-                <div className="text-xs text-green-700 bg-green-50 px-3 py-2 rounded-md mb-3 inline-block">
-                  Your margin: {(parseFloat(csvCommission) - parseFloat(csvCashback)).toFixed(1)}% per transaction
+              {/* Step 2 — Commission Settings */}
+              <div className="mb-5">
+                <h4 className="text-sm font-semibold text-gray-700 mb-2">Commission Settings</h4>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">Cashback Type</label>
+                    <select
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                      value={csvCashbackType}
+                      onChange={e => setCsvCashbackType(e.target.value as 'percentage' | 'flat')}
+                    >
+                      <option value="percentage">Percentage (%)</option>
+                      <option value="flat">Flat amount ($)</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">
+                      User Cashback {csvCashbackType === 'percentage' ? '(%)' : '($)'} *
+                    </label>
+                    <input
+                      type="number" step="0.01" min="0"
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                      value={csvCashback}
+                      onChange={e => setCsvCashback(e.target.value)}
+                      placeholder={csvCashbackType === 'percentage' ? 'e.g. 5' : 'e.g. 3.00'}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">
+                      CJ Commission {csvCashbackType === 'percentage' ? '(%)' : '($)'}
+                    </label>
+                    <input
+                      type="number" step="0.01" min="0"
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                      value={csvCommission}
+                      onChange={e => setCsvCommission(e.target.value)}
+                      placeholder={csvCashbackType === 'percentage' ? 'e.g. 10' : 'e.g. 10.00'}
+                    />
+                  </div>
                 </div>
-              )}
+                {csvCashback && csvCommission && parseFloat(csvCommission) > 0 && csvCashbackType === 'percentage' && (
+                  <p className="text-xs text-green-700 bg-green-50 px-3 py-2 rounded-md mt-2 inline-block">
+                    Margin: {(parseFloat(csvCommission) - parseFloat(csvCashback)).toFixed(2)}% per transaction
+                  </p>
+                )}
+              </div>
 
-              {/* Step 2 — Preview */}
+              {/* Step 3 — Preview */}
               {csvRows.length > 0 && (
                 <>
                   <div className="flex items-center justify-between mb-2">
@@ -406,13 +845,14 @@ const AdminOffers = () => {
                       <button onClick={() => toggleAll(false)} className="text-gray-500 hover:underline">Deselect all</button>
                     </div>
                   </div>
-                  <div className="border border-gray-200 rounded-lg overflow-hidden mb-4 max-h-80 overflow-y-auto">
+                  <div className="border border-gray-200 rounded-lg overflow-hidden mb-4 max-h-72 overflow-y-auto">
                     <table className="min-w-full text-xs divide-y divide-gray-200">
                       <thead className="bg-gray-50 sticky top-0">
                         <tr>
                           <th className="px-3 py-2 text-left w-8"></th>
                           <th className="px-3 py-2 text-left font-medium text-gray-600">Title</th>
-                          <th className="px-3 py-2 text-left font-medium text-gray-600 w-64">Affiliate Link</th>
+                          <th className="px-3 py-2 text-left font-medium text-gray-600">Category</th>
+                          <th className="px-3 py-2 text-left font-medium text-gray-600 w-56">Affiliate Link</th>
                         </tr>
                       </thead>
                       <tbody className="bg-white divide-y divide-gray-100">
@@ -422,6 +862,7 @@ const AdminOffers = () => {
                               <input type="checkbox" checked={row.selected} onChange={e => setCsvRows(rows => rows.map((r, j) => j === i ? { ...r, selected: e.target.checked } : r))} />
                             </td>
                             <td className="px-3 py-2 text-gray-800 max-w-xs truncate">{row.title}</td>
+                            <td className="px-3 py-2 text-gray-500 whitespace-nowrap">{row.category || <span className="text-gray-300">—</span>}</td>
                             <td className="px-3 py-2 text-gray-400 truncate max-w-xs">{row.affiliate_link}</td>
                           </tr>
                         ))}
@@ -438,7 +879,12 @@ const AdminOffers = () => {
                   <div className="flex gap-3">
                     <button
                       onClick={handleCsvImport}
-                      disabled={csvImporting || !csvMerchantId || !csvCashback || csvRows.filter(r => r.selected).length === 0}
+                      disabled={
+                        csvImporting || !csvCashback ||
+                        (!csvNewMerchantMode && !csvMerchantId) ||
+                        (csvNewMerchantMode && !csvNewMerchant.name.trim()) ||
+                        csvRows.filter(r => r.selected).length === 0
+                      }
                       className="bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white text-sm font-medium px-5 py-2 rounded-lg"
                     >
                       {csvImporting ? 'Importing...' : `Import ${csvRows.filter(r => r.selected).length} Offers`}
@@ -475,10 +921,12 @@ const AdminOffers = () => {
                       onChange={(e) => setFormData({ ...formData, merchant_id: e.target.value })}
                     >
                       <option value="">Select merchant</option>
-                      {merchants.map((m) => (
-                        <option key={m.id} value={m.id}>
-                          {m.name}
-                        </option>
+                      {Array.from(new Set(merchants.map(m => m.category || 'Uncategorized'))).sort().map(cat => (
+                        <optgroup key={cat} label={cat}>
+                          {merchants.filter(m => (m.category || 'Uncategorized') === cat).map(m => (
+                            <option key={m.id} value={m.id}>{m.name}</option>
+                          ))}
+                        </optgroup>
                       ))}
                     </select>
                   </div>
@@ -500,9 +948,23 @@ const AdminOffers = () => {
                       onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                     />
                   </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Cashback Type *</label>
+                    <select
+                      required
+                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm"
+                      value={formData.cashback_type}
+                      onChange={(e) => setFormData({ ...formData, cashback_type: e.target.value })}
+                    >
+                      <option value="percentage">Percentage (%)</option>
+                      <option value="flat">Flat ($)</option>
+                    </select>
+                  </div>
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700">User Cashback (%) *</label>
+                      <label className="block text-sm font-medium text-gray-700">
+                        User Cashback ({formData.cashback_type === 'flat' ? '$' : '%'}) *
+                      </label>
                       <input
                         type="number"
                         step="0.1"
@@ -513,7 +975,7 @@ const AdminOffers = () => {
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700">CJ Commission (%)</label>
+                      <label className="block text-sm font-medium text-gray-700">CJ Commission ($)</label>
                       <input
                         type="number"
                         step="0.1"
@@ -521,7 +983,7 @@ const AdminOffers = () => {
                         className="mt-1 block w-full rounded-md border-gray-300 shadow-sm"
                         value={formData.commission_rate}
                         onChange={(e) => setFormData({ ...formData, commission_rate: e.target.value })}
-                        placeholder="e.g. 8"
+                        placeholder="e.g. 20"
                       />
                     </div>
                   </div>
@@ -546,6 +1008,19 @@ const AdminOffers = () => {
                       className="mt-1 block w-full rounded-md border-gray-300 shadow-sm"
                       value={formData.terms}
                       onChange={(e) => setFormData({ ...formData, terms: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">
+                      Excluded States
+                      <span className="ml-1 text-xs text-gray-400">(comma-separated, e.g. CA,IA,UT,WA)</span>
+                    </label>
+                    <input
+                      type="text"
+                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm"
+                      value={formData.excluded_states}
+                      onChange={(e) => setFormData({ ...formData, excluded_states: e.target.value.toUpperCase() })}
+                      placeholder="e.g. CA,IA,UT,WA"
                     />
                   </div>
                   <div>
