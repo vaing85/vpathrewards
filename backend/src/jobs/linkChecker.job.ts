@@ -107,9 +107,11 @@ const linkCheckerJob: JobDefinition<LinkCheckerPayload, LinkCheckerResult> = {
   async run(payload: LinkCheckerPayload = {}, _ctx?: JobContext): Promise<JobResult<LinkCheckerResult>> {
     const { dryRun = false, offerId } = payload;
 
+    // Also include inactive offers that were previously marked broken/unknown
+    // so they can be re-checked and potentially restored
     const query = offerId
-      ? 'SELECT id, title, affiliate_link, end_date FROM offers WHERE is_active = 1 AND id = $1'
-      : 'SELECT id, title, affiliate_link, end_date FROM offers WHERE is_active = 1';
+      ? 'SELECT id, title, affiliate_link, end_date FROM offers WHERE id = $1'
+      : "SELECT id, title, affiliate_link, end_date FROM offers WHERE is_active = 1 OR link_status IN ('broken', 'unknown')";
 
     const params = offerId ? [offerId] : [];
     const offers = await dbAll(query, params) as Array<{
@@ -129,6 +131,8 @@ const linkCheckerJob: JobDefinition<LinkCheckerPayload, LinkCheckerResult> = {
     };
 
     startProgress('link-checker', offers.length);
+
+    let lastDomain = '';
 
     for (const offer of offers) {
       const now = new Date();
@@ -156,14 +160,12 @@ const linkCheckerJob: JobDefinition<LinkCheckerPayload, LinkCheckerResult> = {
       const check = await checkUrl(offer.affiliate_link);
 
       if (!dryRun) {
-        const isActive = check.status === 'ok' ? 1 : check.status === 'broken' ? 0 : null;
-        const updateQuery = isActive !== null
-          ? 'UPDATE offers SET link_status = $1, link_last_checked = NOW(), link_error = $2, is_active = $3 WHERE id = $4'
-          : 'UPDATE offers SET link_status = $1, link_last_checked = NOW(), link_error = $2 WHERE id = $3';
-        const updateParams = isActive !== null
-          ? [check.status, check.reason || null, isActive, offer.id]
-          : [check.status, check.reason || null, offer.id];
-        await dbRun(updateQuery, updateParams);
+        // ok → active, broken → inactive, unknown → restore to active (benefit of the doubt)
+        const isActive = check.status === 'broken' ? 0 : 1;
+        await dbRun(
+          'UPDATE offers SET link_status = $1, link_last_checked = NOW(), link_error = $2, is_active = $3 WHERE id = $4',
+          [check.status, check.reason || null, isActive, offer.id]
+        );
       }
 
       if (check.status === 'ok') {
@@ -182,8 +184,11 @@ const linkCheckerJob: JobDefinition<LinkCheckerPayload, LinkCheckerResult> = {
 
       incrementProgress();
 
-      // Small delay between requests to avoid hammering servers
-      await new Promise(resolve => setTimeout(resolve, 500));
+      // Delay between requests — 2s normally, 4s if same domain was just checked
+      const offerDomain = (() => { try { return new URL(offer.affiliate_link).hostname; } catch { return ''; } })();
+      const delay = offerDomain === lastDomain ? 4000 : 2000;
+      lastDomain = offerDomain;
+      await new Promise(resolve => setTimeout(resolve, delay));
     }
 
     clearProgress();
