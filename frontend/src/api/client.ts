@@ -30,7 +30,7 @@ apiClient.interceptors.request.use(async (config: InternalAxiosRequestConfig) =>
   // Attach Bearer token for cross-origin requests (cookies are blocked by browsers)
   const url = config.url ?? '';
   if (url.includes('/admin/') || url.startsWith('/admin')) {
-    const adminToken = sessionStorage.getItem('admin_token');
+    const adminToken = localStorage.getItem('admin_token');
     if (adminToken) config.headers['Authorization'] = `Bearer ${adminToken}`;
   } else {
     const userToken = sessionStorage.getItem('user_token');
