@@ -44,18 +44,22 @@ interface CsvRow {
   selected: boolean;
 }
 
-// Parse a CJ CSV line respecting quoted fields
-const parseCsvLine = (line: string): string[] => {
+// Parse a CJ CSV/TSV line respecting quoted fields
+const parseCsvLine = (line: string, delimiter = ','): string[] => {
   const cols: string[] = [];
   let cur = '', inQ = false;
   for (const ch of line) {
     if (ch === '"') inQ = !inQ;
-    else if (ch === ',' && !inQ) { cols.push(cur); cur = ''; }
+    else if (ch === delimiter && !inQ) { cols.push(cur); cur = ''; }
     else cur += ch;
   }
   cols.push(cur);
   return cols.map(c => c.replace(/^"|"$/g, '').trim());
 };
+
+// Detect delimiter from header line (tab vs comma)
+const detectDelimiter = (header: string): string =>
+  header.includes('\t') ? '\t' : ',';
 
 const AdminOffers = () => {
   const { isAuthenticated } = useAdmin();
@@ -272,7 +276,8 @@ const AdminOffers = () => {
     reader.onload = (ev) => {
       const text = ev.target?.result as string;
       const lines = text.split('\n').filter(l => l.trim());
-      const header = parseCsvLine(lines[0]);
+      const delim = detectDelimiter(lines[0]);
+      const header = parseCsvLine(lines[0], delim);
       const nameIdx    = header.findIndex(h => h === 'NAME');
       const descIdx    = header.findIndex(h => h === 'DESCRIPTION');
       const urlIdx     = header.findIndex(h => h === 'CLICK URL');
@@ -281,14 +286,14 @@ const AdminOffers = () => {
       const advUrlIdx  = header.findIndex(h => h === 'ADVERTISER URL' || h === 'ADVERTISER WEBSITE');
       const catIdx     = header.findIndex(h => h === 'CATEGORY' || h === 'CATEGORY NAME');
 
-      // CJ CSV format: has NAME and CLICK URL columns
+      // CJ CSV/TSV format: has NAME and CLICK URL columns
       if (nameIdx !== -1 && urlIdx !== -1) {
         const rows: CsvRow[] = [];
         let detectedAdvertiser = '';
         let detectedWebsite = '';
         let detectedCategory = '';
         for (let i = 1; i < lines.length; i++) {
-          const cols = parseCsvLine(lines[i]);
+          const cols = parseCsvLine(lines[i], delim);
           if (langIdx !== -1 && cols[langIdx] !== 'English') continue;
           const title    = cols[nameIdx] || '';
           const desc     = descIdx !== -1 ? cols[descIdx] : '';
@@ -329,7 +334,7 @@ const AdminOffers = () => {
         // Simple CSV: title, description, affiliate_link, category (optional 4th col)
         const rows: CsvRow[] = [];
         for (let i = 1; i < lines.length; i++) {
-          const cols = parseCsvLine(lines[i]);
+          const cols = parseCsvLine(lines[i], delim);
           if (!cols[0] || !cols[2]) continue;
           rows.push({ title: cols[0], description: cols[1] || '', affiliate_link: cols[2], category: cols[3] || '', selected: true });
         }
