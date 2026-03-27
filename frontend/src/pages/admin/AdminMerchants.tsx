@@ -135,45 +135,45 @@ const AdminMerchants = () => {
         ) : (
           <div className="bg-white rounded-lg shadow overflow-hidden">
             <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
+              <table className="min-w-full divide-y divide-gray-200 table-fixed w-full">
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Category</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Offers</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase w-1/2">Name</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase w-1/4">Category</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase w-16">Offers</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase w-24">Actions</th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {merchants.map((merchant) => (
                   <tr key={merchant.id}>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center">
+                    <td className="px-6 py-4">
+                      <div className="flex items-center min-w-0">
                         {merchant.logo_url && (
                           <LazyImage
                             src={merchant.logo_url}
                             alt={merchant.name}
-                            className="w-10 h-10 object-contain mr-3"
+                            className="w-10 h-10 object-contain mr-3 flex-shrink-0"
                             width={40}
                             height={40}
                             fallback="https://placehold.co/40"
                           />
                         )}
-                        <div>
-                          <div className="text-sm font-medium text-gray-900">{merchant.name}</div>
+                        <div className="min-w-0">
+                          <div className="text-sm font-medium text-gray-900 truncate">{merchant.name}</div>
                           {merchant.description && (
-                            <div className="text-sm text-gray-500">{merchant.description}</div>
+                            <div className="text-sm text-gray-500 truncate max-w-xs">{merchant.description}</div>
                           )}
                         </div>
                       </div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    <td className="px-6 py-4 text-sm text-gray-500 truncate">
                       {merchant.category || '-'}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    <td className="px-4 py-4 text-sm text-gray-500">
                       {merchant.offer_count || 0}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
+                    <td className="px-4 py-4 text-sm font-medium space-x-2">
                       <button
                         onClick={() => handleOpenModal(merchant)}
                         className="text-primary-600 hover:text-primary-900"
