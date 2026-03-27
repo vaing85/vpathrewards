@@ -84,6 +84,10 @@ async function checkUrl(url: string): Promise<{ status: 'ok' | 'broken' | 'unkno
     }
 
     if (response.status === 404) {
+      // CJ links returning 404 may just be bot-blocking — real page works in browser
+      if (isCjOrigin) {
+        return { status: 'unknown', reason: `Bot-blocked 404 at ${finalUrl} — cannot confirm broken` };
+      }
       return { status: 'broken', reason: `404 Not Found at ${finalUrl}` };
     }
 
