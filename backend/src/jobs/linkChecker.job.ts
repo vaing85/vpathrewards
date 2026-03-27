@@ -72,6 +72,12 @@ async function checkUrl(url: string): Promise<{ status: 'ok' | 'broken' | 'unkno
       return { status: 'broken', reason: 'Redirected to CJ error page — link deactivated' };
     }
 
+    // CJ link reached a real merchant domain but got 403 — merchant is blocking bots.
+    // The link itself is still active; mark as unknown rather than broken.
+    if (isCjOrigin && response.status === 403) {
+      return { status: 'unknown', reason: 'CJ link reached merchant but got 403 — likely bot-blocked, not broken' };
+    }
+
     if (response.status === 404) {
       return { status: 'broken', reason: `404 Not Found at ${finalUrl}` };
     }
