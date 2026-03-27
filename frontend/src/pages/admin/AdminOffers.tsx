@@ -33,6 +33,7 @@ interface BrokenOffer {
 interface Merchant {
   id: number;
   name: string;
+  category?: string;
 }
 
 interface CsvRow {
@@ -69,6 +70,9 @@ const AdminOffers = () => {
   const [brokenOffers, setBrokenOffers] = useState<BrokenOffer[]>([]);
   const [showBrokenOnly, setShowBrokenOnly] = useState(false);
   const [runningCheck, setRunningCheck] = useState(false);
+  const [deletingBroken, setDeletingBroken] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [merchantFilter, setMerchantFilter] = useState('');
 
   // CSV import state
   const csvFileRef = useRef<HTMLInputElement>(null);
@@ -123,6 +127,21 @@ const AdminOffers = () => {
       console.error('Link check failed:', err);
     } finally {
       setRunningCheck(false);
+    }
+  };
+
+  const handleDeleteAllBroken = async () => {
+    if (!confirm(`Delete all ${brokenOffers.length} broken/expired offers? This cannot be undone.`)) return;
+    setDeletingBroken(true);
+    try {
+      await apiClient.delete('/admin/offers/broken');
+      setBrokenOffers([]);
+      fetchData();
+    } catch (err) {
+      console.error('Delete broken failed:', err);
+      alert('Failed to delete broken offers. Please try again.');
+    } finally {
+      setDeletingBroken(false);
     }
   };
 
@@ -396,7 +415,7 @@ const AdminOffers = () => {
                   <p className="text-sm text-red-600">Review and deactivate or update these offers.</p>
                 </div>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 <button
                   onClick={() => setShowBrokenOnly(v => !v)}
                   className="text-sm px-3 py-1.5 rounded border border-red-300 text-red-700 hover:bg-red-100"
@@ -408,7 +427,14 @@ const AdminOffers = () => {
                   disabled={runningCheck}
                   className="text-sm px-3 py-1.5 rounded bg-red-600 hover:bg-red-700 text-white disabled:opacity-50"
                 >
-                  {runningCheck ? 'Checking…' : 'Run Check Now'}
+                  {runningCheck ? 'Checking…' : 'Re-check Now'}
+                </button>
+                <button
+                  onClick={handleDeleteAllBroken}
+                  disabled={deletingBroken}
+                  className="text-sm px-3 py-1.5 rounded bg-gray-800 hover:bg-gray-900 text-white disabled:opacity-50"
+                >
+                  {deletingBroken ? 'Deleting…' : `🗑 Delete All (${brokenOffers.length})`}
                 </button>
               </div>
             </div>
@@ -474,6 +500,51 @@ const AdminOffers = () => {
           </div>
         )}
 
+        {/* Stats Bar */}
+        {!loading && (
+          <div className="grid grid-cols-3 gap-4 mb-6">
+            <div className="bg-white rounded-lg shadow px-5 py-4">
+              <p className="text-xs text-gray-500 uppercase font-medium">Total Offers</p>
+              <p className="text-2xl font-bold text-gray-800">{pagination?.total ?? offers.length}</p>
+            </div>
+            <div className="bg-white rounded-lg shadow px-5 py-4">
+              <p className="text-xs text-gray-500 uppercase font-medium">Active</p>
+              <p className="text-2xl font-bold text-green-600">{offers.filter(o => o.is_active === 1).length}</p>
+            </div>
+            <div className="bg-white rounded-lg shadow px-5 py-4">
+              <p className="text-xs text-gray-500 uppercase font-medium">Inactive</p>
+              <p className="text-2xl font-bold text-gray-400">{offers.filter(o => o.is_active !== 1).length}</p>
+            </div>
+          </div>
+        )}
+
+        {/* Search & Filter */}
+        {!loading && (
+          <div className="flex gap-3 mb-4 flex-wrap">
+            <input
+              type="text"
+              placeholder="Search offers..."
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              className="flex-1 min-w-48 border border-gray-300 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+            />
+            <select
+              value={merchantFilter}
+              onChange={e => setMerchantFilter(e.target.value)}
+              className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+            >
+              <option value="">All Merchants</option>
+              {Array.from(new Set(merchants.map(m => m.category || 'Uncategorized'))).sort().map(cat => (
+                <optgroup key={cat} label={cat}>
+                  {merchants.filter(m => (m.category || 'Uncategorized') === cat).map(m => (
+                    <option key={m.id} value={m.id}>{m.name}</option>
+                  ))}
+                </optgroup>
+              ))}
+            </select>
+          </div>
+        )}
+
         {loading ? (
           <div className="text-center py-12">Loading...</div>
         ) : (
@@ -492,7 +563,12 @@ const AdminOffers = () => {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {offers.map((offer) => (
+                {offers.filter(o => {
+                  const q = searchQuery.toLowerCase();
+                  const matchSearch = !q || o.title.toLowerCase().includes(q) || (o.merchant_name || '').toLowerCase().includes(q);
+                  const matchMerchant = !merchantFilter || o.merchant_id === parseInt(merchantFilter);
+                  return matchSearch && matchMerchant;
+                }).map((offer) => (
                   <tr key={offer.id}>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                       {offer.merchant_name}
@@ -591,7 +667,13 @@ const AdminOffers = () => {
                       onChange={e => setCsvMerchantId(e.target.value)}
                     >
                       <option value="">Select merchant</option>
-                      {merchants.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
+                      {Array.from(new Set(merchants.map(m => m.category || 'Uncategorized'))).sort().map(cat => (
+                        <optgroup key={cat} label={cat}>
+                          {merchants.filter(m => (m.category || 'Uncategorized') === cat).map(m => (
+                            <option key={m.id} value={m.id}>{m.name}</option>
+                          ))}
+                        </optgroup>
+                      ))}
                     </select>
                     {csvDetectedMerchant && (
                       <p className={`text-xs mt-1 ${csvMerchantId ? 'text-green-600' : 'text-amber-600'}`}>
@@ -792,10 +874,12 @@ const AdminOffers = () => {
                       onChange={(e) => setFormData({ ...formData, merchant_id: e.target.value })}
                     >
                       <option value="">Select merchant</option>
-                      {merchants.map((m) => (
-                        <option key={m.id} value={m.id}>
-                          {m.name}
-                        </option>
+                      {Array.from(new Set(merchants.map(m => m.category || 'Uncategorized'))).sort().map(cat => (
+                        <optgroup key={cat} label={cat}>
+                          {merchants.filter(m => (m.category || 'Uncategorized') === cat).map(m => (
+                            <option key={m.id} value={m.id}>{m.name}</option>
+                          ))}
+                        </optgroup>
                       ))}
                     </select>
                   </div>

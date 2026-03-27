@@ -235,6 +235,34 @@ router.get('/link-status/broken', authenticateAdmin, async (_req, res) => {
   }
 });
 
+// Delete all broken/expired offers
+router.delete('/broken', authenticateAdmin, async (_req, res) => {
+  try {
+    const broken = await dbAll(
+      `SELECT id FROM offers WHERE link_status IN ('broken', 'expired')`,
+      []
+    ) as Array<{ id: number }>;
+
+    if (broken.length === 0) {
+      return res.json({ deleted: 0 });
+    }
+
+    const ids = broken.map(o => o.id);
+    const placeholders = ids.map(() => '?').join(',');
+
+    await dbRun(`DELETE FROM user_favorites WHERE offer_id IN (${placeholders})`, ids);
+    await dbRun(`DELETE FROM affiliate_clicks WHERE offer_id IN (${placeholders})`, ids);
+    await dbRun(`DELETE FROM conversions WHERE offer_id IN (${placeholders})`, ids);
+    await dbRun(`DELETE FROM cashback_transactions WHERE offer_id IN (${placeholders})`, ids);
+    await dbRun(`DELETE FROM offers WHERE id IN (${placeholders})`, ids);
+
+    res.json({ deleted: ids.length });
+  } catch (error) {
+    console.error('Error deleting broken offers:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 router.delete('/:id', authenticateAdmin, async (req, res) => {
   try {
     const offer = await dbGet('SELECT * FROM offers WHERE id = ?', [req.params.id]);
