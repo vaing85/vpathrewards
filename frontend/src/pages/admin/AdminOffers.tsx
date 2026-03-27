@@ -131,7 +131,7 @@ const AdminOffers = () => {
           setCheckProgress({ total: res.data.total, processed: res.data.processed });
         }
       } catch {}
-    }, 800);
+    }, 2000);
 
     try {
       await apiClient.post('/admin/jobs/run', { jobName: 'link-checker' });
