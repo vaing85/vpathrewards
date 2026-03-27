@@ -116,8 +116,8 @@ export const validateMerchant = [
   body('description')
     .optional()
     .trim()
-    .isLength({ max: 1000 })
-    .withMessage('Description must be less than 1000 characters'),
+    .isLength({ max: 5000 })
+    .withMessage('Description must be less than 5000 characters'),
   body('category')
     .optional()
     .trim()
