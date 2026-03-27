@@ -19,6 +19,9 @@ export default defineConfig({
       }
     }
   },
+  preview: {
+    allowedHosts: ['www.vpathrewards.store', 'vpathrewards.store'],
+  },
   build: {
     outDir: 'dist',
     sourcemap: false,
