@@ -19,34 +19,42 @@ export const PLANS = {
   free: {
     name: 'Free',
     priceId: '',
-    amountCents: 0,
-    cashbackBonus: 0,
+    amountCents: 0,       // $0/month
+    cashbackBonus: 0,     // earn 1% (base offer rate)
     description: 'Standard cashback rates',
-    features: ['Standard cashback rates', 'Access to all offers', 'Withdrawal requests'],
+    features: ['1% cashback on all offers', 'Access to all offers', 'Withdrawal requests'],
+  },
+  bronze: {
+    name: 'Bronze',
+    priceId: process.env.STRIPE_BRONZE_PRICE_ID || '',
+    amountCents: 499,     // $4.99/month
+    cashbackBonus: 1.0,   // earn 2%
+    description: 'Earn 2% cashback on all offers',
+    features: ['2% cashback on all offers', 'All Free features', 'Priority email support'],
   },
   silver: {
     name: 'Silver',
     priceId: process.env.STRIPE_SILVER_PRICE_ID || '',
-    amountCents: 499, // $4.99/month
-    cashbackBonus: 0.5, // +0.5%
-    description: '+0.5% bonus on all cashback',
-    features: ['+0.5% bonus cashback', 'All Free features', 'Priority email support'],
+    amountCents: 999,     // $9.99/month
+    cashbackBonus: 2.0,   // earn 3%
+    description: 'Earn 3% cashback on all offers',
+    features: ['3% cashback on all offers', 'All Bronze features', 'Early access to new offers'],
   },
   gold: {
     name: 'Gold',
     priceId: process.env.STRIPE_GOLD_PRICE_ID || '',
-    amountCents: 999, // $9.99/month
-    cashbackBonus: 1.0, // +1%
-    description: '+1% bonus on all cashback',
-    features: ['+1% bonus cashback', 'All Silver features', 'Early access to new offers'],
+    amountCents: 1499,    // $14.99/month
+    cashbackBonus: 3.0,   // earn 4%
+    description: 'Earn 4% cashback on all offers',
+    features: ['4% cashback on all offers', 'All Silver features', 'Exclusive gold offers'],
   },
   platinum: {
     name: 'Platinum',
     priceId: process.env.STRIPE_PLATINUM_PRICE_ID || '',
-    amountCents: 1999, // $19.99/month
-    cashbackBonus: 2.0, // +2%
-    description: '+2% bonus on all cashback',
-    features: ['+2% bonus cashback', 'All Gold features', 'Dedicated support', 'Exclusive platinum offers'],
+    amountCents: 1999,    // $19.99/month
+    cashbackBonus: 4.0,   // earn 5%
+    description: 'Earn 5% cashback on all offers',
+    features: ['5% cashback on all offers', 'All Gold features', 'Dedicated support', 'Exclusive platinum offers'],
   },
 } as const;
 

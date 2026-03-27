@@ -52,9 +52,9 @@ router.post('/checkout', authenticateToken, async (req: AuthRequest, res) => {
     if (!user) return res.status(404).json({ error: 'User not found' });
 
     const { plan = 'gold' } = req.body;
-    const validPlans: PlanKey[] = ['silver', 'gold', 'platinum'];
+    const validPlans: PlanKey[] = ['bronze', 'silver', 'gold', 'platinum'];
     if (!validPlans.includes(plan as PlanKey)) {
-      return res.status(400).json({ error: 'Invalid plan. Choose silver, gold, or platinum.' });
+      return res.status(400).json({ error: 'Invalid plan. Choose bronze, silver, gold, or platinum.' });
     }
 
     const currentSub = await getUserSubscription(req.userId!);
