@@ -18,8 +18,8 @@ if (!jwtSecret) {
 export const securityConfig = {
   jwt: {
     secret: jwtSecret || 'dev-only-insecure-secret',
-    /** Short-lived access token: 15 minutes. */
-    expiresIn: process.env.JWT_EXPIRES_IN || '15m',
+    /** Short-lived access token: 2 hours. */
+    expiresIn: process.env.JWT_EXPIRES_IN || '2h',
     /** Long-lived admin token: 7 days (admins have no refresh flow). */
     adminExpiresIn: process.env.ADMIN_JWT_EXPIRES_IN || '7d',
     /** Refresh token lifetime in milliseconds (7 days). */
