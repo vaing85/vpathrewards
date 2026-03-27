@@ -23,14 +23,18 @@ router.get('/', async (req, res) => {
     // Search merchants if type is 'all' or 'merchants'
     if (!type || type === 'all' || type === 'merchants') {
       const merchants = await dbAll(`
-        SELECT 
+        SELECT
           m.*,
-          COUNT(o.id) as offer_count,
-          MAX(o.cashback_rate) as max_cashback
+          COALESCE(offer_stats.offer_count, 0) as offer_count,
+          COALESCE(offer_stats.max_cashback, 0) as max_cashback
         FROM merchants m
-        LEFT JOIN offers o ON m.id = o.merchant_id AND o.is_active = 1
+        LEFT JOIN (
+          SELECT merchant_id, COUNT(*) as offer_count, MAX(cashback_rate) as max_cashback
+          FROM offers
+          WHERE is_active = 1
+          GROUP BY merchant_id
+        ) offer_stats ON m.id = offer_stats.merchant_id
         WHERE m.name LIKE ? OR m.description LIKE ?
-        GROUP BY m.id
         ORDER BY m.name
         LIMIT 10
       `, [searchPattern, searchPattern]);
