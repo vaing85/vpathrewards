@@ -6,6 +6,7 @@
 import express from 'express';
 import { authenticateAdmin, AdminRequest } from '../../middleware/adminAuth';
 import { runJob, JOB_NAMES } from '../../jobs';
+import { getProgress } from '../../jobs/progress';
 
 const router = express.Router();
 
@@ -37,6 +38,11 @@ router.post('/run', authenticateAdmin, async (req: AdminRequest, res: express.Re
     console.error('Admin job run error:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
+});
+
+router.get('/progress', authenticateAdmin, (_req: AdminRequest, res: express.Response) => {
+  const progress = getProgress();
+  res.json(progress ?? { running: false, total: 0, processed: 0 });
 });
 
 router.get('/names', authenticateAdmin, (_req: AdminRequest, res: express.Response) => {
