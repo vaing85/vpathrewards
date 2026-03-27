@@ -5,6 +5,7 @@
  */
 import { dbAll, dbRun } from '../database';
 import { sendAdminNotification } from '../utils/emailService';
+import { startProgress, incrementProgress, clearProgress } from './progress';
 import type { JobContext, JobDefinition, JobResult } from './types';
 
 export interface LinkCheckerPayload {
@@ -29,8 +30,20 @@ const BROWSER_HEADERS = {
   'Accept-Language': 'en-US,en;q=0.5',
 };
 
-// CJ affiliate domains — if we end up here after redirect, link is broken
-const CJ_DOMAINS = ['cj.com', 'commission.junction.com', 'cj-sandbox.com'];
+// CJ affiliate tracking domains — links that START here are CJ affiliate links
+const CJ_TRACKING_DOMAINS = [
+  'anrdoezrs.net', 'tkqlhce.com', 'dpbolvw.net', 'jdoqocy.com',
+  'kqzyfj.com', 'lduhtrk.com', 'qksrv.net', 'yceml.net',
+  'awltovhc.com', 'emjcd.com', 'ftjcfx.com', 'ojrq.net',
+  'pntrs.com', 'pxlwd.com', 'rzlt.io', 'tqlkg.com',
+  'xhpkr.com', 'xjvst.com', 'zkdas.com',
+];
+
+// CJ error/deactivated domains — if we END UP here after redirect, link is broken
+const CJ_ERROR_DOMAINS = [
+  'cj.com', 'commission.junction.com', 'cj-sandbox.com',
+  ...CJ_TRACKING_DOMAINS,
+];
 
 async function checkUrl(url: string): Promise<{ status: 'ok' | 'broken' | 'unknown'; reason?: string }> {
   const controller = new AbortController();
@@ -47,9 +60,15 @@ async function checkUrl(url: string): Promise<{ status: 'ok' | 'broken' | 'unkno
     clearTimeout(timeout);
 
     const finalUrl = response.url;
+    const isCjOrigin = CJ_TRACKING_DOMAINS.some(d => url.includes(d));
 
-    // If final URL landed on a CJ domain, the link is deactivated
-    if (CJ_DOMAINS.some(domain => finalUrl.includes(domain))) {
+    // If final URL landed on a CJ domain after redirect, the link is deactivated
+    // Exception: if the link started AND ended on a CJ tracking domain with a non-error
+    // status, mark as unknown (CJ may require browser/cookies to fully resolve)
+    if (CJ_ERROR_DOMAINS.some(domain => finalUrl.includes(domain))) {
+      if (isCjOrigin && response.status < 400) {
+        return { status: 'unknown', reason: 'CJ encrypted link — could not verify final destination (requires browser)' };
+      }
       return { status: 'broken', reason: 'Redirected to CJ error page — link deactivated' };
     }
 
@@ -97,6 +116,8 @@ const linkCheckerJob: JobDefinition<LinkCheckerPayload, LinkCheckerResult> = {
       unknown: 0,
       brokenOffers: [],
     };
+
+    startProgress('link-checker', offers.length);
 
     for (const offer of offers) {
       const now = new Date();
@@ -148,9 +169,13 @@ const linkCheckerJob: JobDefinition<LinkCheckerPayload, LinkCheckerResult> = {
         result.unknown++;
       }
 
+      incrementProgress();
+
       // Small delay between requests to avoid hammering servers
       await new Promise(resolve => setTimeout(resolve, 500));
     }
+
+    clearProgress();
 
     // Send admin notification if any broken/expired links found
     if (!dryRun && result.brokenOffers.length > 0) {
