@@ -25,7 +25,7 @@ function setAccessCookie(res: express.Response, token: string) {
     httpOnly: true,
     secure: isCrossOrigin,
     sameSite: isCrossOrigin ? 'none' : 'lax',
-    maxAge: 15 * 60 * 1000, // 15 minutes
+    maxAge: 2 * 60 * 60 * 1000, // 2 hours
     path: '/',
   });
 }
