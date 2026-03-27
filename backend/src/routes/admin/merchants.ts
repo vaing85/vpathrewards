@@ -22,12 +22,15 @@ router.get('/', authenticateAdmin, async (req, res) => {
     const totalPages = Math.ceil(total / limitNum);
     
     const merchants = await dbAll(`
-      SELECT 
+      SELECT
         m.*,
-        COUNT(o.id) as offer_count
+        COALESCE(offer_stats.offer_count, 0) as offer_count
       FROM merchants m
-      LEFT JOIN offers o ON m.id = o.merchant_id
-      GROUP BY m.id
+      LEFT JOIN (
+        SELECT merchant_id, COUNT(*) as offer_count
+        FROM offers
+        GROUP BY merchant_id
+      ) offer_stats ON m.id = offer_stats.merchant_id
       ORDER BY m.created_at DESC
       LIMIT ? OFFSET ?
     `, [limitNum, offset]);
