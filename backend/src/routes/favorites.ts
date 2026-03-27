@@ -31,17 +31,21 @@ router.get('/', authenticateToken, async (req: AuthRequest, res) => {
     
     if (!type || type === 'all' || type === 'merchants') {
       const favoriteMerchants = await dbAll(`
-        SELECT 
+        SELECT
           uf.id as favorite_id,
           uf.created_at as favorited_at,
           m.*,
-          COUNT(DISTINCT o.id) as offer_count,
-          MAX(o.cashback_rate) as max_cashback
+          COALESCE(offer_stats.offer_count, 0) as offer_count,
+          COALESCE(offer_stats.max_cashback, 0) as max_cashback
         FROM user_favorites uf
         JOIN merchants m ON uf.merchant_id = m.id
-        LEFT JOIN offers o ON m.id = o.merchant_id AND o.is_active = 1
+        LEFT JOIN (
+          SELECT merchant_id, COUNT(*) as offer_count, MAX(cashback_rate) as max_cashback
+          FROM offers
+          WHERE is_active = 1
+          GROUP BY merchant_id
+        ) offer_stats ON m.id = offer_stats.merchant_id
         WHERE uf.user_id = ? AND uf.merchant_id IS NOT NULL
-        GROUP BY m.id, uf.id, uf.created_at
         ORDER BY uf.created_at DESC
       `, [req.userId]);
       favorites = favorites.concat(favoriteMerchants.map(f => ({ ...f, type: 'merchant' })));
