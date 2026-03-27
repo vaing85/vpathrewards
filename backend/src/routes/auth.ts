@@ -7,6 +7,7 @@ import { securityConfig } from '../config/securityConfig';
 import { sendEmail, sendEmailToUser } from '../utils/emailService';
 import { validateRegister, validateLogin } from '../middleware/validation';
 import { authenticateToken, AuthRequest } from '../middleware/auth';
+import { verifyTurnstile } from '../utils/verifyTurnstile';
 
 const router = express.Router();
 
@@ -121,7 +122,11 @@ router.post('/logout', async (req: express.Request, res: express.Response) => {
 // Register
 router.post('/register', validateRegister, async (req: express.Request, res: express.Response) => {
   try {
-    const { email, password, name, referral_code } = req.body;
+    const { email, password, name, referral_code, turnstileToken } = req.body;
+
+    if (!await verifyTurnstile(turnstileToken)) {
+      return res.status(400).json({ error: 'Bot verification failed. Please try again.' });
+    }
 
     if (!email || !password || !name) {
       return res.status(400).json({ error: 'Email, password, and name are required' });
@@ -178,7 +183,11 @@ router.post('/register', validateRegister, async (req: express.Request, res: exp
 // Login
 router.post('/login', validateLogin, async (req: express.Request, res: express.Response) => {
   try {
-    const { email, password } = req.body;
+    const { email, password, turnstileToken } = req.body;
+
+    if (!await verifyTurnstile(turnstileToken)) {
+      return res.status(400).json({ error: 'Bot verification failed. Please try again.' });
+    }
 
     if (!email || !password) {
       return res.status(400).json({ error: 'Email and password are required' });
@@ -210,8 +219,12 @@ router.post('/login', validateLogin, async (req: express.Request, res: express.R
 // Forgot Password — sends reset link
 router.post('/forgot-password', async (req: express.Request, res: express.Response) => {
   try {
-    const { email } = req.body;
+    const { email, turnstileToken } = req.body;
     if (!email) return res.status(400).json({ error: 'Email is required' });
+
+    if (!await verifyTurnstile(turnstileToken)) {
+      return res.status(400).json({ error: 'Bot verification failed. Please try again.' });
+    }
 
     const user = await dbGet('SELECT id, name, email FROM users WHERE email = ?', [email]) as any;
     if (!user) return res.json({ message: 'If that email exists, a reset link has been sent.' });
