@@ -7,11 +7,17 @@ export interface AppError extends Error {
 }
 
 export const errorHandler = (
-  err: AppError,
+  err: AppError & { code?: string },
   req: Request,
   res: Response,
   next: NextFunction
 ) => {
+  // CSRF failures get a recognisable code so they're easy to spot in logs.
+  if (err.code === 'EBADCSRFTOKEN') {
+    console.error('CSRF validation failed:', { url: req.url, method: req.method, ip: req.ip });
+    return res.status(403).json({ error: 'CSRF validation failed' });
+  }
+
   console.error('Error:', {
     message: err.message,
     stack: appConfig.isDevelopment ? err.stack : undefined,

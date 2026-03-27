@@ -1,6 +1,7 @@
 import express from 'express';
 import { dbAll, dbGet } from '../database';
 import { appConfig } from '../config/appConfig';
+import { getClientIp, getStateFromIp, isGeoBlocked } from '../utils/geoFilter';
 
 const router = express.Router();
 
@@ -114,8 +115,13 @@ router.get('/', async (req, res) => {
     query += ` LIMIT ? OFFSET ?`;
     params.push(limitNum, offset);
     
-    const offers = await dbAll(query, params);
-    
+    const rawOffers = await dbAll(query, params) as any[];
+
+    // Geo-filter: remove offers that are not available in the user's state
+    const clientIp = getClientIp(req as any);
+    const userState = await getStateFromIp(clientIp);
+    const offers = rawOffers.filter((o) => !isGeoBlocked(o.excluded_states, userState));
+
     res.json({
       data: offers || [],
       pagination: {
@@ -154,6 +160,14 @@ router.get('/:id', async (req, res) => {
     if (!offer) {
       return res.status(404).json({ error: 'Offer not found' });
     }
+
+    // Geo-check: block if offer is not available in the user's state
+    const clientIp = getClientIp(req as any);
+    const userState = await getStateFromIp(clientIp);
+    if (isGeoBlocked((offer as any).excluded_states, userState)) {
+      return res.status(403).json({ error: 'This offer is not available in your state.' });
+    }
+
     res.json(offer);
   } catch (error) {
     console.error('Error fetching offer:', error);

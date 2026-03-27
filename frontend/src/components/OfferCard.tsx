@@ -7,6 +7,7 @@ interface Offer {
   title: string;
   description?: string;
   cashback_rate: number;
+  cashback_type?: string;
   merchant_name?: string;
   merchant_logo?: string;
   terms?: string;
@@ -47,7 +48,7 @@ const OfferCard = ({ offer }: OfferCardProps) => {
                 className="w-12 h-12 object-contain rounded flex-shrink-0"
                 width={48}
                 height={48}
-                fallback="https://via.placeholder.com/48"
+                fallback="https://placehold.co/48"
               />
             )}
             <div className="min-w-0">
@@ -55,8 +56,10 @@ const OfferCard = ({ offer }: OfferCardProps) => {
               <p className="text-sm text-gray-500 truncate">{offer.title}</p>
             </div>
           </div>
-          <div className="bg-primary-600 text-white px-4 py-2 rounded-lg flex-shrink-0">
-            <div className="text-2xl font-bold">{offer.cashback_rate}%</div>
+          <div className="bg-primary-600 text-white px-4 py-2 rounded-lg flex-shrink-0 text-center">
+            <div className="text-2xl font-bold">
+              {offer.cashback_type === 'flat' ? `$${offer.cashback_rate}` : `${offer.cashback_rate}%`}
+            </div>
             <div className="text-xs">Cashback</div>
           </div>
         </div>

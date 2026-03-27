@@ -139,6 +139,19 @@ CREATE TABLE IF NOT EXISTS user_favorites (
   )
 );
 
+-- Merchant banners
+CREATE TABLE IF NOT EXISTS merchant_banners (
+  id          SERIAL PRIMARY KEY,
+  merchant_id INTEGER NOT NULL REFERENCES merchants(id) ON DELETE CASCADE,
+  image_url   TEXT NOT NULL,
+  click_url   TEXT,
+  width       INTEGER,
+  height      INTEGER,
+  alt_text    TEXT,
+  is_active   INTEGER DEFAULT 1,
+  created_at  TIMESTAMPTZ DEFAULT NOW()
+);
+
 -- Merchant reviews
 CREATE TABLE IF NOT EXISTS merchant_reviews (
   id          SERIAL PRIMARY KEY,
@@ -158,6 +171,7 @@ CREATE TABLE IF NOT EXISTS subscriptions (
   stripe_subscription_id TEXT UNIQUE,
   plan                   TEXT DEFAULT 'free',
   status                 TEXT DEFAULT 'active',
+  current_period_start   TIMESTAMPTZ,
   current_period_end     TIMESTAMPTZ,
   created_at             TIMESTAMPTZ DEFAULT NOW(),
   updated_at             TIMESTAMPTZ DEFAULT NOW()
@@ -229,3 +243,77 @@ CREATE INDEX IF NOT EXISTS idx_subscriptions_plan_status      ON subscriptions(p
 CREATE UNIQUE INDEX IF NOT EXISTS idx_favorites_user_merchant
   ON user_favorites(user_id, merchant_id)
   WHERE merchant_id IS NOT NULL;
+
+-- ============================================================
+-- Row Level Security (RLS)
+-- ============================================================
+-- The Express backend connects via DATABASE_URL as the postgres
+-- superuser and bypasses RLS automatically. These policies lock
+-- down Supabase's PostgREST so no data leaks through the REST
+-- API. All application access must go through the backend API.
+-- ============================================================
+
+-- Sensitive tables — no PostgREST access
+ALTER TABLE users                 ENABLE ROW LEVEL SECURITY;
+ALTER TABLE cashback_transactions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE withdrawals           ENABLE ROW LEVEL SECURITY;
+ALTER TABLE user_referral_codes   ENABLE ROW LEVEL SECURITY;
+ALTER TABLE referral_relationships ENABLE ROW LEVEL SECURITY;
+ALTER TABLE referral_earnings     ENABLE ROW LEVEL SECURITY;
+ALTER TABLE affiliate_clicks      ENABLE ROW LEVEL SECURITY;
+ALTER TABLE conversions           ENABLE ROW LEVEL SECURITY;
+ALTER TABLE user_favorites        ENABLE ROW LEVEL SECURITY;
+ALTER TABLE subscriptions         ENABLE ROW LEVEL SECURITY;
+ALTER TABLE cashback_goals        ENABLE ROW LEVEL SECURITY;
+ALTER TABLE merchant_banners      ENABLE ROW LEVEL SECURITY;
+
+-- Public catalogue tables — anonymous read allowed
+ALTER TABLE merchants        ENABLE ROW LEVEL SECURITY;
+ALTER TABLE offers           ENABLE ROW LEVEL SECURITY;
+ALTER TABLE merchant_reviews ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "merchants_anon_read"
+  ON merchants FOR SELECT TO anon USING (true);
+
+CREATE POLICY "offers_anon_read"
+  ON offers FOR SELECT TO anon USING (is_active = 1);
+
+CREATE POLICY "merchant_reviews_anon_read"
+  ON merchant_reviews FOR SELECT TO anon USING (true);
+
+-- Explicit deny-all policies for sensitive tables
+CREATE POLICY "deny_all_affiliate_clicks"
+  ON affiliate_clicks FOR ALL TO anon, authenticated USING (false);
+
+CREATE POLICY "deny_all_cashback_goals"
+  ON cashback_goals FOR ALL TO anon, authenticated USING (false);
+
+CREATE POLICY "deny_all_cashback_transactions"
+  ON cashback_transactions FOR ALL TO anon, authenticated USING (false);
+
+CREATE POLICY "deny_all_conversions"
+  ON conversions FOR ALL TO anon, authenticated USING (false);
+
+CREATE POLICY "deny_all_merchant_banners"
+  ON merchant_banners FOR ALL TO anon, authenticated USING (false);
+
+CREATE POLICY "deny_all_referral_earnings"
+  ON referral_earnings FOR ALL TO anon, authenticated USING (false);
+
+CREATE POLICY "deny_all_referral_relationships"
+  ON referral_relationships FOR ALL TO anon, authenticated USING (false);
+
+CREATE POLICY "deny_all_subscriptions"
+  ON subscriptions FOR ALL TO anon, authenticated USING (false);
+
+CREATE POLICY "deny_all_user_favorites"
+  ON user_favorites FOR ALL TO anon, authenticated USING (false);
+
+CREATE POLICY "deny_all_user_referral_codes"
+  ON user_referral_codes FOR ALL TO anon, authenticated USING (false);
+
+CREATE POLICY "deny_all_users"
+  ON users FOR ALL TO anon, authenticated USING (false);
+
+CREATE POLICY "deny_all_withdrawals"
+  ON withdrawals FOR ALL TO anon, authenticated USING (false);

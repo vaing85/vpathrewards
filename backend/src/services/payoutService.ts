@@ -1,10 +1,18 @@
 import { dbAll, dbGet, dbRun } from '../database';
 import { sendEmailToUser } from '../utils/emailService';
+import { encrypt, safeDecrypt } from '../utils/encryption';
 
 export const MIN_WITHDRAWAL_AMOUNT = 10.0;
 
+function decryptWithdrawal<T extends { payment_details?: string }>(row: T): T {
+  if (row?.payment_details) {
+    return { ...row, payment_details: safeDecrypt(row.payment_details) };
+  }
+  return row;
+}
+
 export async function getWithdrawalHistory(userId: number) {
-  return dbAll(
+  const rows = await dbAll(
     `SELECT w.*, u.name as processed_by_name
      FROM withdrawals w
      LEFT JOIN users u ON w.processed_by = u.id
@@ -12,16 +20,18 @@ export async function getWithdrawalHistory(userId: number) {
      ORDER BY w.requested_at DESC`,
     [userId]
   );
+  return rows.map(decryptWithdrawal);
 }
 
 export async function getWithdrawalById(userId: number, withdrawalId: string | number) {
-  return dbGet(
+  const row = await dbGet(
     `SELECT w.*, u.name as processed_by_name
      FROM withdrawals w
      LEFT JOIN users u ON w.processed_by = u.id
      WHERE w.id = ? AND w.user_id = ?`,
     [withdrawalId, userId]
   );
+  return row ? decryptWithdrawal(row) : undefined;
 }
 
 export async function getAvailableBalance(userId: number) {
@@ -63,12 +73,16 @@ export async function createWithdrawalRequest(userId: number, input: CreateWithd
   if (amount > availableBalance) return { error: 'insufficient_balance' };
   if (amount < MIN_WITHDRAWAL_AMOUNT) return { error: 'below_minimum' };
 
+  // Encrypt payment_details before persisting
+  const encryptedDetails = encrypt(payment_details);
+
   const result = await dbRun(
     'INSERT INTO withdrawals (user_id, amount, payment_method, payment_details, status) VALUES (?, ?, ?, ?, ?)',
-    [userId, amount, payment_method, payment_details, 'pending']
+    [userId, amount, payment_method, encryptedDetails, 'pending']
   );
   const withdrawalId = (result as { lastID: number }).lastID;
-  const withdrawal = await dbGet('SELECT * FROM withdrawals WHERE id = ?', [withdrawalId]);
+  const row = await dbGet('SELECT * FROM withdrawals WHERE id = ?', [withdrawalId]);
+  const withdrawal = row ? decryptWithdrawal(row) : row;
 
   sendEmailToUser(
     userId,

@@ -9,6 +9,10 @@ export interface AdminRequest extends Request {
 }
 
 export const authenticateAdmin = async (req: AdminRequest, res: Response, next: NextFunction) => {
+  // Admin routes require a Bearer JWT in the Authorization header.
+  // Cookie-based fallback is intentionally removed: the Bearer token lives in
+  // sessionStorage (not readable cross-origin), which provides equivalent CSRF
+  // protection and avoids cross-origin third-party cookie restrictions.
   const authHeader = req.headers['authorization'];
   const token = authHeader && authHeader.split(' ')[1];
 
@@ -20,10 +24,11 @@ export const authenticateAdmin = async (req: AdminRequest, res: Response, next: 
     const decoded = jwt.verify(token, securityConfig.jwt.secret) as any;
     req.userId = decoded.userId;
 
-    // Check if user is admin
-    const user = await dbGet('SELECT is_admin FROM users WHERE id = ?', [decoded.userId]) as { is_admin: number } | undefined;
-    
-    if (!user || user.is_admin !== 1) {
+    // Check if user is admin — use truthy check so it works whether
+    // PostgreSQL returns is_admin as integer 1 or boolean true.
+    const user = await dbGet('SELECT is_admin FROM users WHERE id = ?', [decoded.userId]) as { is_admin: number | boolean } | undefined;
+
+    if (!user || !user.is_admin) {
       return res.status(403).json({ error: 'Admin access required' });
     }
 

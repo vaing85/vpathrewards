@@ -1,5 +1,6 @@
 import { dbAll, dbGet, dbRun } from '../database';
 import { createReferralEarning, computeCashbackAmount } from './rewards-core';
+import { PLANS, PlanKey } from './stripeService';
 
 export interface PaginationOptions {
   page: number;
@@ -222,7 +223,14 @@ export async function deleteGoal(userId: number, goalId: string | number) {
 export async function trackCashback(userId: number, offerId: number, purchaseAmount: number) {
   const offer = await dbGet('SELECT * FROM offers WHERE id = ? AND is_active = 1', [offerId]) as { id: number; cashback_rate: number } | undefined;
   if (!offer) return null;
-  const cashbackAmount = computeCashbackAmount(purchaseAmount, offer.cashback_rate);
+
+  // Apply tier bonus on top of base cashback rate
+  const user = await dbGet('SELECT subscription_plan FROM users WHERE id = ?', [userId]) as { subscription_plan: string } | undefined;
+  const plan = (user?.subscription_plan || 'free') as PlanKey;
+  const tierBonus = PLANS[plan]?.cashbackBonus ?? 0;
+  const effectiveRate = offer.cashback_rate + tierBonus;
+
+  const cashbackAmount = computeCashbackAmount(purchaseAmount, effectiveRate);
   const result = await dbRun(
     'INSERT INTO cashback_transactions (user_id, offer_id, amount, status) VALUES (?, ?, ?, ?)',
     [userId, offerId, cashbackAmount, 'pending']
@@ -230,5 +238,5 @@ export async function trackCashback(userId: number, offerId: number, purchaseAmo
   const transactionId = (result as { lastID: number }).lastID;
   await dbRun('UPDATE users SET total_earnings = total_earnings + ? WHERE id = ?', [cashbackAmount, userId]);
   createReferralEarning(userId, transactionId, cashbackAmount).catch(err => console.error('Error creating referral earning:', err));
-  return { transactionId, cashbackAmount };
+  return { transactionId, cashbackAmount, tierBonus, effectiveRate };
 }

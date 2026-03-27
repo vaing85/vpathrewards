@@ -267,6 +267,70 @@ export const sendEmailToUser = async (
 };
 
 // ---------------------------------------------------------------------------
+// Admin notifications
+// ---------------------------------------------------------------------------
+export const sendAdminNotification = async (
+  adminEmail: string,
+  template: 'brokenLinks',
+  data: any
+): Promise<boolean> => {
+  try {
+    if (!process.env.RESEND_API_KEY) return false;
+
+    let subject = '';
+    let html = '';
+
+    if (template === 'brokenLinks') {
+      const rows = data.offers.map((o: any) => `
+        <tr>
+          <td style="padding:8px;border-bottom:1px solid #eee;">${o.id}</td>
+          <td style="padding:8px;border-bottom:1px solid #eee;">${o.title}</td>
+          <td style="padding:8px;border-bottom:1px solid #eee;color:#dc2626;">${o.reason}</td>
+          <td style="padding:8px;border-bottom:1px solid #eee;font-size:11px;word-break:break-all;">${o.url}</td>
+        </tr>`).join('');
+
+      subject = `⚠️ V PATHing Rewards — ${data.brokenCount} Broken/Expired Offer Link${data.brokenCount !== 1 ? 's' : ''} Detected`;
+      html = `
+        <div style="font-family:sans-serif;max-width:700px;margin:0 auto;">
+          <h2 style="color:#dc2626;">Broken/Expired Offer Links Detected</h2>
+          <p>The daily link checker found <strong>${data.brokenCount}</strong> offer link(s) that need attention.</p>
+          <p style="color:#6b7280;font-size:13px;">Checked at: ${data.checkedAt}</p>
+          <table style="width:100%;border-collapse:collapse;margin-top:16px;">
+            <thead>
+              <tr style="background:#f3f4f6;">
+                <th style="padding:8px;text-align:left;">ID</th>
+                <th style="padding:8px;text-align:left;">Offer Title</th>
+                <th style="padding:8px;text-align:left;">Reason</th>
+                <th style="padding:8px;text-align:left;">URL</th>
+              </tr>
+            </thead>
+            <tbody>${rows}</tbody>
+          </table>
+          <p style="margin-top:24px;">
+            <a href="${process.env.FRONTEND_URL}/admin/offers" style="background:#2563eb;color:white;padding:10px 20px;border-radius:6px;text-decoration:none;">
+              Review in Admin Panel
+            </a>
+          </p>
+        </div>`;
+    }
+
+    const { error } = await getResend().emails.send({
+      from: FROM_ADDRESS,
+      to: adminEmail,
+      subject,
+      html,
+    });
+
+    if (error) { console.error('Admin notification error:', error); return false; }
+    console.log(`📧 Admin notification sent — ${template}`);
+    return true;
+  } catch (err) {
+    console.error('Error sending admin notification:', err);
+    return false;
+  }
+};
+
+// ---------------------------------------------------------------------------
 // Bulk new offer alerts
 // ---------------------------------------------------------------------------
 export const sendNewOfferAlerts = async (

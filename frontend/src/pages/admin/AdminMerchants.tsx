@@ -156,7 +156,7 @@ const AdminMerchants = () => {
                             className="w-10 h-10 object-contain mr-3"
                             width={40}
                             height={40}
-                            fallback="https://via.placeholder.com/40"
+                            fallback="https://placehold.co/40"
                           />
                         )}
                         <div>
@@ -221,7 +221,7 @@ const AdminMerchants = () => {
                     <input
                       type="text"
                       required
-                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm"
+                      className="mt-1 block w-full border rounded-md border-gray-300 shadow-sm px-3 py-2"
                       value={formData.name}
                       onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                     />
@@ -229,7 +229,7 @@ const AdminMerchants = () => {
                   <div>
                     <label className="block text-sm font-medium text-gray-700">Description</label>
                     <textarea
-                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm"
+                      className="mt-1 block w-full border rounded-md border-gray-300 shadow-sm px-3 py-2"
                       value={formData.description}
                       onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                     />
@@ -237,8 +237,9 @@ const AdminMerchants = () => {
                   <div>
                     <label className="block text-sm font-medium text-gray-700">Logo URL</label>
                     <input
-                      type="url"
-                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm"
+                      type="text"
+                      placeholder="https://example.com/logo.png"
+                      className="mt-1 block w-full border rounded-md border-gray-300 shadow-sm px-3 py-2"
                       value={formData.logo_url}
                       onChange={(e) => setFormData({ ...formData, logo_url: e.target.value })}
                     />
@@ -246,8 +247,9 @@ const AdminMerchants = () => {
                   <div>
                     <label className="block text-sm font-medium text-gray-700">Website URL</label>
                     <input
-                      type="url"
-                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm"
+                      type="text"
+                      placeholder="https://example.com"
+                      className="mt-1 block w-full border rounded-md border-gray-300 shadow-sm px-3 py-2"
                       value={formData.website_url}
                       onChange={(e) => setFormData({ ...formData, website_url: e.target.value })}
                     />
@@ -256,7 +258,7 @@ const AdminMerchants = () => {
                     <label className="block text-sm font-medium text-gray-700">Category</label>
                     <input
                       type="text"
-                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm"
+                      className="mt-1 block w-full border rounded-md border-gray-300 shadow-sm px-3 py-2"
                       value={formData.category}
                       onChange={(e) => setFormData({ ...formData, category: e.target.value })}
                     />
