@@ -595,12 +595,12 @@ const Profile = () => {
                       </div>
                     </div>
 
-                    {/* 4-tier pricing cards */}
+                    {/* 5-tier pricing cards */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       {subscription.plans.map((p) => {
                         const isCurrent = subscription.plan === p.key;
                         const isPaid = p.amountCents > 0;
-                        const planPriority: Record<string, number> = { free: 0, silver: 1, gold: 2, platinum: 3 };
+                        const planPriority: Record<string, number> = { free: 0, bronze: 1, silver: 2, gold: 3, platinum: 4 };
                         const currentPriority = planPriority[subscription.plan] ?? 0;
                         const targetPriority = planPriority[p.key] ?? 0;
                         const changeLabel = currentPriority === 0
@@ -610,12 +610,14 @@ const Profile = () => {
                             : `Downgrade to ${p.name}`;
                         const tierColors: Record<string, string> = {
                           free:     'border-gray-200',
+                          bronze:   'border-orange-400',
                           silver:   'border-gray-400',
                           gold:     'border-yellow-400',
                           platinum: 'border-purple-500',
                         };
                         const badgeColors: Record<string, string> = {
                           free:     'bg-gray-100 text-gray-600',
+                          bronze:   'bg-orange-100 text-orange-800',
                           silver:   'bg-gray-200 text-gray-700',
                           gold:     'bg-yellow-100 text-yellow-800',
                           platinum: 'bg-purple-100 text-purple-800',
@@ -638,7 +640,7 @@ const Profile = () => {
                               {p.amountCents > 0 && <span className="text-sm font-normal text-gray-400">/mo</span>}
                             </p>
                             <p className="text-xs text-green-600 font-medium mb-3">
-                              {p.cashbackBonus > 0 ? `+${p.cashbackBonus}% cashback bonus` : 'Standard cashback'}
+                              {`Earn ${(1 + p.cashbackBonus).toFixed(0)}% cashback`}
                             </p>
                             <ul className="space-y-1 mb-4 flex-1">
                               {p.features.map((f) => (
