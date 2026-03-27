@@ -26,7 +26,7 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     apiClient.get('/admin/auth/me')
       .then(res => setAdmin(res.data.user))
       .catch(() => {
-        sessionStorage.removeItem('admin_token');
+        localStorage.removeItem('admin_token');
         setAdmin(null);
       });
   }, []);
@@ -36,18 +36,15 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     // Persist token so the Bearer interceptor can attach it on every admin request.
     // sessionStorage clears automatically when the browser tab/window closes.
     if (response.data.token) {
-      sessionStorage.setItem('admin_token', response.data.token);
+      localStorage.setItem('admin_token', response.data.token);
     }
     setAdmin(response.data.user);
   };
 
   const logout = async () => {
     await apiClient.post('/admin/auth/logout').catch(() => {});
-    sessionStorage.removeItem('admin_token');
-    setAdmin(null);
-    // Clear any legacy localStorage entries from previous versions
     localStorage.removeItem('admin_token');
-    localStorage.removeItem('admin_user');
+    setAdmin(null);
   };
 
   return (
