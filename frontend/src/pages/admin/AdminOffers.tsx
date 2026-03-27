@@ -70,6 +70,7 @@ const AdminOffers = () => {
   const [brokenOffers, setBrokenOffers] = useState<BrokenOffer[]>([]);
   const [showBrokenOnly, setShowBrokenOnly] = useState(false);
   const [runningCheck, setRunningCheck] = useState(false);
+  const [checkProgress, setCheckProgress] = useState<{ total: number; processed: number } | null>(null);
   const [deletingBroken, setDeletingBroken] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [merchantFilter, setMerchantFilter] = useState('');
@@ -120,13 +121,27 @@ const AdminOffers = () => {
 
   const handleRunLinkCheck = async () => {
     setRunningCheck(true);
+    setCheckProgress(null);
+
+    // Start polling for progress
+    const pollInterval = setInterval(async () => {
+      try {
+        const res = await apiClient.get('/admin/jobs/progress');
+        if (res.data?.running) {
+          setCheckProgress({ total: res.data.total, processed: res.data.processed });
+        }
+      } catch {}
+    }, 800);
+
     try {
       await apiClient.post('/admin/jobs/run', { jobName: 'link-checker' });
       await fetchBrokenOffers();
     } catch (err) {
       console.error('Link check failed:', err);
     } finally {
+      clearInterval(pollInterval);
       setRunningCheck(false);
+      setCheckProgress(null);
     }
   };
 
@@ -496,6 +511,33 @@ const AdminOffers = () => {
                   </tbody>
                 </table>
               </div>
+            )}
+          </div>
+        )}
+
+        {/* Link Check Progress Bar */}
+        {runningCheck && (
+          <div className="mb-6 bg-white rounded-lg shadow px-5 py-4">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-sm font-medium text-gray-700">Checking affiliate links...</span>
+              <span className="text-sm text-gray-500">
+                {checkProgress ? `${checkProgress.processed} / ${checkProgress.total}` : 'Starting...'}
+              </span>
+            </div>
+            <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
+              <div
+                className="bg-yellow-500 h-3 rounded-full transition-all duration-500"
+                style={{
+                  width: checkProgress && checkProgress.total > 0
+                    ? `${Math.round((checkProgress.processed / checkProgress.total) * 100)}%`
+                    : '0%'
+                }}
+              />
+            </div>
+            {checkProgress && checkProgress.total > 0 && (
+              <p className="text-xs text-gray-400 mt-1">
+                {Math.round((checkProgress.processed / checkProgress.total) * 100)}% complete
+              </p>
             )}
           </div>
         )}
