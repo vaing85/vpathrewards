@@ -220,6 +220,7 @@ router.post('/bulk', authenticateAdmin, async (req: express.Request, res: expres
 // Get all broken/expired offers detected by link checker
 router.get('/link-status/broken', authenticateAdmin, async (_req, res) => {
   try {
+    res.set('Cache-Control', 'no-store');
     const offers = await dbAll(`
       SELECT o.id, o.title, o.affiliate_link, o.link_status, o.link_last_checked, o.link_error, o.is_active,
              m.name as merchant_name
