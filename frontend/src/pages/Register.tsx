@@ -18,11 +18,8 @@ const Register = () => {
   const turnstileRef = useRef<TurnstileInstance>(null);
   const [searchParams] = useSearchParams();
   const { register, isAuthenticated } = useAuth();
-  if (isAuthenticated) return <Navigate to="/dashboard" replace />;
   const navigate = useNavigate();
-  
   const referralCode = searchParams.get('ref');
-
   const validation = useFormValidation({
     name: { required: true, minLength: 2, maxLength: 100 },
     email: { required: true, email: true },
@@ -37,6 +34,8 @@ const Register = () => {
       }
     },
   });
+
+  if (isAuthenticated) return <Navigate to="/dashboard" replace />;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
