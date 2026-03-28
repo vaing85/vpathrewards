@@ -77,10 +77,9 @@ async function checkUrl(url: string): Promise<{ status: 'ok' | 'broken' | 'unkno
       return { status: 'unknown', reason: `Rate-limited (429) at ${finalUrl} — cannot confirm broken` };
     }
 
-    // CJ link reached a real merchant domain but got 403 — merchant is blocking bots.
-    // The link itself is still active; mark as unknown rather than broken.
+    // 403 is >= 400 — mark as broken and deactivate.
     if (response.status === 403) {
-      return { status: 'unknown', reason: `Bot-blocked (403) at ${finalUrl} — cannot confirm broken` };
+      return { status: 'broken', reason: `HTTP 403 Forbidden at ${finalUrl}` };
     }
 
     if (response.status === 404) {
@@ -164,7 +163,7 @@ const linkCheckerJob: JobDefinition<LinkCheckerPayload, LinkCheckerResult> = {
       const check = await checkUrl(offer.affiliate_link);
 
       if (!dryRun) {
-        // ok → active, broken → inactive, unknown → restore to active (benefit of the doubt)
+        // ok/unknown → active, broken (400+) → inactive
         const isActive = check.status === 'broken' ? 0 : 1;
         await dbRun(
           'UPDATE offers SET link_status = $1, link_last_checked = NOW(), link_error = $2, is_active = $3 WHERE id = $4',

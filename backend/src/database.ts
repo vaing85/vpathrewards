@@ -404,6 +404,9 @@ export const initDatabase = async () => {
       `ALTER TABLE offers ADD COLUMN IF NOT EXISTS category TEXT`,
       `ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS current_period_start TIMESTAMPTZ`,
       `ALTER TABLE users ADD COLUMN IF NOT EXISTS stripe_account_id TEXT`,
+      // One-time fix: activate all offers that have never been checked by the link checker.
+      // Safe to run repeatedly — only affects unchecked offers, not ones the link checker deactivated.
+      `UPDATE offers SET is_active = 1 WHERE (link_status IS NULL OR link_status = 'unchecked') AND is_active != 1`,
     ];
     for (const sql of migrations) {
       try {
