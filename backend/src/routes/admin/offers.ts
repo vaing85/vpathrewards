@@ -14,12 +14,17 @@ router.get('/', authenticateAdmin, async (req, res) => {
     const limitNum = Math.min(100, Math.max(1, parseInt(limit as string) || 20));
     const offset = (pageNum - 1) * limitNum;
     
-    // Get total count
+    // Get total, active, and inactive counts
     const totalResult = await dbGet(`
-      SELECT COUNT(*) as total
-      FROM offers o
-    `) as { total: number };
+      SELECT
+        COUNT(*) as total,
+        SUM(CASE WHEN is_active = 1 THEN 1 ELSE 0 END) as active,
+        SUM(CASE WHEN is_active != 1 THEN 1 ELSE 0 END) as inactive
+      FROM offers
+    `) as { total: number; active: number; inactive: number };
     const total = totalResult?.total || 0;
+    const totalActive = totalResult?.active || 0;
+    const totalInactive = totalResult?.inactive || 0;
     const totalPages = Math.ceil(total / limitNum);
     
     const offers = await dbAll(`
@@ -39,6 +44,8 @@ router.get('/', authenticateAdmin, async (req, res) => {
         page: pageNum,
         limit: limitNum,
         total,
+        totalActive,
+        totalInactive,
         totalPages,
         hasNext: pageNum < totalPages,
         hasPrev: pageNum > 1

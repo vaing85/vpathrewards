@@ -556,11 +556,11 @@ const AdminOffers = () => {
             </div>
             <div className="bg-white rounded-lg shadow px-5 py-4">
               <p className="text-xs text-gray-500 uppercase font-medium">Active</p>
-              <p className="text-2xl font-bold text-green-600">{offers.filter(o => o.is_active === 1).length}</p>
+              <p className="text-2xl font-bold text-green-600">{pagination?.totalActive ?? offers.filter(o => o.is_active === 1).length}</p>
             </div>
             <div className="bg-white rounded-lg shadow px-5 py-4">
               <p className="text-xs text-gray-500 uppercase font-medium">Inactive</p>
-              <p className="text-2xl font-bold text-gray-400">{offers.filter(o => o.is_active !== 1).length}</p>
+              <p className="text-2xl font-bold text-gray-400">{pagination?.totalInactive ?? offers.filter(o => o.is_active !== 1).length}</p>
             </div>
           </div>
         )}
