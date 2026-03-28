@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react';
-import { useNavigate, Link, useSearchParams } from 'react-router-dom';
+import { useNavigate, Link, useSearchParams, Navigate } from 'react-router-dom';
 import { Turnstile, type TurnstileInstance } from '@marsidev/react-turnstile';
 import { useAuth } from '../context/AuthContext';
 import { useFormValidation } from '../hooks/useFormValidation';
@@ -17,7 +17,8 @@ const Register = () => {
   const [turnstileToken, setTurnstileToken] = useState('');
   const turnstileRef = useRef<TurnstileInstance>(null);
   const [searchParams] = useSearchParams();
-  const { register } = useAuth();
+  const { register, isAuthenticated } = useAuth();
+  if (isAuthenticated) return <Navigate to="/dashboard" replace />;
   const navigate = useNavigate();
   
   const referralCode = searchParams.get('ref');
