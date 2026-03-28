@@ -16,13 +16,12 @@ const Login = () => {
   const turnstileRef = useRef<TurnstileInstance>(null);
   const { login, isAuthenticated } = useAuth();
   const navigate = useNavigate();
-
-  if (isAuthenticated) return <Navigate to="/dashboard" replace />;
-
   const validation = useFormValidation({
     email: { required: true, email: true },
     password: { required: true, minLength: 6 },
   });
+
+  if (isAuthenticated) return <Navigate to="/dashboard" replace />;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
