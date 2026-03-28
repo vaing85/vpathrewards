@@ -77,9 +77,10 @@ async function checkUrl(url: string): Promise<{ status: 'ok' | 'broken' | 'unkno
       return { status: 'unknown', reason: `Rate-limited (429) at ${finalUrl} — cannot confirm broken` };
     }
 
-    // 403 is >= 400 — mark as broken and deactivate.
+    // 403 = many retailers actively block server-side requests (bot detection).
+    // Cannot confirm the link is actually broken — treat as unknown (benefit of the doubt).
     if (response.status === 403) {
-      return { status: 'broken', reason: `HTTP 403 Forbidden at ${finalUrl}` };
+      return { status: 'unknown', reason: `Bot-blocked 403 at ${finalUrl} — cannot confirm broken` };
     }
 
     if (response.status === 404) {
@@ -100,7 +101,10 @@ async function checkUrl(url: string): Promise<{ status: 'ok' | 'broken' | 'unkno
     if (err?.name === 'AbortError') {
       return { status: 'unknown', reason: 'Request timed out after 15s' };
     }
-    return { status: 'unknown', reason: err?.message || 'Network error' };
+    // err.message for Node's built-in fetch is always "fetch failed" — the real detail is in err.cause
+    const cause = err?.cause;
+    const detail = cause?.message || cause?.code || err?.message || 'Network error';
+    return { status: 'unknown', reason: `Network error: ${detail}` };
   }
 }
 
