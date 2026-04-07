@@ -4,7 +4,7 @@
   "description": "V PATHing Rewards Backend API",
   "main": "dist/server.js",
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.80.0",
+    "@anthropic-ai/sdk": "^0.81.0",
     "@types/dotenv": "^6.1.1",
     "bcryptjs": "^2.4.3",
     "cookie-parser": "^1.4.7",
