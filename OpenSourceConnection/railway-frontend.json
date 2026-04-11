@@ -1,0 +1,17 @@
+{
+  "build": {
+    "builder": "NIXPACKS",
+    "buildCommand": "cd client && npm run build && cp -r dist/* ../"
+  },
+  "deploy": {
+    "startCommand": "npx serve -s . -l $PORT",
+    "healthcheckPath": "/",
+    "healthcheckTimeout": 100,
+    "rewrites": [
+      {
+        "source": "/*",
+        "destination": "/index.html"
+      }
+    ]
+  }
+}

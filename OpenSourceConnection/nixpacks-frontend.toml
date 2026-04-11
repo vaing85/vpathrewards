@@ -1,0 +1,16 @@
+[phases.setup]
+nixPkgs = ["nodejs_20", "npm"]
+
+[phases.build]
+cmds = [
+  "cd client && npm install",
+  "cd client && npm run build",
+  "cd client && cp -r dist/* ../"
+]
+
+[start]
+cmd = "npx serve -s . -l $PORT"
+
+[[deploy.rewrites]]
+source = "/*"
+destination = "/index.html"
