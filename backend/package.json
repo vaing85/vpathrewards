@@ -37,7 +37,7 @@
     "@types/pg": "^8.18.0",
     "@types/sanitize-html": "^2.16.1",
     "@types/stripe": "^8.0.416",
-    "axios": "^1.13.6",
+    "axios": "^1.15.0",
     "tsx": "^4.7.0",
     "typescript": "^5.3.3"
   },
