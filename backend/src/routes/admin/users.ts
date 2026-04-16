@@ -1,7 +1,6 @@
 import express from 'express';
-import { authenticateAdmin, AdminRequest } from '../../middleware/adminAuth';
+import { authenticateAdmin } from '../../middleware/adminAuth';
 import { dbAll, dbGet, dbRun } from '../../database';
-import { auditLog } from '../../middleware/auditLog';
 
 const router = express.Router();
 
@@ -22,19 +21,16 @@ router.get('/', authenticateAdmin, async (req, res) => {
     const totalPages = Math.ceil(total / limitNum);
     
     const users = await dbAll(`
-      SELECT
-        u.id,
-        u.email,
-        u.name,
-        u.total_earnings,
-        u.is_admin,
-        u.created_at,
-        (SELECT COUNT(*) FROM cashback_transactions WHERE user_id = u.id) as transaction_count,
-        COALESCE(s.plan, 'free') as subscription_plan,
-        COALESCE(s.status, 'active') as subscription_status
-      FROM users u
-      LEFT JOIN subscriptions s ON s.user_id = u.id
-      ORDER BY u.created_at DESC
+      SELECT 
+        id,
+        email,
+        name,
+        total_earnings,
+        is_admin,
+        created_at,
+        (SELECT COUNT(*) FROM cashback_transactions WHERE user_id = users.id) as transaction_count
+      FROM users
+      ORDER BY created_at DESC
       LIMIT ? OFFSET ?
     `, [limitNum, offset]);
     
@@ -103,7 +99,7 @@ router.get('/:id/transactions', authenticateAdmin, async (req, res) => {
 });
 
 // Update user (admin can update earnings, make admin, etc.)
-router.put('/:id', authenticateAdmin, async (req: AdminRequest, res) => {
+router.put('/:id', authenticateAdmin, async (req, res) => {
   try {
     const { name, total_earnings, is_admin } = req.body;
 
@@ -122,27 +118,18 @@ router.put('/:id', authenticateAdmin, async (req: AdminRequest, res) => {
       ]
     );
 
-    auditLog({
-      adminId: req.userId!,
-      action: 'UPDATE_USER',
-      resource: 'user',
-      resourceId: req.params.id,
-      details: { name, total_earnings, is_admin },
-      req,
-    });
-
     const updated = await dbGet(`
-      SELECT
+      SELECT 
         id,
         email,
         name,
         total_earnings,
         is_admin,
         created_at
-      FROM users
+      FROM users 
       WHERE id = ?
     `, [req.params.id]);
-
+    
     res.json(updated);
   } catch (error) {
     console.error('Error updating user:', error);
@@ -151,45 +138,23 @@ router.put('/:id', authenticateAdmin, async (req: AdminRequest, res) => {
 });
 
 // Delete user
-router.delete('/:id', authenticateAdmin, async (req: AdminRequest, res) => {
+router.delete('/:id', authenticateAdmin, async (req, res) => {
   try {
     const user = await dbGet('SELECT * FROM users WHERE id = ?', [req.params.id]);
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
     }
 
-    if ((user as any).is_admin) {
+    // Don't allow deleting admin users
+    if ((user as any).is_admin === 1) {
       return res.status(400).json({ error: 'Cannot delete admin users' });
     }
 
-    const id = req.params.id;
-
-    // Remove all FK-dependent rows in dependency order before deleting the user.
-    // referral_earnings references cashback_transactions, so it goes first.
-    await dbRun('DELETE FROM referral_earnings WHERE referrer_id = ? OR referred_id = ?', [id, id]);
-    await dbRun('DELETE FROM cashback_transactions WHERE user_id = ?', [id]);
-    // Nullable FKs: NULL out rather than delete so click/conversion history is preserved.
-    await dbRun('UPDATE conversions SET user_id = NULL WHERE user_id = ?', [id]);
-    await dbRun('UPDATE affiliate_clicks SET user_id = NULL WHERE user_id = ?', [id]);
-    await dbRun('DELETE FROM withdrawals WHERE user_id = ?', [id]);
-    await dbRun('DELETE FROM user_favorites WHERE user_id = ?', [id]);
-    await dbRun('DELETE FROM merchant_reviews WHERE user_id = ?', [id]);
-    await dbRun('DELETE FROM cashback_goals WHERE user_id = ?', [id]);
-    await dbRun('DELETE FROM subscriptions WHERE user_id = ?', [id]);
-    await dbRun('DELETE FROM referral_relationships WHERE referrer_id = ? OR referred_id = ?', [id, id]);
-    await dbRun('DELETE FROM user_referral_codes WHERE user_id = ?', [id]);
-    await dbRun('DELETE FROM refresh_tokens WHERE user_id = ?', [id]);
-    await dbRun('DELETE FROM users WHERE id = ?', [id]);
-
-    auditLog({
-      adminId: req.userId!,
-      action: 'DELETE_USER',
-      resource: 'user',
-      resourceId: req.params.id,
-      details: { email: (user as any).email },
-      req,
-    });
-
+    // Delete user transactions first
+    await dbRun('DELETE FROM cashback_transactions WHERE user_id = ?', [req.params.id]);
+    
+    // Delete user
+    await dbRun('DELETE FROM users WHERE id = ?', [req.params.id]);
     res.json({ message: 'User deleted successfully' });
   } catch (error) {
     console.error('Error deleting user:', error);

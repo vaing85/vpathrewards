@@ -20,10 +20,11 @@ export const validateRegister = [
     .normalizeEmail()
     .withMessage('Please provide a valid email address'),
   body('password')
-    .isLength({ min: 8 })
-    .withMessage('Password must be at least 8 characters long')
+    .isLength({ min: 6 })
+    .withMessage('Password must be at least 6 characters long')
     .matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/)
-    .withMessage('Password must contain at least one uppercase letter, one lowercase letter, and one number'),
+    .withMessage('Password must contain at least one uppercase letter, one lowercase letter, and one number')
+    .optional(),
   body('name')
     .trim()
     .isLength({ min: 2, max: 100 })
@@ -71,10 +72,11 @@ export const validatePasswordChange = [
     .notEmpty()
     .withMessage('Current password is required'),
   body('new_password')
-    .isLength({ min: 8 })
-    .withMessage('Password must be at least 8 characters long')
+    .isLength({ min: 6 })
+    .withMessage('Password must be at least 6 characters long')
     .matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/)
-    .withMessage('Password must contain at least one uppercase letter, one lowercase letter, and one number'),
+    .withMessage('Password must contain at least one uppercase letter, one lowercase letter, and one number')
+    .optional(),
   validate
 ];
 
@@ -85,11 +87,9 @@ export const validateWithdrawal = [
     .withMessage('Amount must be at least $10.00'),
   body('payment_method')
     .trim()
-    .isIn(['paypal', 'bank_transfer', 'venmo', 'cash_app'])
+    .isIn(['paypal', 'bank_transfer', 'venmo', 'zelle'])
     .withMessage('Invalid payment method'),
-  // bank_transfer uses Stripe Connect — no manual payment_details required
   body('payment_details')
-    .if(body('payment_method').not().equals('bank_transfer'))
     .trim()
     .isLength({ min: 3, max: 200 })
     .withMessage('Payment details must be between 3 and 200 characters'),
@@ -116,19 +116,19 @@ export const validateMerchant = [
   body('description')
     .optional()
     .trim()
-    .isLength({ max: 5000 })
-    .withMessage('Description must be less than 5000 characters'),
+    .isLength({ max: 1000 })
+    .withMessage('Description must be less than 1000 characters'),
   body('category')
     .optional()
     .trim()
     .isLength({ max: 100 })
     .withMessage('Category must be less than 100 characters'),
   body('website_url')
-    .optional({ values: 'falsy' })
+    .optional()
     .isURL()
     .withMessage('Website URL must be a valid URL'),
   body('logo_url')
-    .optional({ values: 'falsy' })
+    .optional()
     .isURL()
     .withMessage('Logo URL must be a valid URL'),
   validate
@@ -161,19 +161,6 @@ export const validateId = [
   param('id')
     .isInt({ min: 1 })
     .withMessage('Invalid ID parameter'),
-  validate
-];
-
-// Validation for merchant review (Phase 4)
-export const validateMerchantReview = [
-  body('rating')
-    .isInt({ min: 1, max: 5 })
-    .withMessage('Rating must be between 1 and 5'),
-  body('comment')
-    .optional()
-    .trim()
-    .isLength({ max: 2000 })
-    .withMessage('Comment must be less than 2000 characters'),
   validate
 ];
 

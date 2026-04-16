@@ -135,13 +135,13 @@ const AdminMerchants = () => {
         ) : (
           <div className="bg-white rounded-lg shadow overflow-hidden">
             <div className="overflow-x-auto">
-              <table className="w-full divide-y divide-gray-200">
+              <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Category</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Offers</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Offers</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
@@ -153,22 +153,27 @@ const AdminMerchants = () => {
                           <LazyImage
                             src={merchant.logo_url}
                             alt={merchant.name}
-                            className="w-10 h-10 object-contain mr-3 flex-shrink-0"
+                            className="w-10 h-10 object-contain mr-3"
                             width={40}
                             height={40}
-                            fallback="https://placehold.co/40"
+                            fallback="https://via.placeholder.com/40"
                           />
                         )}
-                        <div className="text-sm font-medium text-gray-900">{merchant.name}</div>
+                        <div>
+                          <div className="text-sm font-medium text-gray-900">{merchant.name}</div>
+                          {merchant.description && (
+                            <div className="text-sm text-gray-500">{merchant.description}</div>
+                          )}
+                        </div>
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       {merchant.category || '-'}
                     </td>
-                    <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       {merchant.offer_count || 0}
                     </td>
-                    <td className="px-4 py-4 whitespace-nowrap text-sm font-medium space-x-2">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
                       <button
                         onClick={() => handleOpenModal(merchant)}
                         className="text-primary-600 hover:text-primary-900"
@@ -216,7 +221,7 @@ const AdminMerchants = () => {
                     <input
                       type="text"
                       required
-                      className="mt-1 block w-full border rounded-md border-gray-300 shadow-sm px-3 py-2"
+                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm"
                       value={formData.name}
                       onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                     />
@@ -224,7 +229,7 @@ const AdminMerchants = () => {
                   <div>
                     <label className="block text-sm font-medium text-gray-700">Description</label>
                     <textarea
-                      className="mt-1 block w-full border rounded-md border-gray-300 shadow-sm px-3 py-2"
+                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm"
                       value={formData.description}
                       onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                     />
@@ -232,9 +237,8 @@ const AdminMerchants = () => {
                   <div>
                     <label className="block text-sm font-medium text-gray-700">Logo URL</label>
                     <input
-                      type="text"
-                      placeholder="https://example.com/logo.png"
-                      className="mt-1 block w-full border rounded-md border-gray-300 shadow-sm px-3 py-2"
+                      type="url"
+                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm"
                       value={formData.logo_url}
                       onChange={(e) => setFormData({ ...formData, logo_url: e.target.value })}
                     />
@@ -242,9 +246,8 @@ const AdminMerchants = () => {
                   <div>
                     <label className="block text-sm font-medium text-gray-700">Website URL</label>
                     <input
-                      type="text"
-                      placeholder="https://example.com"
-                      className="mt-1 block w-full border rounded-md border-gray-300 shadow-sm px-3 py-2"
+                      type="url"
+                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm"
                       value={formData.website_url}
                       onChange={(e) => setFormData({ ...formData, website_url: e.target.value })}
                     />
@@ -253,7 +256,7 @@ const AdminMerchants = () => {
                     <label className="block text-sm font-medium text-gray-700">Category</label>
                     <input
                       type="text"
-                      className="mt-1 block w-full border rounded-md border-gray-300 shadow-sm px-3 py-2"
+                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm"
                       value={formData.category}
                       onChange={(e) => setFormData({ ...formData, category: e.target.value })}
                     />
