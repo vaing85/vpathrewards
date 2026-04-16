@@ -1,5 +1,6 @@
 # Dependencies
 node_modules/
+package-lock.json
 yarn.lock
 
 # Environment variables
@@ -25,9 +26,3 @@ build/
 # OS
 .DS_Store
 Thumbs.db
-
-# wrangler files
-.wrangler
-.dev.vars*
-!.dev.vars.example
-!.env.example

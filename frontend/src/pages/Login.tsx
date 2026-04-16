@@ -1,27 +1,21 @@
-import { useState, useRef } from 'react';
-import { useNavigate, Link, Navigate } from 'react-router-dom';
-import { Turnstile, type TurnstileInstance } from '@marsidev/react-turnstile';
+import { useState } from 'react';
+import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useFormValidation } from '../hooks/useFormValidation';
 import FormField from '../components/FormField';
-
-const TURNSTILE_SITE_KEY = '0x4AAAAAACwdtfRVjf6eOysH';
 
 const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const [turnstileToken, setTurnstileToken] = useState('');
-  const turnstileRef = useRef<TurnstileInstance>(null);
-  const { login, isAuthenticated } = useAuth();
+  const { login } = useAuth();
   const navigate = useNavigate();
+
   const validation = useFormValidation({
     email: { required: true, email: true },
     password: { required: true, minLength: 6 },
   });
-
-  if (isAuthenticated) return <Navigate to="/dashboard" replace />;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -39,12 +33,10 @@ const Login = () => {
     setLoading(true);
 
     try {
-      await login(email, password, turnstileToken);
+      await login(email, password);
       navigate('/dashboard');
     } catch (err: any) {
       setError(err.response?.data?.error || 'Login failed. Please try again.');
-      turnstileRef.current?.reset();
-      setTurnstileToken('');
     } finally {
       setLoading(false);
     }
@@ -115,25 +107,10 @@ const Login = () => {
             />
           </div>
 
-          <div className="flex items-center justify-between">
-            <div />
-            <Link to="/forgot-password" className="text-sm text-primary-600 hover:text-primary-500">
-              Forgot your password?
-            </Link>
-          </div>
-
-          <Turnstile
-            ref={turnstileRef}
-            siteKey={TURNSTILE_SITE_KEY}
-            onSuccess={setTurnstileToken}
-            onExpire={() => setTurnstileToken('')}
-            options={{ theme: 'light' }}
-          />
-
           <div>
             <button
               type="submit"
-              disabled={loading || !turnstileToken}
+              disabled={loading}
               className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50"
             >
               {loading ? 'Signing in...' : 'Sign in'}

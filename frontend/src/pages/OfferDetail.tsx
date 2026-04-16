@@ -21,14 +21,12 @@ interface Offer {
   title: string;
   description?: string;
   cashback_rate: number;
-  cashback_type?: string;
   merchant_name?: string;
   merchant_logo?: string;
   merchant_website?: string;
   terms?: string;
   affiliate_link?: string;
   category?: string;
-  end_date?: string;
 }
 
 const OfferDetail = () => {
@@ -103,7 +101,7 @@ const OfferDetail = () => {
                 className="w-20 h-20 object-contain rounded"
                 width={80}
                 height={80}
-                fallback="https://placehold.co/80"
+                fallback="https://via.placeholder.com/80"
               />
             )}
             <div className="flex-1">
@@ -121,18 +119,11 @@ const OfferDetail = () => {
                 />
               </div>
               <div className="bg-primary-600 text-white px-6 py-4 rounded-lg text-center">
-                <div className="text-4xl font-bold">
-                  {offer.cashback_type === 'flat' ? `$${offer.cashback_rate}` : `${offer.cashback_rate}%`}
-                </div>
-                <div className="text-sm">{offer.cashback_type === 'flat' ? 'Flat Cashback' : 'Cashback'}</div>
+                <div className="text-4xl font-bold">{offer.cashback_rate}%</div>
+                <div className="text-sm">Cashback</div>
               </div>
             </div>
           </div>
-          {offer.end_date && (
-            <p className="text-amber-600 font-medium mb-4">
-              Ends {new Date(offer.end_date).toLocaleDateString(undefined, { month: 'long', day: 'numeric', year: 'numeric' })}
-            </p>
-          )}
 
           {offer.description && (
             <div className="mb-6">

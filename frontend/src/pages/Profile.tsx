@@ -19,38 +19,13 @@ interface ProfileData {
 }
 
 const Profile = () => {
-  const { isAuthenticated, updateUser, logout } = useAuth();
+  const { isAuthenticated, updateUser } = useAuth();
   const navigate = useNavigate();
   const [profile, setProfile] = useState<ProfileData | null>(null);
   const [loading, setLoading] = useState(true);
-
-  // Delete account
-  const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [deletePassword, setDeletePassword] = useState('');
-  const [deleteError, setDeleteError] = useState('');
-  const [deleteLoading, setDeleteLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<'profile' | 'password' | 'notifications' | 'subscription'>('profile');
-
-  // Subscription state
-  interface PlanInfo {
-    key: string;
-    name: string;
-    amountCents: number;
-    cashbackBonus: number;
-    description: string;
-    features: string[];
-  }
-
-  const [subscription, setSubscription] = useState<{
-    plan: string;
-    status: string;
-    current_period_start: string | null;
-    current_period_end: string | null;
-    cashback_bonus: number;
-    plans: PlanInfo[];
-  } | null>(null);
+  const [subscription, setSubscription] = useState<any>(null);
   const [subLoading, setSubLoading] = useState(false);
-  const [subActionLoading, setSubActionLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -111,32 +86,25 @@ const Profile = () => {
     try {
       const res = await apiClient.get('/subscriptions/status');
       setSubscription(res.data);
-    } catch (err) {
-      console.error('Error fetching subscription:', err);
-    } finally {
-      setSubLoading(false);
-    }
+    } catch (_) {}
+    setSubLoading(false);
   };
 
-  const handleUpgrade = async (plan: string = 'gold') => {
-    setSubActionLoading(true);
-    try {
-      const res = await apiClient.post('/subscriptions/checkout', { plan });
-      window.location.href = res.data.url;
-    } catch (err: any) {
-      setError(err.response?.data?.error || 'Failed to start checkout');
-      setSubActionLoading(false);
-    }
-  };
-
-  const handleManageSubscription = async () => {
-    setSubActionLoading(true);
+  const handleManageBilling = async () => {
     try {
       const res = await apiClient.post('/subscriptions/portal');
-      window.location.href = res.data.url;
+      if (res.data?.url) window.location.href = res.data.url;
     } catch (err: any) {
       setError(err.response?.data?.error || 'Failed to open billing portal');
-      setSubActionLoading(false);
+    }
+  };
+
+  const handleUpgrade = async (plan: string) => {
+    try {
+      const res = await apiClient.post('/subscriptions/checkout', { plan });
+      if (res.data?.url) window.location.href = res.data.url;
+    } catch (err: any) {
+      setError(err.response?.data?.error || 'Failed to start checkout');
     }
   };
 
@@ -246,21 +214,6 @@ const Profile = () => {
     }
   };
 
-  const handleDeleteAccount = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setDeleteError('');
-    setDeleteLoading(true);
-    try {
-      await apiClient.delete('/profile', { data: { password: deletePassword } });
-      await logout();
-      navigate('/');
-    } catch (err: any) {
-      setDeleteError(err.response?.data?.error || 'Failed to delete account.');
-    } finally {
-      setDeleteLoading(false);
-    }
-  };
-
   if (!isAuthenticated) return null;
 
   if (loading) {
@@ -342,18 +295,13 @@ const Profile = () => {
               </button>
               <button
                 onClick={() => setActiveTab('subscription')}
-                className={`px-6 py-3 text-sm font-medium flex items-center gap-1 ${
+                className={`px-6 py-3 text-sm font-medium ${
                   activeTab === 'subscription'
                     ? 'border-b-2 border-primary-500 text-primary-600'
                     : 'text-gray-500 hover:text-gray-700'
                 }`}
               >
                 Subscription
-                {subscription?.plan === 'premium' && (
-                  <span className="ml-1 px-1.5 py-0.5 bg-yellow-100 text-yellow-700 text-xs font-semibold rounded">
-                    PRO
-                  </span>
-                )}
               </button>
             </nav>
           </div>
@@ -566,118 +514,70 @@ const Profile = () => {
             {activeTab === 'subscription' && (
               <div>
                 {subLoading ? (
-                  <div className="flex items-center justify-center py-10">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600" />
-                  </div>
-                ) : subscription ? (
-                  <div className="space-y-6">
-
-                    {/* Current plan summary */}
-                    <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl border border-gray-200">
-                      <div>
-                        <p className="text-sm text-gray-500">Current plan</p>
-                        <p className="font-bold text-gray-800 capitalize">{subscription.plan}</p>
-                        {subscription.current_period_start && (
-                          <p className="text-xs text-gray-400">Member since {new Date(subscription.current_period_start).toLocaleDateString()}</p>
-                        )}
-                        {subscription.current_period_end && (
-                          <p className="text-xs text-gray-400">Renews {new Date(subscription.current_period_end).toLocaleDateString()}</p>
-                        )}
-                      </div>
-                      <div className="text-right">
-                        <span className={`text-sm font-semibold ${
-                          subscription.status === 'active' ? 'text-green-600' :
-                          subscription.status === 'past_due' ? 'text-red-500' : 'text-gray-500'
-                        }`}>{subscription.status}</span>
-                        {subscription.cashback_bonus > 0 && (
-                          <p className="text-xs text-green-600 font-medium">+{subscription.cashback_bonus}% cashback bonus</p>
+                  <div className="py-8 text-center text-gray-400">Loading subscription...</div>
+                ) : (
+                  <>
+                    {/* Current plan banner */}
+                    <div className="bg-primary-50 border border-primary-200 rounded-lg p-4 mb-6">
+                      <div className="flex justify-between items-center">
+                        <div>
+                          <div className="text-xs text-primary-500 uppercase font-semibold tracking-wide mb-0.5">Current Plan</div>
+                          <div className="text-xl font-bold text-primary-700 capitalize">
+                            {subscription?.plan || 'Free'}
+                          </div>
+                          {subscription?.subscription_status === 'active' && (
+                            <div className="text-xs text-primary-500 mt-0.5">
+                              Renews {subscription?.current_period_end ? new Date(subscription.current_period_end * 1000).toLocaleDateString() : '—'}
+                            </div>
+                          )}
+                        </div>
+                        {subscription?.subscription_status === 'active' && (
+                          <button
+                            onClick={handleManageBilling}
+                            className="text-sm bg-white border border-primary-300 text-primary-600 px-4 py-2 rounded-lg hover:bg-primary-50 transition"
+                          >
+                            Manage Billing
+                          </button>
                         )}
                       </div>
                     </div>
 
-                    {/* 5-tier pricing cards */}
+                    {/* Plan cards */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      {subscription.plans.map((p) => {
-                        const isCurrent = subscription.plan === p.key;
-                        const isPaid = p.amountCents > 0;
-                        const planPriority: Record<string, number> = { free: 0, bronze: 1, silver: 2, gold: 3, platinum: 4 };
-                        const currentPriority = planPriority[subscription.plan] ?? 0;
-                        const targetPriority = planPriority[p.key] ?? 0;
-                        const changeLabel = currentPriority === 0
-                          ? `Upgrade to ${p.name}`
-                          : targetPriority > currentPriority
-                            ? `Upgrade to ${p.name}`
-                            : `Downgrade to ${p.name}`;
-                        const tierColors: Record<string, string> = {
-                          free:     'border-gray-200',
-                          bronze:   'border-orange-400',
-                          silver:   'border-gray-400',
-                          gold:     'border-yellow-400',
-                          platinum: 'border-purple-500',
-                        };
-                        const badgeColors: Record<string, string> = {
-                          free:     'bg-gray-100 text-gray-600',
-                          bronze:   'bg-orange-100 text-orange-800',
-                          silver:   'bg-gray-200 text-gray-700',
-                          gold:     'bg-yellow-100 text-yellow-800',
-                          platinum: 'bg-purple-100 text-purple-800',
-                        };
+                      {[
+                        { key: 'bronze', name: 'Bronze', price: '$4.99/mo', bonus: '+1% cashback', color: 'amber' },
+                        { key: 'silver', name: 'Silver', price: '$9.99/mo', bonus: '+2% cashback', color: 'gray' },
+                        { key: 'gold',   name: 'Gold',   price: '$14.99/mo', bonus: '+3% cashback', color: 'yellow' },
+                        { key: 'platinum', name: 'Platinum', price: '$19.99/mo', bonus: '+4% cashback', color: 'indigo' },
+                      ].map(plan => {
+                        const isCurrent = subscription?.plan === plan.key;
                         return (
                           <div
-                            key={p.key}
-                            className={`rounded-xl border-2 p-4 flex flex-col ${tierColors[p.key] || 'border-gray-200'} ${isCurrent ? 'ring-2 ring-primary-500 ring-offset-1' : ''}`}
+                            key={plan.key}
+                            className={`border rounded-lg p-4 ${isCurrent ? 'border-primary-400 bg-primary-50' : 'border-gray-200 bg-white'}`}
                           >
-                            <div className="flex items-center justify-between mb-2">
-                              <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${badgeColors[p.key] || 'bg-gray-100 text-gray-600'}`}>
-                                {p.name}
-                              </span>
-                              {isCurrent && (
-                                <span className="text-xs font-semibold text-primary-600 bg-primary-50 px-2 py-0.5 rounded-full">Current</span>
-                              )}
+                            <div className="flex justify-between items-start mb-2">
+                              <div>
+                                <div className="font-semibold text-gray-800">{plan.name}</div>
+                                <div className="text-sm text-primary-600 font-medium">{plan.bonus}</div>
+                              </div>
+                              <div className="text-sm font-bold text-gray-700">{plan.price}</div>
                             </div>
-                            <p className="text-2xl font-bold text-gray-800 mb-1">
-                              {p.amountCents === 0 ? 'Free' : `$${(p.amountCents / 100).toFixed(2)}`}
-                              {p.amountCents > 0 && <span className="text-sm font-normal text-gray-400">/mo</span>}
-                            </p>
-                            <p className="text-xs text-green-600 font-medium mb-3">
-                              {`Earn ${(1 + p.cashbackBonus).toFixed(0)}% cashback`}
-                            </p>
-                            <ul className="space-y-1 mb-4 flex-1">
-                              {p.features.map((f) => (
-                                <li key={f} className="flex items-start gap-1.5">
-                                  <svg className="w-3.5 h-3.5 text-green-500 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                                  </svg>
-                                  <span className="text-xs text-gray-600">{f}</span>
-                                </li>
-                              ))}
-                            </ul>
-                            {!isCurrent && isPaid && (
+                            {isCurrent ? (
+                              <span className="inline-block text-xs bg-primary-100 text-primary-700 px-2 py-0.5 rounded-full font-medium">Current</span>
+                            ) : (
                               <button
-                                onClick={() => handleUpgrade(p.key)}
-                                disabled={subActionLoading}
-                                className="w-full text-sm font-semibold py-2 px-4 rounded-lg bg-primary-600 hover:bg-primary-700 disabled:opacity-50 text-white transition-colors"
+                                onClick={() => handleUpgrade(plan.key)}
+                                className="mt-2 w-full text-sm bg-primary-600 hover:bg-primary-700 text-white py-1.5 rounded-lg transition"
                               >
-                                {subActionLoading ? '...' : changeLabel}
-                              </button>
-                            )}
-                            {isCurrent && isPaid && (
-                              <button
-                                onClick={handleManageSubscription}
-                                disabled={subActionLoading}
-                                className="w-full text-sm font-semibold py-2 px-4 rounded-lg bg-gray-800 hover:bg-gray-900 disabled:opacity-50 text-white transition-colors"
-                              >
-                                {subActionLoading ? '...' : 'Manage Billing'}
+                                Upgrade
                               </button>
                             )}
                           </div>
                         );
                       })}
                     </div>
-
-                  </div>
-                ) : (
-                  <p className="text-gray-500 text-sm">Unable to load subscription info.</p>
+                  </>
                 )}
               </div>
             )}
@@ -688,80 +588,7 @@ const Profile = () => {
         <div className="mt-6">
           <ReferralCode />
         </div>
-
-        {/* Danger Zone */}
-        <div className="mt-6 bg-white rounded-lg shadow border border-red-100 p-6">
-          <h2 className="text-base font-semibold text-red-600 mb-1">Danger Zone</h2>
-          <p className="text-sm text-gray-500 mb-4">
-            Permanently delete your account and all associated data. This cannot be undone.
-          </p>
-          <button
-            onClick={() => { setShowDeleteModal(true); setDeletePassword(''); setDeleteError(''); }}
-            className="bg-red-600 hover:bg-red-700 text-white text-sm font-medium px-5 py-2 rounded-lg transition"
-          >
-            Delete My Account
-          </button>
-        </div>
       </div>
-
-      {/* Delete Confirmation Modal */}
-      {showDeleteModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 px-4">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0">
-                <svg className="w-5 h-5 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
-                </svg>
-              </div>
-              <div>
-                <h3 className="text-lg font-bold text-gray-900">Delete Account</h3>
-                <p className="text-sm text-gray-500">This action is permanent and cannot be undone.</p>
-              </div>
-            </div>
-
-            <p className="text-sm text-gray-600 mb-4">
-              All your earnings, transaction history, and data will be permanently deleted. Enter your password to confirm.
-            </p>
-
-            {deleteError && (
-              <div className="mb-4 bg-red-50 border border-red-200 text-red-700 text-sm px-4 py-3 rounded-lg">
-                {deleteError}
-              </div>
-            )}
-
-            <form onSubmit={handleDeleteAccount} className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Your Password</label>
-                <input
-                  type="password"
-                  required
-                  value={deletePassword}
-                  onChange={e => setDeletePassword(e.target.value)}
-                  placeholder="Enter your password"
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-400"
-                />
-              </div>
-              <div className="flex gap-3 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setShowDeleteModal(false)}
-                  className="flex-1 border border-gray-300 text-gray-700 text-sm font-medium px-4 py-2 rounded-lg hover:bg-gray-50 transition"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={deleteLoading}
-                  className="flex-1 bg-red-600 hover:bg-red-700 text-white text-sm font-medium px-4 py-2 rounded-lg disabled:opacity-50 transition"
-                >
-                  {deleteLoading ? 'Deleting...' : 'Yes, Delete My Account'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
     </div>
   );
 };

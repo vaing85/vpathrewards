@@ -37,7 +37,7 @@ router.get('/overview', authenticateAdmin, async (req, res) => {
         JOIN merchants m ON o.merchant_id = m.id
         LEFT JOIN affiliate_clicks ac ON o.id = ac.offer_id
         LEFT JOIN conversions c ON ac.id = c.click_id
-        GROUP BY o.id, o.title, m.name
+        GROUP BY o.id
         ORDER BY click_count DESC
         LIMIT 10
       `) as Promise<any[]>,
@@ -52,7 +52,7 @@ router.get('/overview', authenticateAdmin, async (req, res) => {
         LEFT JOIN offers o ON m.id = o.merchant_id
         LEFT JOIN affiliate_clicks ac ON o.id = ac.offer_id
         LEFT JOIN conversions c ON ac.id = c.click_id
-        GROUP BY m.id, m.name
+        GROUP BY m.id
         ORDER BY click_count DESC
         LIMIT 10
       `) as Promise<any[]>
