@@ -71,7 +71,7 @@ router.get('/:id', authenticateAdmin, async (req, res) => {
 });
 
 // Create offer
-router.post('/', authenticateAdmin, validateOffer, async (req, res) => {
+router.post('/', authenticateAdmin, validateOffer, async (req: import('express').Request, res: import('express').Response) => {
   try {
     const { merchant_id, title, description, cashback_rate, terms, affiliate_link, is_active } = req.body;
 
@@ -126,7 +126,7 @@ router.post('/', authenticateAdmin, validateOffer, async (req, res) => {
 });
 
 // Update offer
-router.put('/:id', authenticateAdmin, validateId, validateOffer, async (req, res) => {
+router.put('/:id', authenticateAdmin, validateId, validateOffer, async (req: import('express').Request, res: import('express').Response) => {
   try {
     const { merchant_id, title, description, cashback_rate, terms, affiliate_link, is_active } = req.body;
 

@@ -366,7 +366,7 @@ router.delete('/goals/:id', authenticateToken, async (req: AuthRequest, res) => 
 });
 
 // Track a cashback transaction (simulated - in production, this would be called by affiliate network)
-router.post('/track', authenticateToken, validateCashbackTrack, async (req: AuthRequest, res) => {
+router.post('/track', authenticateToken, validateCashbackTrack, async (req: AuthRequest, res: import('express').Response) => {
   try {
     const { offer_id, amount } = req.body;
 
@@ -422,7 +422,7 @@ router.post('/track', authenticateToken, validateCashbackTrack, async (req: Auth
     ).catch(() => {});
 
     // Create referral earning if user was referred (async)
-    createReferralEarning(req.userId, transactionId, userAmount).catch(err => {
+    createReferralEarning(req.userId!, transactionId, userAmount).catch(err => {
       console.error('Error creating referral earning:', err);
     });
 
