@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import apiClient from '../api/client';
 
@@ -23,30 +23,13 @@ interface Withdrawal {
   processed_by_name?: string;
 }
 
-interface StripeStatus {
-  connected: boolean;
-  ready: boolean;
-  details_submitted?: boolean;
-  payouts_enabled?: boolean;
-}
-
-const PAYMENT_METHOD_LABELS: Record<string, string> = {
-  paypal:       'PayPal',
-  bank_transfer: 'Bank Transfer (Stripe)',
-  venmo:        'Venmo',
-  cash_app:     'Cash App',
-};
-
 const Withdrawals = () => {
   const { isAuthenticated } = useAuth();
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
   const [balance, setBalance] = useState<Balance | null>(null);
   const [withdrawals, setWithdrawals] = useState<Withdrawal[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
-  const [stripeStatus, setStripeStatus] = useState<StripeStatus | null>(null);
-  const [connectingStripe, setConnectingStripe] = useState(false);
   const [formData, setFormData] = useState({
     amount: '',
     payment_method: 'paypal',
@@ -61,11 +44,6 @@ const Withdrawals = () => {
       return;
     }
     fetchData();
-    fetchStripeStatus();
-    // If returning from Stripe onboarding, refresh status
-    if (searchParams.get('stripe_connected') || searchParams.get('stripe_refresh')) {
-      fetchStripeStatus();
-    }
   }, [isAuthenticated, navigate]);
 
   const fetchData = async () => {
@@ -80,26 +58,6 @@ const Withdrawals = () => {
       console.error('Error fetching withdrawal data:', error);
     } finally {
       setLoading(false);
-    }
-  };
-
-  const fetchStripeStatus = async () => {
-    try {
-      const res = await apiClient.get('/stripe/connect/status');
-      setStripeStatus(res.data);
-    } catch {
-      // Stripe Connect not available — non-fatal
-    }
-  };
-
-  const handleConnectStripe = async () => {
-    setConnectingStripe(true);
-    try {
-      const res = await apiClient.post('/stripe/connect/account-link');
-      window.location.href = res.data.url;
-    } catch (err: any) {
-      setError(err.response?.data?.error || 'Failed to start bank account setup');
-      setConnectingStripe(false);
     }
   };
 
@@ -184,32 +142,6 @@ const Withdrawals = () => {
               </div>
             )}
 
-            {/* Stripe Connect banner */}
-            {stripeStatus && !stripeStatus.ready && (
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6 flex items-start justify-between gap-4">
-                <div>
-                  <p className="text-sm font-medium text-blue-800">Connect your bank account for instant payouts</p>
-                  <p className="text-xs text-blue-600 mt-1">
-                    {stripeStatus.connected
-                      ? 'Your Stripe account setup is incomplete. Click to finish.'
-                      : 'Link your bank account via Stripe to request bank transfer withdrawals.'}
-                  </p>
-                </div>
-                <button
-                  onClick={handleConnectStripe}
-                  disabled={connectingStripe}
-                  className="shrink-0 bg-blue-600 hover:bg-blue-700 text-white text-sm px-4 py-2 rounded-lg disabled:opacity-50"
-                >
-                  {connectingStripe ? 'Redirecting...' : stripeStatus.connected ? 'Finish Setup' : 'Connect Bank'}
-                </button>
-              </div>
-            )}
-            {stripeStatus?.ready && (
-              <div className="bg-green-50 border border-green-200 rounded-lg px-4 py-3 mb-6 text-sm text-green-800">
-                ✓ Bank account connected via Stripe — bank transfer withdrawals are available.
-              </div>
-            )}
-
             {/* Withdrawal Request Form */}
             {showForm && balance && (
               <div className="bg-white rounded-lg shadow p-6 mb-8">
@@ -243,48 +175,41 @@ const Withdrawals = () => {
                       </label>
                       <select
                         value={formData.payment_method}
-                        onChange={(e) => setFormData({ ...formData, payment_method: e.target.value, payment_details: '' })}
+                        onChange={(e) => setFormData({ ...formData, payment_method: e.target.value })}
                         className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
                       >
                         <option value="paypal">PayPal</option>
-                        <option value="bank_transfer" disabled={!stripeStatus?.ready}>
-                          Bank Transfer (Stripe){!stripeStatus?.ready ? ' — connect bank first' : ''}
-                        </option>
+                        <option value="bank_transfer">Bank Transfer</option>
                         <option value="venmo">Venmo</option>
-                        <option value="cash_app">Cash App</option>
+                        <option value="zelle">Zelle</option>
+                        <option value="other">Other</option>
                       </select>
                     </div>
-
-                    {/* Bank transfer — no details needed, uses Stripe Connect */}
-                    {formData.payment_method === 'bank_transfer' ? (
-                      <div className="bg-blue-50 border border-blue-200 rounded-md px-4 py-3 text-sm text-blue-700">
-                        Payout will be sent to your connected Stripe bank account automatically.
-                      </div>
-                    ) : (
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Payment Details
-                        </label>
-                        <input
-                          type="text"
-                          required
-                          value={formData.payment_details}
-                          onChange={(e) => setFormData({ ...formData, payment_details: e.target.value })}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-                          placeholder={
-                            formData.payment_method === 'paypal'   ? 'PayPal email address' :
-                            formData.payment_method === 'venmo'    ? 'Venmo username (e.g. @username)' :
-                            formData.payment_method === 'cash_app' ? 'Cash App $cashtag (e.g. $username)' :
-                            'Payment details'
-                          }
-                        />
-                        <p className="mt-1 text-xs text-gray-500">
-                          {formData.payment_method === 'paypal'   && 'PayPal and Venmo payouts are processed manually by admin within 1–3 business days.'}
-                          {formData.payment_method === 'venmo'    && 'PayPal and Venmo payouts are processed manually by admin within 1–3 business days.'}
-                          {formData.payment_method === 'cash_app' && 'Cash App payouts are processed manually by admin within 1–3 business days.'}
-                        </p>
-                      </div>
-                    )}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Payment Details
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={formData.payment_details}
+                        onChange={(e) => setFormData({ ...formData, payment_details: e.target.value })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                        placeholder={
+                          formData.payment_method === 'paypal' 
+                            ? 'PayPal email address'
+                            : formData.payment_method === 'bank_transfer'
+                            ? 'Account number or routing info'
+                            : 'Payment details'
+                        }
+                      />
+                      <p className="mt-1 text-xs text-gray-500">
+                        {formData.payment_method === 'paypal' && 'Enter your PayPal email address'}
+                        {formData.payment_method === 'bank_transfer' && 'Enter your bank account details'}
+                        {formData.payment_method === 'venmo' && 'Enter your Venmo username'}
+                        {formData.payment_method === 'zelle' && 'Enter your Zelle email or phone'}
+                      </p>
+                    </div>
                   </div>
                   <div className="mt-6 flex space-x-3">
                     <button
@@ -334,7 +259,7 @@ const Withdrawals = () => {
                             </span>
                           </div>
                           <div className="text-sm text-gray-600">
-                            <div>Method: {PAYMENT_METHOD_LABELS[withdrawal.payment_method] ?? withdrawal.payment_method}</div>
+                            <div>Method: {withdrawal.payment_method.replace('_', ' ').toUpperCase()}</div>
                             <div>Requested: {new Date(withdrawal.requested_at).toLocaleString()}</div>
                             {withdrawal.processed_at && (
                               <div>Processed: {new Date(withdrawal.processed_at).toLocaleString()}</div>

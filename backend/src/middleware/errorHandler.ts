@@ -1,5 +1,4 @@
 import { Request, Response, NextFunction } from 'express';
-import { appConfig } from '../config/appConfig';
 
 export interface AppError extends Error {
   statusCode?: number;
@@ -7,35 +6,31 @@ export interface AppError extends Error {
 }
 
 export const errorHandler = (
-  err: AppError & { code?: string },
+  err: AppError,
   req: Request,
   res: Response,
   next: NextFunction
 ) => {
-  // CSRF failures get a recognisable code so they're easy to spot in logs.
-  if (err.code === 'EBADCSRFTOKEN') {
-    console.error('CSRF validation failed:', { url: req.url, method: req.method, ip: req.ip });
-    return res.status(403).json({ error: 'CSRF validation failed' });
-  }
-
+  // Log error
   console.error('Error:', {
     message: err.message,
-    stack: appConfig.isDevelopment ? err.stack : undefined,
+    stack: process.env.NODE_ENV === 'development' ? err.stack : undefined,
     url: req.url,
     method: req.method,
     ip: req.ip
   });
 
+  // Default error
   const statusCode = err.statusCode || 500;
-  const message = err.isOperational
-    ? err.message
-    : appConfig.isProduction
-      ? 'Internal server error'
+  const message = err.isOperational 
+    ? err.message 
+    : process.env.NODE_ENV === 'production' 
+      ? 'Internal server error' 
       : err.message;
 
   res.status(statusCode).json({
     error: message,
-    ...(appConfig.isDevelopment && { stack: err.stack })
+    ...(process.env.NODE_ENV === 'development' && { stack: err.stack })
   });
 };
 

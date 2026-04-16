@@ -31,7 +31,7 @@ const MerchantCard = ({ merchant }: MerchantCardProps) => {
               className="w-16 h-16 object-contain rounded"
               width={64}
               height={64}
-              fallback="https://placehold.co/64"
+              fallback="https://via.placeholder.com/64"
             />
           ) : (
             <div className="w-16 h-16 bg-gray-200 rounded flex items-center justify-center">
@@ -48,20 +48,14 @@ const MerchantCard = ({ merchant }: MerchantCardProps) => {
             {merchant.description && (
               <p className="text-gray-600 text-sm mb-2">{merchant.description}</p>
             )}
-            <div className="flex flex-wrap items-center gap-2 mt-3">
+            <div className="flex items-center space-x-4 mt-3">
               {merchant.max_cashback && (
                 <div className="bg-primary-100 text-primary-700 px-3 py-1 rounded-full text-sm font-semibold">
                   Up to {merchant.max_cashback}% Cashback
                 </div>
               )}
               {merchant.category && (
-                <Link
-                  to={`/category/${encodeURIComponent(merchant.category)}`}
-                  className="inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-medium bg-gray-100 text-gray-700 hover:bg-primary-50 hover:text-primary-700 transition"
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  {merchant.category}
-                </Link>
+                <span className="text-gray-500 text-sm">{merchant.category}</span>
               )}
             </div>
           </div>

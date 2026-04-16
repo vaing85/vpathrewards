@@ -1,0 +1,1309 @@
+openapi: 3.0.3
+info:
+  title: V PATHing Rewards API
+  version: 1.0.0
+  description: Cashback rewards platform API
+
+servers:
+  - url: https://vpathrewards.store/api
+    description: Production
+
+security:
+  - bearerAuth: []
+  - cookieAuth: []
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+    cookieAuth:
+      type: apiKey
+      in: cookie
+      name: auth_token
+
+  schemas:
+    Error:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: string
+
+    Pagination:
+      type: object
+      properties:
+        page:
+          type: integer
+        limit:
+          type: integer
+        total:
+          type: integer
+        totalPages:
+          type: integer
+        hasNext:
+          type: boolean
+        hasPrev:
+          type: boolean
+
+    User:
+      type: object
+      properties:
+        id:
+          type: integer
+        email:
+          type: string
+          format: email
+        name:
+          type: string
+        total_earnings:
+          type: number
+
+    Merchant:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        description:
+          type: string
+          nullable: true
+        category:
+          type: string
+          nullable: true
+        website_url:
+          type: string
+          nullable: true
+        logo_url:
+          type: string
+          nullable: true
+
+    Offer:
+      type: object
+      properties:
+        id:
+          type: integer
+        merchant_id:
+          type: integer
+        title:
+          type: string
+        description:
+          type: string
+          nullable: true
+        cashback_rate:
+          type: number
+        affiliate_link:
+          type: string
+        is_active:
+          type: integer
+        merchant_name:
+          type: string
+        merchant_logo:
+          type: string
+          nullable: true
+        category:
+          type: string
+          nullable: true
+
+    Goal:
+      type: object
+      properties:
+        id:
+          type: integer
+        user_id:
+          type: integer
+        title:
+          type: string
+        target_amount:
+          type: number
+        period_type:
+          type: string
+          enum: [monthly, weekly, yearly, custom]
+        start_date:
+          type: string
+          format: date
+          nullable: true
+        end_date:
+          type: string
+          format: date
+          nullable: true
+
+    Withdrawal:
+      type: object
+      properties:
+        id:
+          type: integer
+        amount:
+          type: number
+        payment_method:
+          type: string
+        status:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+
+paths:
+  # ─── Health ────────────────────────────────────────────────────────────────
+  /health:
+    get:
+      operationId: getHealth
+      summary: Health check
+      security: []
+      responses:
+        '200':
+          description: API is running
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                  message:
+                    type: string
+                  database:
+                    type: string
+
+  /csrf-token:
+    get:
+      operationId: getCsrfToken
+      summary: Get CSRF token
+      security: []
+      responses:
+        '200':
+          description: CSRF token
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  csrfToken:
+                    type: string
+
+  # ─── Auth ──────────────────────────────────────────────────────────────────
+  /auth/register:
+    post:
+      operationId: register
+      summary: Register a new user
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password, name]
+              properties:
+                email:
+                  type: string
+                  format: email
+                  maxLength: 254
+                password:
+                  type: string
+                  minLength: 8
+                  maxLength: 128
+                name:
+                  type: string
+                  minLength: 2
+                  maxLength: 100
+                referral_code:
+                  type: string
+                  maxLength: 50
+                turnstileToken:
+                  type: string
+      responses:
+        '201':
+          description: User registered
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /auth/login:
+    post:
+      operationId: login
+      summary: Login
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email:
+                  type: string
+                  format: email
+                  maxLength: 254
+                password:
+                  type: string
+                  minLength: 1
+                  maxLength: 128
+      responses:
+        '200':
+          description: Login successful
+        '401':
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /auth/logout:
+    post:
+      operationId: logout
+      summary: Logout
+      responses:
+        '200':
+          description: Logged out
+
+  /auth/refresh:
+    post:
+      operationId: refreshToken
+      summary: Refresh access token
+      security: []
+      responses:
+        '200':
+          description: Token refreshed
+        '401':
+          description: Invalid refresh token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /auth/me:
+    get:
+      operationId: getMe
+      summary: Get current user
+      responses:
+        '200':
+          description: Current user
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  user:
+                    $ref: '#/components/schemas/User'
+
+  /auth/forgot-password:
+    post:
+      operationId: forgotPassword
+      summary: Request password reset email
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email]
+              properties:
+                email:
+                  type: string
+                  format: email
+                  maxLength: 254
+                turnstileToken:
+                  type: string
+      responses:
+        '200':
+          description: Reset email sent (if account exists)
+        '400':
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /auth/reset-password:
+    post:
+      operationId: resetPassword
+      summary: Reset password using token
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [token, password]
+              properties:
+                token:
+                  type: string
+                  minLength: 1
+                  maxLength: 128
+                password:
+                  type: string
+                  minLength: 8
+                  maxLength: 128
+      responses:
+        '200':
+          description: Password reset successful
+        '400':
+          description: Invalid token or password
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  # ─── Merchants ─────────────────────────────────────────────────────────────
+  /merchants:
+    get:
+      operationId: listMerchants
+      summary: List merchants
+      security: []
+      parameters:
+        - name: search
+          in: query
+          schema:
+            type: string
+            maxLength: 200
+        - name: category
+          in: query
+          schema:
+            type: string
+            maxLength: 100
+        - name: minCashback
+          in: query
+          schema:
+            type: number
+            minimum: 0
+            maximum: 100
+        - name: sort
+          in: query
+          schema:
+            type: string
+            enum: [name, cashback_asc, cashback_desc, newest]
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+      responses:
+        '200':
+          description: Merchant list
+
+  /merchants/{id}:
+    get:
+      operationId: getMerchant
+      summary: Get merchant by ID
+      security: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        '200':
+          description: Merchant
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Merchant'
+        '404':
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /merchants/{id}/reviews:
+    get:
+      operationId: getMerchantReviews
+      summary: Get merchant reviews
+      security: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        '200':
+          description: Reviews
+
+    post:
+      operationId: postMerchantReview
+      summary: Post a review for a merchant
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [rating]
+              properties:
+                rating:
+                  type: integer
+                  minimum: 1
+                  maximum: 5
+                comment:
+                  type: string
+                  maxLength: 2000
+      responses:
+        '201':
+          description: Review posted
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /merchants/{id}/offers:
+    get:
+      operationId: getMerchantOffers
+      summary: Get offers for a merchant
+      security: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        '200':
+          description: Offers
+
+  /merchants/{id}/banners:
+    get:
+      operationId: getMerchantBanners
+      summary: Get banners for a merchant
+      security: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        '200':
+          description: Banners
+
+  # ─── Offers ────────────────────────────────────────────────────────────────
+  /offers:
+    get:
+      operationId: listOffers
+      summary: List active offers
+      security: []
+      parameters:
+        - name: search
+          in: query
+          schema:
+            type: string
+            maxLength: 200
+        - name: category
+          in: query
+          schema:
+            type: string
+            maxLength: 100
+        - name: merchantId
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+        - name: minCashback
+          in: query
+          schema:
+            type: number
+            minimum: 0
+            maximum: 100
+        - name: maxCashback
+          in: query
+          schema:
+            type: number
+            minimum: 0
+            maximum: 100
+        - name: sort
+          in: query
+          schema:
+            type: string
+            enum: [name, cashback_asc, cashback_desc, newest]
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+      responses:
+        '200':
+          description: Paginated offer list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Offer'
+                  pagination:
+                    $ref: '#/components/schemas/Pagination'
+
+  /offers/{id}:
+    get:
+      operationId: getOffer
+      summary: Get offer by ID
+      security: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        '200':
+          description: Offer
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Offer'
+        '403':
+          description: Not available in your state
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  # ─── Cashback ──────────────────────────────────────────────────────────────
+  /cashback/transactions:
+    get:
+      operationId: getCashbackTransactions
+      summary: Get cashback transactions
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+      responses:
+        '200':
+          description: Transactions
+
+  /cashback/summary:
+    get:
+      operationId: getCashbackSummary
+      summary: Get cashback summary
+      responses:
+        '200':
+          description: Summary
+
+  /cashback/history:
+    get:
+      operationId: getCashbackHistory
+      summary: Get cashback history
+      parameters:
+        - name: group_by
+          in: query
+          schema:
+            type: string
+            enum: [day, week, month]
+        - name: days
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 365
+        - name: status
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: History
+
+  /cashback/calendar:
+    get:
+      operationId: getCashbackCalendar
+      summary: Get cashback calendar
+      parameters:
+        - name: year
+          in: query
+          schema:
+            type: integer
+            minimum: 2020
+            maximum: 2100
+        - name: month
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 12
+      responses:
+        '200':
+          description: Calendar data
+
+  /cashback/goals:
+    get:
+      operationId: getGoals
+      summary: Get cashback goals
+      responses:
+        '200':
+          description: Goals
+
+    post:
+      operationId: createGoal
+      summary: Create a cashback goal
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [title, target_amount]
+              properties:
+                title:
+                  type: string
+                  minLength: 1
+                  maxLength: 200
+                target_amount:
+                  type: number
+                  minimum: 0.01
+                period_type:
+                  type: string
+                  enum: [monthly, weekly, yearly, custom]
+                  default: monthly
+                start_date:
+                  type: string
+                  format: date
+                  nullable: true
+                end_date:
+                  type: string
+                  format: date
+                  nullable: true
+      responses:
+        '201':
+          description: Goal created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Goal'
+
+  /cashback/goals/{id}:
+    put:
+      operationId: updateGoal
+      summary: Update a cashback goal
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                title:
+                  type: string
+                  minLength: 1
+                  maxLength: 200
+                target_amount:
+                  type: number
+                  minimum: 0.01
+                period_type:
+                  type: string
+                  enum: [monthly, weekly, yearly, custom]
+                start_date:
+                  type: string
+                  format: date
+                  nullable: true
+                end_date:
+                  type: string
+                  format: date
+                  nullable: true
+      responses:
+        '200':
+          description: Goal updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Goal'
+        '404':
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    delete:
+      operationId: deleteGoal
+      summary: Delete a cashback goal
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        '200':
+          description: Goal deleted
+        '404':
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /cashback/track:
+    post:
+      operationId: trackCashback
+      summary: Track a cashback transaction
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [offer_id, amount]
+              properties:
+                offer_id:
+                  type: integer
+                  minimum: 1
+                amount:
+                  type: number
+                  minimum: 0.01
+      responses:
+        '200':
+          description: Tracked
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  # ─── Search ────────────────────────────────────────────────────────────────
+  /search:
+    get:
+      operationId: search
+      summary: Search merchants and offers
+      security: []
+      parameters:
+        - name: q
+          in: query
+          schema:
+            type: string
+            maxLength: 200
+        - name: category
+          in: query
+          schema:
+            type: string
+            maxLength: 100
+        - name: minCashback
+          in: query
+          schema:
+            type: number
+            minimum: 0
+            maximum: 100
+        - name: maxCashback
+          in: query
+          schema:
+            type: number
+            minimum: 0
+            maximum: 100
+      responses:
+        '200':
+          description: Search results
+
+  # ─── Withdrawals ───────────────────────────────────────────────────────────
+  /withdrawals/history:
+    get:
+      operationId: getWithdrawalHistory
+      summary: Get withdrawal history
+      responses:
+        '200':
+          description: Withdrawal history
+
+  /withdrawals/balance/available:
+    get:
+      operationId: getAvailableBalance
+      summary: Get available balance
+      responses:
+        '200':
+          description: Balance
+
+  /withdrawals/{id}:
+    get:
+      operationId: getWithdrawal
+      summary: Get withdrawal by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        '200':
+          description: Withdrawal
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Withdrawal'
+        '404':
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /withdrawals/request:
+    post:
+      operationId: requestWithdrawal
+      summary: Request a withdrawal
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [amount, payment_method]
+              properties:
+                amount:
+                  type: number
+                  minimum: 10
+                payment_method:
+                  type: string
+                  enum: [paypal, bank_transfer, venmo, cash_app]
+                payment_details:
+                  type: string
+                  minLength: 3
+                  maxLength: 200
+      responses:
+        '201':
+          description: Withdrawal requested
+        '400':
+          description: Insufficient balance or invalid input
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  # ─── Tracking ──────────────────────────────────────────────────────────────
+  /tracking/click:
+    post:
+      operationId: trackClick
+      summary: Track offer click
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [offer_id]
+              properties:
+                offer_id:
+                  type: integer
+                  minimum: 1
+                session_id:
+                  type: string
+                  maxLength: 128
+                referral_code:
+                  type: string
+                  maxLength: 50
+      responses:
+        '200':
+          description: Click tracked
+        '404':
+          description: Offer not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /tracking/conversion:
+    post:
+      operationId: trackConversion
+      summary: Record a conversion
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [session_id]
+              properties:
+                session_id:
+                  type: string
+                  minLength: 1
+                  maxLength: 128
+                click_id:
+                  type: integer
+                  minimum: 1
+                order_id:
+                  type: string
+                  maxLength: 200
+                order_amount:
+                  type: number
+                  minimum: 0
+                commission_amount:
+                  type: number
+                  minimum: 0
+      responses:
+        '201':
+          description: Conversion recorded
+        '200':
+          description: Already recorded
+        '404':
+          description: Click not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  # ─── Profile ───────────────────────────────────────────────────────────────
+  /profile:
+    get:
+      operationId: getProfile
+      summary: Get user profile
+      responses:
+        '200':
+          description: Profile
+
+    put:
+      operationId: updateProfile
+      summary: Update user profile
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  minLength: 2
+                  maxLength: 100
+                email:
+                  type: string
+                  format: email
+                  maxLength: 254
+      responses:
+        '200':
+          description: Profile updated
+
+    delete:
+      operationId: deleteAccount
+      summary: Delete account (requires password)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [password]
+              properties:
+                password:
+                  type: string
+                  minLength: 1
+      responses:
+        '200':
+          description: Account deleted
+        '401':
+          description: Incorrect password
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /profile/password:
+    put:
+      operationId: changePassword
+      summary: Change password
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [current_password, new_password]
+              properties:
+                current_password:
+                  type: string
+                  minLength: 1
+                new_password:
+                  type: string
+                  minLength: 8
+                  maxLength: 128
+      responses:
+        '200':
+          description: Password changed
+
+  /profile/notifications:
+    put:
+      operationId: updateNotifications
+      summary: Update notification preferences
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                notification_email:
+                  type: boolean
+                notification_cashback:
+                  type: boolean
+                notification_withdrawal:
+                  type: boolean
+                notification_new_offers:
+                  type: boolean
+      responses:
+        '200':
+          description: Preferences updated
+
+  # ─── Favorites ─────────────────────────────────────────────────────────────
+  /favorites:
+    get:
+      operationId: getFavorites
+      summary: Get user favorites
+      responses:
+        '200':
+          description: Favorites
+
+    post:
+      operationId: addFavorite
+      summary: Add to favorites
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                offer_id:
+                  type: integer
+                  minimum: 1
+                merchant_id:
+                  type: integer
+                  minimum: 1
+      responses:
+        '201':
+          description: Added to favorites
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    delete:
+      operationId: removeFavorite
+      summary: Remove from favorites
+      parameters:
+        - name: offer_id
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+        - name: merchant_id
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+        - name: favorite_id
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        '200':
+          description: Removed from favorites
+
+  # ─── Featured ──────────────────────────────────────────────────────────────
+  /featured:
+    get:
+      operationId: getFeatured
+      summary: Get featured offers
+      security: []
+      responses:
+        '200':
+          description: Featured offers
+
+  # ─── Referrals ─────────────────────────────────────────────────────────────
+  /referrals:
+    get:
+      operationId: getReferrals
+      summary: Get referral info
+      responses:
+        '200':
+          description: Referral info
+
+  # ─── Analytics ─────────────────────────────────────────────────────────────
+  /analytics:
+    get:
+      operationId: getAnalytics
+      summary: Get user analytics
+      responses:
+        '200':
+          description: Analytics
+
+  # ─── Stats ─────────────────────────────────────────────────────────────────
+  /stats:
+    get:
+      operationId: getStats
+      summary: Get platform stats
+      security: []
+      responses:
+        '200':
+          description: Stats
+
+  # ─── Subscriptions ─────────────────────────────────────────────────────────
+  /subscriptions/current:
+    get:
+      operationId: getCurrentSubscription
+      summary: Get current subscription
+      responses:
+        '200':
+          description: Subscription
+
+  /subscriptions/checkout:
+    post:
+      operationId: createCheckout
+      summary: Create Stripe Checkout session
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                plan:
+                  type: string
+                  enum: [bronze, silver, gold, platinum]
+                  default: gold
+      responses:
+        '200':
+          description: Checkout URL
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  url:
+                    type: string
+
+  /subscriptions/portal:
+    post:
+      operationId: createBillingPortal
+      summary: Create Stripe Billing Portal session
+      responses:
+        '200':
+          description: Portal URL
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  url:
+                    type: string
+
+  # ─── Stripe Connect ────────────────────────────────────────────────────────
+  /stripe/connect/account-link:
+    post:
+      operationId: createStripeConnectLink
+      summary: Create Stripe Connect account link
+      responses:
+        '200':
+          description: Account link URL
+
+  # ─── Support ───────────────────────────────────────────────────────────────
+  /support/chat:
+    post:
+      operationId: supportChat
+      summary: Send a message to support chat
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [message]
+              properties:
+                message:
+                  type: string
+                  minLength: 1
+                  maxLength: 1000
+                history:
+                  type: array
+                  maxItems: 10
+                  items:
+                    type: object
+                    required: [role, content]
+                    properties:
+                      role:
+                        type: string
+                        enum: [user, assistant]
+                      content:
+                        type: string
+                        maxLength: 4000
+      responses:
+        '200':
+          description: Assistant reply
+
+  # ─── Webhooks ──────────────────────────────────────────────────────────────
+  /webhooks/stripe:
+    post:
+      operationId: stripeWebhook
+      summary: Stripe webhook handler
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: Received

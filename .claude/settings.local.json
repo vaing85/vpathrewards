@@ -33,7 +33,13 @@
       "Bash(grep -r \"example\\\\|demo\\\\|sample\\\\|hardcoded\\\\|mock\\\\|test\" /c/Users/villa/cashback-app/backend/src/routes --include=*.ts)",
       "Skill(claude-api)",
       "Skill(claude-api:*)",
-      "Bash(curl -s -X POST http://localhost:3001/api/support/chat -H \"Content-Type: application/json\" -d \"{\"\"message\"\": \"\"How do I earn cashback?\"\", \"\"history\"\": []}\")"
+      "Bash(curl -s -X POST http://localhost:3001/api/support/chat -H \"Content-Type: application/json\" -d \"{\"\"message\"\": \"\"How do I earn cashback?\"\", \"\"history\"\": []}\")",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(git add:*)",
+      "Bash(find /c/Users/villa/cashback-app -type f -name *.sql -o -name *migration*)",
+      "Bash(gh api:*)",
+      "Bash(gh pr:*)"
     ]
   }
 }

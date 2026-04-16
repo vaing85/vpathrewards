@@ -10,8 +10,9 @@ interface AdminUser {
 
 interface AdminContextType {
   admin: AdminUser | null;
+  token: string | null;
   login: (email: string, password: string) => Promise<void>;
-  logout: () => Promise<void>;
+  logout: () => void;
   isAuthenticated: boolean;
 }
 
@@ -19,41 +20,44 @@ const AdminContext = createContext<AdminContextType | undefined>(undefined);
 
 export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [admin, setAdmin] = useState<AdminUser | null>(null);
+  const [token, setToken] = useState<string | null>(null);
 
-  // On mount, restore session using the token stored in sessionStorage (or
-  // fall back to the httpOnly cookie for same-origin setups).
   useEffect(() => {
-    apiClient.get('/admin/auth/me')
-      .then(res => setAdmin(res.data.user))
-      .catch(() => {
-        localStorage.removeItem('admin_token');
-        setAdmin(null);
-      });
+    const storedToken = localStorage.getItem('admin_token');
+    const storedAdmin = localStorage.getItem('admin_user');
+    
+    if (storedToken && storedAdmin) {
+      setToken(storedToken);
+      setAdmin(JSON.parse(storedAdmin));
+    }
   }, []);
 
   const login = async (email: string, password: string) => {
     const response = await apiClient.post('/admin/auth/login', { email, password });
-    // Persist token so the Bearer interceptor can attach it on every admin request.
-    // sessionStorage clears automatically when the browser tab/window closes.
-    if (response.data.token) {
-      localStorage.setItem('admin_token', response.data.token);
-    }
-    setAdmin(response.data.user);
+    const { token: newToken, user: newAdmin } = response.data;
+    
+    setToken(newToken);
+    setAdmin(newAdmin);
+    localStorage.setItem('admin_token', newToken);
+    localStorage.setItem('admin_user', JSON.stringify(newAdmin));
   };
 
-  const logout = async () => {
-    await apiClient.post('/admin/auth/logout').catch(() => {});
-    localStorage.removeItem('admin_token');
+  const logout = () => {
+    setToken(null);
     setAdmin(null);
+    localStorage.removeItem('admin_token');
+    localStorage.removeItem('admin_user');
   };
+
 
   return (
     <AdminContext.Provider
       value={{
         admin,
+        token,
         login,
         logout,
-        isAuthenticated: !!admin,
+        isAuthenticated: !!token,
       }}
     >
       {children}
