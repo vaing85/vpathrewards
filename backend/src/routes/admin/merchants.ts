@@ -22,15 +22,12 @@ router.get('/', authenticateAdmin, async (req, res) => {
     const totalPages = Math.ceil(total / limitNum);
     
     const merchants = await dbAll(`
-      SELECT
+      SELECT 
         m.*,
-        COALESCE(offer_stats.offer_count, 0) as offer_count
+        COUNT(o.id) as offer_count
       FROM merchants m
-      LEFT JOIN (
-        SELECT merchant_id, COUNT(*) as offer_count
-        FROM offers
-        GROUP BY merchant_id
-      ) offer_stats ON m.id = offer_stats.merchant_id
+      LEFT JOIN offers o ON m.id = o.merchant_id
+      GROUP BY m.id
       ORDER BY m.created_at DESC
       LIMIT ? OFFSET ?
     `, [limitNum, offset]);
@@ -67,7 +64,7 @@ router.get('/:id', authenticateAdmin, async (req, res) => {
 });
 
 // Create merchant
-router.post('/', authenticateAdmin, validateMerchant, async (req: express.Request, res: express.Response) => {
+router.post('/', authenticateAdmin, validateMerchant, async (req: import('express').Request, res: import('express').Response) => {
   try {
     const { name, description, logo_url, website_url, category } = req.body;
 
@@ -91,7 +88,7 @@ router.post('/', authenticateAdmin, validateMerchant, async (req: express.Reques
 });
 
 // Update merchant
-router.put('/:id', authenticateAdmin, validateId, validateMerchant, async (req: express.Request, res: express.Response) => {
+router.put('/:id', authenticateAdmin, validateId, validateMerchant, async (req: import('express').Request, res: import('express').Response) => {
   try {
     const { name, description, logo_url, website_url, category } = req.body;
 

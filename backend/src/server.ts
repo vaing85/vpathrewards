@@ -1,32 +1,8 @@
-import dotenv from 'dotenv';
-dotenv.config({ override: true });
-
-// Validate required environment variables before any other code runs
-const REQUIRED_ENV_VARS = [
-  'DATABASE_URL',
-  'JWT_SECRET',
-  'STRIPE_SECRET_KEY',
-  'FRONTEND_URL',
-  // 64-char hex key for AES-256-GCM field encryption of payment_details
-  // Generate: node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
-  'FIELD_ENCRYPTION_KEY',
-];
-if (process.env.NODE_ENV === 'production') {
-  const missing = REQUIRED_ENV_VARS.filter((v) => !process.env[v]);
-  if (missing.length > 0) {
-    console.error(`FATAL: Missing required environment variables: ${missing.join(', ')}`);
-    process.exit(1);
-  }
-}
-
 import express from 'express';
-import cookieParser from 'cookie-parser';
 import cors from 'cors';
 import helmet from 'helmet';
-import { doubleCsrf } from 'csrf-csrf';
-import { initDatabase, dbGet } from './database';
-import { appConfig } from './config/appConfig';
-import { securityConfig } from './config/securityConfig';
+import dotenv from 'dotenv';
+import { initDatabase } from './database';
 import { apiLimiter, authLimiter, passwordLimiter, withdrawalLimiter, adminLimiter } from './middleware/rateLimiter';
 import { sanitizeInput, securityHeaders } from './middleware/security';
 import authRoutes from './routes/auth';
@@ -41,7 +17,6 @@ import featuredRoutes from './routes/featured';
 import referralRoutes from './routes/referrals';
 import favoritesRoutes from './routes/favorites';
 import analyticsRoutes from './routes/analytics';
-import statsRoutes from './routes/stats';
 import adminAuthRoutes from './routes/admin/auth';
 import adminMerchantRoutes from './routes/admin/merchants';
 import adminOfferRoutes from './routes/admin/offers';
@@ -50,30 +25,21 @@ import adminDashboardRoutes from './routes/admin/dashboard';
 import adminWithdrawalRoutes from './routes/admin/withdrawals';
 import adminAnalyticsRoutes from './routes/admin/analytics';
 import adminCashbackRoutes from './routes/admin/cashback';
-import adminJobsRoutes from './routes/admin/jobs';
-import adminBannerRoutes from './routes/admin/banners';
-import subscriptionRoutes from './routes/subscriptions';
-import webhookRoutes from './routes/webhooks';
-import supportRoutes from './routes/support';
-import stripeConnectRoutes from './routes/stripeConnect';
+import adminCommissionRoutes from './routes/admin/commissionSettings';
+import notificationRoutes from './routes/notifications';
 import { errorHandler } from './middleware/errorHandler';
-import cron from 'node-cron';
-import { linkCheckerJob } from './jobs';
+
+dotenv.config();
 
 const app = express();
-const PORT = appConfig.port;
-
-// Trust Railway's proxy (fixes rate limiter X-Forwarded-For warning)
-app.set('trust proxy', 1);
+const PORT = process.env.PORT || 3001;
 
 // Security middleware (apply before other middleware)
 app.use(helmet({
   contentSecurityPolicy: {
     directives: {
       defaultSrc: ["'self'"],
-      // Tailwind CSS generates inline styles at build time; remove unsafe-inline
-      // once a nonce/hash strategy is in place for the frontend.
-      styleSrc: ["'self'"],
+      styleSrc: ["'self'", "'unsafe-inline'"], // Allow inline styles for React
       scriptSrc: ["'self'"],
       imgSrc: ["'self'", "data:", "https:"],
       connectSrc: ["'self'"],
@@ -83,12 +49,6 @@ app.use(helmet({
       frameSrc: ["'none'"],
     },
   },
-  // HSTS: force HTTPS for 1 year, include subdomains
-  hsts: {
-    maxAge: 31536000,
-    includeSubDomains: true,
-    preload: true,
-  },
   crossOriginEmbedderPolicy: false, // Disable for API
 }));
 
@@ -97,17 +57,11 @@ app.use(securityHeaders);
 
 // CORS configuration
 app.use(cors({
-  origin: securityConfig.cors.origin,
-  credentials: securityConfig.cors.credentials,
-  methods: [...securityConfig.cors.methods],
-  allowedHeaders: [...securityConfig.cors.allowedHeaders],
+  origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
 }));
-
-// Stripe webhook — must be registered BEFORE express.json() to get raw body
-app.use('/api/webhooks', webhookRoutes);
-
-// Cookie parsing (must come before auth middleware)
-app.use(cookieParser());
 
 // Body parsing with size limit
 app.use(express.json({ limit: '10mb' }));
@@ -115,70 +69,6 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 // Input sanitization
 app.use(sanitizeInput);
-
-// CSRF protection — double-submit cookie pattern.
-// GET/HEAD/OPTIONS are exempt; all state-changing requests must include
-// the x-csrf-token header whose value matches the csrf cookie.
-//
-// Cross-origin detection: sameSite=none + Secure are required whenever the
-// frontend (vpathrewards.store) is on a different domain from the API
-// (railway.app). Uses both checks so it works whether NODE_ENV or FRONTEND_URL
-// (or both) are set in Railway.
-const frontendUrl = process.env.FRONTEND_URL || '';
-const isCrossOrigin =
-  process.env.NODE_ENV === 'production' ||
-  (frontendUrl.startsWith('https://') && !frontendUrl.includes('localhost'));
-const { generateCsrfToken, doubleCsrfProtection } = doubleCsrf({
-  getSecret: () => process.env.JWT_SECRET ?? 'dev-csrf-secret',
-  getSessionIdentifier: () => 'default',
-  cookieName: 'csrf_token',
-  cookieOptions: {
-    // sameSite:'none' + secure are required for cross-origin (SPA on different domain).
-    // 'lax' is fine for local development (same host, http).
-    secure: isCrossOrigin,
-    sameSite: isCrossOrigin ? 'none' : 'lax',
-    httpOnly: false, // must be readable by JS so the frontend can send it in a header
-    path: '/',
-  },
-  getCsrfTokenFromRequest: (req) => req.headers['x-csrf-token'] as string,
-  // Login/register routes are exempt: CSRF on a login endpoint provides no
-  // meaningful protection because an attacker still needs valid credentials.
-  // Skipping avoids cross-domain cookie timing races on the first page load.
-  skipCsrfProtection: (req) => {
-    // All admin routes use a Bearer JWT from sessionStorage for auth.
-    // sessionStorage is not readable cross-origin, so Bearer-token auth is
-    // inherently CSRF-safe without needing a cookie-based CSRF check.
-    // Skipping also avoids failures caused by browsers blocking third-party
-    // cookies (Chrome 120+, Safari ITP) in cross-origin API setups.
-    if (req.path.startsWith('/api/admin/')) return true;
-
-    // Requests with a Bearer token are inherently CSRF-safe: a cross-site
-    // attacker cannot read sessionStorage from a different origin, so they
-    // cannot forge the Authorization header. This covers all authenticated
-    // user routes (profile, subscriptions, cashback, etc.) in the cross-origin
-    // setup where third-party cookie blocking prevents the CSRF cookie from
-    // being sent back.
-    if (req.headers.authorization?.startsWith('Bearer ')) return true;
-
-    // Login/register/refresh are exempt: either CSRF provides no meaningful
-    // protection (login needs credentials; refresh uses httpOnly cookie), or
-    // they are the first request in a session before a CSRF token exists.
-    return req.method === 'POST' &&
-      (req.path === '/api/auth/login' ||
-       req.path === '/api/auth/register' ||
-       req.path === '/api/auth/refresh' ||
-       req.path === '/api/auth/logout');
-  },
-});
-
-// Expose token-generation endpoint (GET is safe, no protection needed)
-app.get('/api/csrf-token', (req, res) => {
-  res.json({ csrfToken: generateCsrfToken(req, res) });
-});
-
-// Apply protection to all state-changing routes (excludes webhooks which
-// are already registered above and use their own Stripe signature check)
-app.use(doubleCsrfProtection);
 
 // Apply rate limiting to all routes
 app.use('/api', apiLimiter);
@@ -196,10 +86,6 @@ app.use('/api/featured', featuredRoutes);
 app.use('/api/referrals', referralRoutes);
 app.use('/api/favorites', favoritesRoutes);
 app.use('/api/analytics', analyticsRoutes);
-app.use('/api/stats', statsRoutes);
-app.use('/api/subscriptions', subscriptionRoutes);
-app.use('/api/stripe/connect', stripeConnectRoutes);
-app.use('/api/support', supportRoutes);
 
 // Admin routes with admin rate limiter
 app.use('/api/admin', adminLimiter);
@@ -211,17 +97,12 @@ app.use('/api/admin/dashboard', adminDashboardRoutes);
 app.use('/api/admin/withdrawals', adminWithdrawalRoutes);
 app.use('/api/admin/analytics', adminAnalyticsRoutes);
 app.use('/api/admin/cashback', adminCashbackRoutes);
-app.use('/api/admin/jobs', adminJobsRoutes);
-app.use('/api/admin/banners', adminBannerRoutes);
+app.use('/api/admin/commission', adminCommissionRoutes);
+app.use('/api/notifications', notificationRoutes);
 
-// Health check (Phase 4: includes DB check for deployment/monitoring)
-app.get('/api/health', async (req, res) => {
-  try {
-    await dbGet('SELECT 1');
-    res.json({ status: 'ok', message: 'V PATHing Rewards API is running', database: 'connected' });
-  } catch (err) {
-    res.status(503).json({ status: 'error', message: 'Database unavailable', database: 'disconnected' });
-  }
+// Health check
+app.get('/api/health', (req, res) => {
+  res.json({ status: 'ok', message: 'Cashback API is running' });
 });
 
 // Error handling middleware (must be last)
@@ -229,30 +110,26 @@ app.use(errorHandler);
 
 // Initialize database and start server
 initDatabase().then(() => {
-  // Link checker — runs every 4 hours
-  cron.schedule('0 */4 * * *', () => {
-    console.log('[cron] Running link checker...');
-    linkCheckerJob.run({}, { jobId: 'cron-daily', attempt: 0 })
-      .catch(err => console.error('[cron] Link checker error:', err));
-  });
-
   app.listen(PORT, () => {
+    const env = process.env.NODE_ENV || 'development';
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+    
     console.log('='.repeat(60));
-    console.log(`🚀 V PATHing Rewards API Server`);
+    console.log(`🚀 Cashback Rewards API Server`);
     console.log('='.repeat(60));
-    console.log(`Environment: ${appConfig.nodeEnv}`);
+    console.log(`Environment: ${env}`);
     console.log(`Port: ${PORT}`);
-    console.log(`Frontend URL: ${appConfig.frontendUrl}`);
+    console.log(`Frontend URL: ${frontendUrl}`);
     console.log(`Health Check: http://localhost:${PORT}/api/health`);
-
-    if (appConfig.isProduction) {
+    
+    if (env === 'production') {
       console.log('⚠️  Production Mode: Ensure all security settings are configured!');
       console.log('   - JWT_SECRET is set and secure');
       console.log('   - SMTP is configured');
       console.log('   - CORS is restricted to production domain');
       console.log('   - Rate limits are appropriate');
     }
-
+    
     console.log('='.repeat(60));
   });
 }).catch((error) => {

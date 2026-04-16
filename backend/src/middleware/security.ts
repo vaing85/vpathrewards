@@ -1,29 +1,39 @@
-import sanitizeHtml from 'sanitize-html';
 import { Request, Response, NextFunction } from 'express';
 
-// Strip all HTML tags and attributes — no markup accepted in API inputs
-const SANITIZE_OPTIONS: sanitizeHtml.IOptions = {
-  allowedTags: [],
-  allowedAttributes: {},
-  disallowedTagsMode: 'discard',
-};
-
-// XSS Protection — sanitize every string in body / query / params
+// XSS Protection - Sanitize user input
 export const sanitizeInput = (req: Request, res: Response, next: NextFunction) => {
+  // Recursively sanitize object
   const sanitize = (obj: any): any => {
-    if (typeof obj === 'string') return sanitizeHtml(obj, SANITIZE_OPTIONS).trim();
-    if (Array.isArray(obj)) return obj.map(sanitize);
+    if (typeof obj === 'string') {
+      // Remove potentially dangerous characters
+      return obj
+        .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
+        .replace(/javascript:/gi, '')
+        .replace(/on\w+\s*=/gi, '')
+        .trim();
+    }
+    if (Array.isArray(obj)) {
+      return obj.map(sanitize);
+    }
     if (obj && typeof obj === 'object') {
-      const out: any = {};
-      for (const key in obj) out[key] = sanitize(obj[key]);
-      return out;
+      const sanitized: any = {};
+      for (const key in obj) {
+        sanitized[key] = sanitize(obj[key]);
+      }
+      return sanitized;
     }
     return obj;
   };
 
-  if (req.body)   req.body   = sanitize(req.body);
-  if (req.query)  req.query  = sanitize(req.query);
-  if (req.params) req.params = sanitize(req.params);
+  if (req.body) {
+    req.body = sanitize(req.body);
+  }
+  if (req.query) {
+    req.query = sanitize(req.query);
+  }
+  if (req.params) {
+    req.params = sanitize(req.params);
+  }
 
   next();
 };

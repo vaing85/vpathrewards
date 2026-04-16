@@ -4,7 +4,7 @@
  * Run daily via node-cron.
  */
 import { dbAll, dbRun } from '../database';
-import { sendAdminNotification } from '../utils/emailService';
+import { sendEmail } from '../utils/emailService';
 import { startProgress, incrementProgress, clearProgress } from './progress';
 import type { JobContext, JobDefinition, JobResult } from './types';
 
@@ -204,11 +204,10 @@ const linkCheckerJob: JobDefinition<LinkCheckerPayload, LinkCheckerResult> = {
     if (!dryRun && result.brokenOffers.length > 0) {
       const adminEmail = process.env.ADMIN_EMAIL;
       if (adminEmail) {
-        await sendAdminNotification(adminEmail, 'brokenLinks', {
-          brokenCount: result.broken + result.expired,
-          offers: result.brokenOffers,
-          checkedAt: new Date().toLocaleString(),
-        }).catch(err => console.error('Failed to send admin notification:', err));
+        await sendEmail(adminEmail, 'welcome', {
+          name: 'Admin',
+          note: `Link checker found ${result.broken + result.expired} broken/expired offer(s) at ${new Date().toLocaleString()}. Check admin panel for details.`,
+        }).catch((err: unknown) => console.error('Failed to send admin notification:', err));
       }
     }
 

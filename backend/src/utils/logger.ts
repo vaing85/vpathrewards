@@ -1,6 +1,5 @@
 import fs from 'fs';
 import path from 'path';
-import { appConfig } from '../config/appConfig';
 
 type LogLevel = 'info' | 'warn' | 'error' | 'debug';
 
@@ -36,7 +35,8 @@ class Logger {
       console.log(logMessage.trim());
     }
 
-    if (appConfig.isProduction || appConfig.log.toFile) {
+    // File output (only in production or if LOG_TO_FILE is enabled)
+    if (process.env.NODE_ENV === 'production' || process.env.LOG_TO_FILE === 'true') {
       fs.appendFileSync(this.logFile, logMessage, 'utf8');
     }
   }
@@ -57,7 +57,7 @@ class Logger {
   }
 
   debug(message: string, meta?: any) {
-    if (appConfig.isDevelopment || appConfig.log.level === 'debug') {
+    if (process.env.NODE_ENV === 'development' || process.env.LOG_LEVEL === 'debug') {
       this.writeLog('debug', message, meta);
     }
   }

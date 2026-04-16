@@ -11,7 +11,6 @@ interface ShareButtonProps {
 
 const ShareButton = ({ offerId, merchantId, title, description, cashbackRate, size = 'md' }: ShareButtonProps) => {
   const [showMenu, setShowMenu] = useState(false);
-  const canNativeShare = typeof navigator !== 'undefined' && navigator.share;
 
   const getShareUrl = () => {
     const baseUrl = window.location.origin;
@@ -26,20 +25,6 @@ const ShareButton = ({ offerId, merchantId, title, description, cashbackRate, si
   const shareText = cashbackRate
     ? `Check out ${title} with ${cashbackRate}% cashback!`
     : `Check out ${title}!`;
-
-  const handleNativeShare = async () => {
-    if (!navigator.share) return;
-    try {
-      await navigator.share({
-        title: title,
-        text: shareText,
-        url: getShareUrl()
-      });
-      setShowMenu(false);
-    } catch (err) {
-      if ((err as Error).name !== 'AbortError') console.error('Share failed:', err);
-    }
-  };
 
   const handleShare = async (platform: 'facebook' | 'twitter' | 'linkedin' | 'whatsapp' | 'copy') => {
     const url = getShareUrl();
@@ -103,15 +88,6 @@ const ShareButton = ({ offerId, merchantId, title, description, cashbackRate, si
           ></div>
           <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 z-20">
             <div className="py-1">
-              {canNativeShare && (
-                <button
-                  onClick={handleNativeShare}
-                  className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center space-x-2 border-b border-gray-100"
-                >
-                  <span>📤</span>
-                  <span>Share (device)</span>
-                </button>
-              )}
               <button
                 onClick={() => handleShare('facebook')}
                 className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center space-x-2"

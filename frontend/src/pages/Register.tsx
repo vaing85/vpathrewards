@@ -1,11 +1,8 @@
-import { useState, useRef } from 'react';
-import { useNavigate, Link, useSearchParams, Navigate } from 'react-router-dom';
-import { Turnstile, type TurnstileInstance } from '@marsidev/react-turnstile';
+import { useState } from 'react';
+import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useFormValidation } from '../hooks/useFormValidation';
 import FormField from '../components/FormField';
-
-const TURNSTILE_SITE_KEY = '0x4AAAAAACwdtfRVjf6eOysH';
 
 const Register = () => {
   const [name, setName] = useState('');
@@ -14,12 +11,12 @@ const Register = () => {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const [turnstileToken, setTurnstileToken] = useState('');
-  const turnstileRef = useRef<TurnstileInstance>(null);
   const [searchParams] = useSearchParams();
-  const { register, isAuthenticated } = useAuth();
+  const { register } = useAuth();
   const navigate = useNavigate();
+  
   const referralCode = searchParams.get('ref');
+
   const validation = useFormValidation({
     name: { required: true, minLength: 2, maxLength: 100 },
     email: { required: true, email: true },
@@ -34,8 +31,6 @@ const Register = () => {
       }
     },
   });
-
-  if (isAuthenticated) return <Navigate to="/dashboard" replace />;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -55,12 +50,10 @@ const Register = () => {
     setLoading(true);
 
     try {
-      await register(email, password, name, referralCode || undefined, turnstileToken);
+      await register(email, password, name, referralCode || undefined);
       navigate('/dashboard');
     } catch (err: any) {
       setError(err.response?.data?.error || 'Registration failed. Please try again.');
-      turnstileRef.current?.reset();
-      setTurnstileToken('');
     } finally {
       setLoading(false);
     }
@@ -175,18 +168,10 @@ const Register = () => {
             />
           </div>
 
-          <Turnstile
-            ref={turnstileRef}
-            siteKey={TURNSTILE_SITE_KEY}
-            onSuccess={setTurnstileToken}
-            onExpire={() => setTurnstileToken('')}
-            options={{ theme: 'light' }}
-          />
-
           <div>
             <button
               type="submit"
-              disabled={loading || !turnstileToken}
+              disabled={loading}
               className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50"
             >
               {loading ? 'Creating account...' : 'Sign up'}

@@ -1,15 +1,10 @@
 import express from 'express';
 import { dbAll } from '../database';
-import { get, set, cacheKey } from '../utils/cache';
 
 const router = express.Router();
-const CACHE_TTL_MS = 60 * 1000; // 1 minute (Phase 4)
 
 // Get featured offers (highest cashback rates, limited number)
 router.get('/offers', async (req, res) => {
-  const key = cacheKey(req);
-  const cached = get<unknown>(key);
-  if (cached) return res.json(cached);
   try {
     const limit = parseInt(req.query.limit as string) || 6;
     
@@ -25,7 +20,7 @@ router.get('/offers', async (req, res) => {
       ORDER BY o.cashback_rate DESC, o.created_at DESC
       LIMIT ?
     `, [limit]);
-    set(key, offers, CACHE_TTL_MS);
+    
     res.json(offers);
   } catch (error) {
     console.error('Error fetching featured offers:', error);
@@ -36,9 +31,6 @@ router.get('/offers', async (req, res) => {
 // Get trending merchants (most clicks/conversions, highest cashback)
 // OPTIMIZED: Use subqueries instead of multiple LEFT JOINs for better performance
 router.get('/merchants', async (req, res) => {
-  const key = cacheKey(req);
-  const cached = get<unknown>(key);
-  if (cached) return res.json(cached);
   try {
     const limit = parseInt(req.query.limit as string) || 6;
     
@@ -85,7 +77,7 @@ router.get('/merchants', async (req, res) => {
         COALESCE(offer_stats.offer_count, 0) DESC
       LIMIT ?
     `, [limit]);
-    set(key, merchants, CACHE_TTL_MS);
+    
     res.json(merchants);
   } catch (error) {
     console.error('Error fetching trending merchants:', error);
@@ -95,9 +87,6 @@ router.get('/merchants', async (req, res) => {
 
 // Get recently added offers
 router.get('/recent-offers', async (req, res) => {
-  const key = cacheKey(req);
-  const cached = get<unknown>(key);
-  if (cached) return res.json(cached);
   try {
     const limit = parseInt(req.query.limit as string) || 6;
     const days = parseInt(req.query.days as string) || 30;
@@ -120,7 +109,7 @@ router.get('/recent-offers', async (req, res) => {
       ORDER BY o.created_at DESC
       LIMIT ?
     `, [dateThresholdStr, limit]);
-    set(key, offers, CACHE_TTL_MS);
+    
     res.json(offers);
   } catch (error) {
     console.error('Error fetching recent offers:', error);
@@ -131,9 +120,6 @@ router.get('/recent-offers', async (req, res) => {
 // Get expiring soon offers (if we add expiry_date field in future)
 // For now, return offers that might be expiring (older offers)
 router.get('/expiring-offers', async (req, res) => {
-  const key = cacheKey(req);
-  const cached = get<unknown>(key);
-  if (cached) return res.json(cached);
   try {
     const limit = parseInt(req.query.limit as string) || 6;
     
@@ -157,7 +143,7 @@ router.get('/expiring-offers', async (req, res) => {
       ORDER BY o.created_at ASC
       LIMIT ?
     `, [dateThresholdStr, limit]);
-    set(key, offers, CACHE_TTL_MS);
+    
     res.json(offers);
   } catch (error) {
     console.error('Error fetching expiring offers:', error);
