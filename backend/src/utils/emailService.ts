@@ -16,7 +16,7 @@ const createTransporter = async () => {
       console.log('   Test account created:', etherealAccount.user);
     }
     
-    return nodemailer.createTransporter({
+    return nodemailer.createTransport({
       host: 'smtp.ethereal.email',
       port: 587,
       secure: false,
@@ -27,7 +27,7 @@ const createTransporter = async () => {
     });
   }
 
-  return nodemailer.createTransporter({
+  return nodemailer.createTransport({
     host: process.env.SMTP_HOST || 'smtp.gmail.com',
     port: parseInt(process.env.SMTP_PORT || '587'),
     secure: process.env.SMTP_SECURE === 'true',

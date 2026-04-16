@@ -8,7 +8,7 @@ import { validateRegister, validateLogin } from '../middleware/validation';
 const router = express.Router();
 
 // Register
-router.post('/register', validateRegister, async (req, res) => {
+router.post('/register', validateRegister, async (req: import('express').Request, res: import('express').Response) => {
   try {
     const { email, password, name, referral_code } = req.body;
 
@@ -84,7 +84,7 @@ router.post('/register', validateRegister, async (req, res) => {
 });
 
 // Login
-router.post('/login', validateLogin, async (req, res) => {
+router.post('/login', validateLogin, async (req: import('express').Request, res: import('express').Response) => {
   try {
     const { email, password } = req.body;
 

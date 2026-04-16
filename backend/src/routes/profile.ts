@@ -36,7 +36,7 @@ router.get('/', authenticateToken, async (req: AuthRequest, res) => {
 });
 
 // Update user profile
-router.put('/', authenticateToken, validateProfileUpdate, async (req: AuthRequest, res) => {
+router.put('/', authenticateToken, validateProfileUpdate, async (req: AuthRequest, res: import('express').Response) => {
   try {
     const { name, email } = req.body;
 
@@ -84,7 +84,7 @@ router.put('/', authenticateToken, validateProfileUpdate, async (req: AuthReques
 });
 
 // Change password
-router.put('/password', authenticateToken, validatePasswordChange, async (req: AuthRequest, res) => {
+router.put('/password', authenticateToken, validatePasswordChange, async (req: AuthRequest, res: import('express').Response) => {
   try {
     const { current_password, new_password } = req.body;
 

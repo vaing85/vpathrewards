@@ -78,7 +78,7 @@ router.get('/balance/available', authenticateToken, async (req: AuthRequest, res
 });
 
 // Create withdrawal request
-router.post('/request', authenticateToken, passwordLimiter, validateWithdrawal, async (req: AuthRequest, res) => {
+router.post('/request', authenticateToken, passwordLimiter, validateWithdrawal, async (req: AuthRequest, res: import('express').Response) => {
   try {
     const { amount, payment_method, payment_details } = req.body;
 
@@ -122,7 +122,7 @@ router.post('/request', authenticateToken, passwordLimiter, validateWithdrawal, 
     // Send withdrawal request confirmation email (async, don't wait)
     if (user && user.email) {
       sendEmailToUser(
-        req.userId,
+        req.userId!,
         user.email,
         'withdrawalStatus',
         {
