@@ -2,7 +2,7 @@
 
 ## ✅ What You've Done
 
-- Generated a secure JWT secret: `cqyHV7qopUI+YFqVt9UpJUSlEQ7p6B9kR4LL5GGC42E=`
+- Generated a secure JWT secret: 
 - Secret has been added to `.env.production`
 
 ---
@@ -20,8 +20,7 @@ NODE_ENV=production
 FRONTEND_URL=https://yourdomain.com  # ← Change this to your domain
 
 # Security (Already set)
-JWT_SECRET=cqyHV7qopUI+YFqVt9UpJUSlEQ7p6B9kR4LL5GGC42E=
-
+JWT_SECRET=
 # Email Configuration (Choose one)
 # Option 1: SendGrid (Recommended)
 SMTP_HOST=smtp.sendgrid.net
