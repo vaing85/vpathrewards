@@ -49,7 +49,7 @@ router.put('/:id/read', authenticateToken, async (req: AuthRequest, res) => {
 
 export default router;
 
-// Helper used by other routes to create notifications
+// Helper used by other routes to create & push notifications
 export async function createNotification(
   userId: number,
   type: string,
@@ -57,10 +57,13 @@ export async function createNotification(
   message: string
 ): Promise<void> {
   try {
-    await dbRun(
+    const result = await dbRun(
       'INSERT INTO notifications (user_id, type, title, message) VALUES (?, ?, ?, ?)',
       [userId, type, title, message]
     );
+    // Push real-time via SSE (lazy import to avoid circular dep)
+    const { pushToUser } = await import('./sse');
+    pushToUser(userId, { type: 'notification', id: result.lastID, notificationType: type, title, message });
   } catch (error) {
     console.error('Error creating notification:', error);
   }

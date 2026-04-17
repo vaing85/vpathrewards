@@ -1,46 +1,7 @@
-import sqlite3 from 'sqlite3';
 import bcrypt from 'bcryptjs';
-import path from 'path';
-
-// Database file will be created in the backend directory
-// When compiled, __dirname points to dist/, so we go up one level
-const dbPath = path.join(__dirname, '..', 'cashback.db');
-const db = new sqlite3.Database(dbPath, sqlite3.OPEN_READWRITE | sqlite3.OPEN_CREATE, (err) => {
-  if (err) {
-    console.error('Error opening database:', err);
-    console.error('Database path attempted:', dbPath);
-  } else {
-    console.log('Database connected successfully');
-  }
-});
-
-// Promisify database methods
-const dbRun = (sql: string, params?: any[]): Promise<sqlite3.RunResult> => {
-  return new Promise((resolve, reject) => {
-    db.run(sql, params || [], function(err) {
-      if (err) reject(err);
-      else resolve(this);
-    });
-  });
-};
-
-const dbGet = (sql: string, params?: any[]): Promise<any> => {
-  return new Promise((resolve, reject) => {
-    db.get(sql, params || [], (err, row) => {
-      if (err) reject(err);
-      else resolve(row);
-    });
-  });
-};
-
-const dbAll = (sql: string, params?: any[]): Promise<any[]> => {
-  return new Promise((resolve, reject) => {
-    db.all(sql, params || [], (err, rows) => {
-      if (err) reject(err);
-      else resolve(rows);
-    });
-  });
-};
+// Re-export from the unified adapter so all routes continue to work unchanged.
+import { dbRun, dbGet, dbAll } from './db';
+export { dbRun, dbGet, dbAll };
 
 export const initDatabase = async () => {
   try {
@@ -396,6 +357,48 @@ export const initDatabase = async () => {
     await dbRun('CREATE INDEX IF NOT EXISTS idx_notifications_is_read ON notifications(is_read)');
     await dbRun('CREATE INDEX IF NOT EXISTS idx_notifications_created_at ON notifications(created_at)');
 
+    // ── Enhancement tables ────────────────────────────────────────────────────
+
+    // Cashback / price alerts
+    await dbRun(`
+      CREATE TABLE IF NOT EXISTS cashback_alerts (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
+        merchant_id INTEGER,
+        offer_id INTEGER,
+        alert_type TEXT NOT NULL DEFAULT 'rate_increase',
+        threshold_rate REAL,
+        is_active INTEGER DEFAULT 1,
+        last_triggered_at DATETIME,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users(id),
+        FOREIGN KEY (merchant_id) REFERENCES merchants(id),
+        FOREIGN KEY (offer_id) REFERENCES offers(id)
+      )
+    `);
+
+    // Leaderboard opt-in flag on users
+    try {
+      await dbRun('ALTER TABLE users ADD COLUMN leaderboard_opt_in INTEGER DEFAULT 0');
+    } catch (_) { /* already exists */ }
+
+    // Subscription columns on users
+    try {
+      await dbRun('ALTER TABLE users ADD COLUMN stripe_customer_id TEXT');
+    } catch (_) { /* already exists */ }
+    try {
+      await dbRun('ALTER TABLE users ADD COLUMN stripe_subscription_id TEXT');
+    } catch (_) { /* already exists */ }
+    try {
+      await dbRun('ALTER TABLE users ADD COLUMN subscription_plan TEXT DEFAULT \'free\'');
+    } catch (_) { /* already exists */ }
+    try {
+      await dbRun('ALTER TABLE users ADD COLUMN subscription_status TEXT DEFAULT \'active\'');
+    } catch (_) { /* already exists */ }
+
+    await dbRun('CREATE INDEX IF NOT EXISTS idx_alerts_user_id ON cashback_alerts(user_id)');
+    await dbRun('CREATE INDEX IF NOT EXISTS idx_alerts_is_active ON cashback_alerts(is_active)');
+
     console.log('Database initialized successfully');
   } catch (error) {
     console.error('Error initializing database:', error);
@@ -403,4 +406,3 @@ export const initDatabase = async () => {
   }
 };
 
-export { db, dbRun, dbGet, dbAll };
