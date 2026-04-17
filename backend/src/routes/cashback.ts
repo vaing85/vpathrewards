@@ -225,7 +225,10 @@ router.get('/calendar', authenticateToken, async (req: AuthRequest, res) => {
 // Cashback Goals endpoints
 router.get('/goals', authenticateToken, async (req: AuthRequest, res) => {
   try {
-    const goals = await dbAll(`
+    interface GoalRow { id: number; start_date: string | null; end_date: string | null; target_amount: string; current_amount: number; is_completed: number; [k: string]: unknown; }
+    interface TxRow { amount: string; transaction_date: string; }
+
+    const goals = await dbAll<GoalRow>(`
       SELECT * FROM cashback_goals
       WHERE user_id = ?
       ORDER BY created_at DESC
@@ -237,8 +240,8 @@ router.get('/goals', authenticateToken, async (req: AuthRequest, res) => {
 
     // OPTIMIZED: Batch update all goals in a single query instead of N+1 queries
     // Get all confirmed transactions for the user first
-    const allTransactions = await dbAll(`
-      SELECT 
+    const allTransactions = await dbAll<TxRow>(`
+      SELECT
         amount,
         transaction_date
       FROM cashback_transactions
@@ -248,14 +251,14 @@ router.get('/goals', authenticateToken, async (req: AuthRequest, res) => {
 
     // Calculate current_amount for each goal in memory
     const goalUpdates: Array<{ id: number; current_amount: number; is_completed: number }> = [];
-    
+
     for (const goal of goals) {
       let total = 0;
-      
+
       // Filter transactions by goal date range in JavaScript (faster than multiple DB queries)
       for (const transaction of allTransactions) {
         const transDate = new Date(transaction.transaction_date);
-        
+
         // Check date range
         if (goal.start_date && transDate < new Date(goal.start_date)) {
           continue;
@@ -263,13 +266,13 @@ router.get('/goals', authenticateToken, async (req: AuthRequest, res) => {
         if (goal.end_date && transDate > new Date(goal.end_date)) {
           continue;
         }
-        
+
         total += parseFloat(transaction.amount) || 0;
       }
-      
+
       goal.current_amount = total;
       goal.is_completed = goal.current_amount >= (parseFloat(goal.target_amount) || 0) ? 1 : 0;
-      
+
       goalUpdates.push({
         id: goal.id,
         current_amount: goal.current_amount,

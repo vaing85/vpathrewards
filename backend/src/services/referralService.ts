@@ -70,7 +70,8 @@ export async function getEarnings(userId: number) {
 }
 
 export async function getLeaderboard(userId: number, limit: number) {
-  const leaderboard = await dbAll(
+  interface LeaderRow { id: number; name: string; total_referrals: number; total_earnings: number; }
+  const leaderboard = await dbAll<LeaderRow>(
     `SELECT u.id, u.name,
             COUNT(rr.id) as total_referrals,
             COALESCE(SUM(CASE WHEN re.status = 'confirmed' THEN re.amount ELSE 0 END), 0) as total_earnings
@@ -111,7 +112,7 @@ export async function getLeaderboard(userId: number, limit: number) {
   }
 
   return {
-    leaderboard: (leaderboard || []).map((row: { id: number; name: string; total_referrals: number; total_earnings: number }) => ({
+    leaderboard: (leaderboard || []).map((row) => ({
       user_id: row.id,
       name: row.name,
       total_referrals: row.total_referrals,
