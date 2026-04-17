@@ -171,6 +171,7 @@ CREATE TABLE IF NOT EXISTS subscriptions (
   stripe_subscription_id TEXT UNIQUE,
   plan                   TEXT DEFAULT 'free',
   status                 TEXT DEFAULT 'active',
+  current_period_start   TIMESTAMPTZ,
   current_period_end     TIMESTAMPTZ,
   created_at             TIMESTAMPTZ DEFAULT NOW(),
   updated_at             TIMESTAMPTZ DEFAULT NOW()
@@ -279,3 +280,40 @@ CREATE POLICY "offers_anon_read"
 
 CREATE POLICY "merchant_reviews_anon_read"
   ON merchant_reviews FOR SELECT TO anon USING (true);
+
+-- Explicit deny-all policies for sensitive tables
+CREATE POLICY "deny_all_affiliate_clicks"
+  ON affiliate_clicks FOR ALL TO anon, authenticated USING (false);
+
+CREATE POLICY "deny_all_cashback_goals"
+  ON cashback_goals FOR ALL TO anon, authenticated USING (false);
+
+CREATE POLICY "deny_all_cashback_transactions"
+  ON cashback_transactions FOR ALL TO anon, authenticated USING (false);
+
+CREATE POLICY "deny_all_conversions"
+  ON conversions FOR ALL TO anon, authenticated USING (false);
+
+CREATE POLICY "deny_all_merchant_banners"
+  ON merchant_banners FOR ALL TO anon, authenticated USING (false);
+
+CREATE POLICY "deny_all_referral_earnings"
+  ON referral_earnings FOR ALL TO anon, authenticated USING (false);
+
+CREATE POLICY "deny_all_referral_relationships"
+  ON referral_relationships FOR ALL TO anon, authenticated USING (false);
+
+CREATE POLICY "deny_all_subscriptions"
+  ON subscriptions FOR ALL TO anon, authenticated USING (false);
+
+CREATE POLICY "deny_all_user_favorites"
+  ON user_favorites FOR ALL TO anon, authenticated USING (false);
+
+CREATE POLICY "deny_all_user_referral_codes"
+  ON user_referral_codes FOR ALL TO anon, authenticated USING (false);
+
+CREATE POLICY "deny_all_users"
+  ON users FOR ALL TO anon, authenticated USING (false);
+
+CREATE POLICY "deny_all_withdrawals"
+  ON withdrawals FOR ALL TO anon, authenticated USING (false);

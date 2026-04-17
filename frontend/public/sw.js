@@ -1,5 +1,5 @@
 // Minimal service worker for PWA (Phase 3) - caches app shell for offline
-const CACHE_NAME = 'cashback-app-v1';
+const CACHE_NAME = 'cashback-app-v2';
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
@@ -18,7 +18,11 @@ self.addEventListener('activate', (event) => {
 });
 
 self.addEventListener('fetch', (event) => {
-  if (event.request.url.startsWith('http') && event.request.method === 'GET') {
+  // Only intercept same-origin GET requests; skip cross-origin API calls so
+  // that cookies (CSRF, auth) are handled correctly by the browser directly.
+  const url = new URL(event.request.url);
+  if (url.origin !== self.location.origin) return;
+  if (event.request.method === 'GET') {
     event.respondWith(
       fetch(event.request)
         .then((response) => {

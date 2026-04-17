@@ -1,5 +1,4 @@
 import { Request, Response, NextFunction } from 'express';
-import { appConfig } from '../config/appConfig';
 
 export interface AppError extends Error {
   statusCode?: number;
@@ -12,24 +11,26 @@ export const errorHandler = (
   res: Response,
   next: NextFunction
 ) => {
+  // Log error
   console.error('Error:', {
     message: err.message,
-    stack: appConfig.isDevelopment ? err.stack : undefined,
+    stack: process.env.NODE_ENV === 'development' ? err.stack : undefined,
     url: req.url,
     method: req.method,
     ip: req.ip
   });
 
+  // Default error
   const statusCode = err.statusCode || 500;
-  const message = err.isOperational
-    ? err.message
-    : appConfig.isProduction
-      ? 'Internal server error'
+  const message = err.isOperational 
+    ? err.message 
+    : process.env.NODE_ENV === 'production' 
+      ? 'Internal server error' 
       : err.message;
 
   res.status(statusCode).json({
     error: message,
-    ...(appConfig.isDevelopment && { stack: err.stack })
+    ...(process.env.NODE_ENV === 'development' && { stack: err.stack })
   });
 };
 

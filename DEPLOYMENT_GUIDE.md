@@ -1,4 +1,4 @@
-# Deployment Guide - V PATHing Rewards
+# Deployment Guide - Cashback Rewards App
 
 ## Pre-Deployment Checklist
 

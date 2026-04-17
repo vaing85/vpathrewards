@@ -64,7 +64,7 @@ router.get('/:id', authenticateAdmin, async (req, res) => {
 });
 
 // Create merchant
-router.post('/', authenticateAdmin, validateMerchant, async (req: express.Request, res: express.Response) => {
+router.post('/', authenticateAdmin, validateMerchant, async (req: import('express').Request, res: import('express').Response) => {
   try {
     const { name, description, logo_url, website_url, category } = req.body;
 
@@ -88,7 +88,7 @@ router.post('/', authenticateAdmin, validateMerchant, async (req: express.Reques
 });
 
 // Update merchant
-router.put('/:id', authenticateAdmin, validateId, validateMerchant, async (req: express.Request, res: express.Response) => {
+router.put('/:id', authenticateAdmin, validateId, validateMerchant, async (req: import('express').Request, res: import('express').Response) => {
   try {
     const { name, description, logo_url, website_url, category } = req.body;
 

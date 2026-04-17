@@ -1,6 +1,6 @@
-# V PATHing Rewards
+# CashBack Rewards Aggregator
 
-A modern rewards aggregator app that helps users earn money back on purchases while generating revenue through merchant commissions and affiliate partnerships.
+A modern cashback/rewards aggregator app that helps users earn money back on purchases while generating revenue through merchant commissions and affiliate partnerships.
 
 ## Features
 

@@ -164,19 +164,6 @@ export const validateId = [
   validate
 ];
 
-// Validation for merchant review (Phase 4)
-export const validateMerchantReview = [
-  body('rating')
-    .isInt({ min: 1, max: 5 })
-    .withMessage('Rating must be between 1 and 5'),
-  body('comment')
-    .optional()
-    .trim()
-    .isLength({ max: 2000 })
-    .withMessage('Comment must be less than 2000 characters'),
-  validate
-];
-
 // Validation for query parameters
 export const validateSearch = [
   query('q')

@@ -2,6 +2,7 @@ import express from 'express';
 import { authenticateAdmin, AdminRequest } from '../../middleware/adminAuth';
 import { dbAll, dbGet, dbRun } from '../../database';
 import { sendEmailToUser } from '../../utils/emailService';
+import { createNotification } from '../notifications';
 
 const router = express.Router();
 
@@ -128,6 +129,22 @@ router.put('/:id/status', authenticateAdmin, async (req: AdminRequest, res) => {
       LEFT JOIN users admin ON w.processed_by = admin.id
       WHERE w.id = ?
     `, [req.params.id]) as any;
+
+    // Create in-app notification for the user
+    if (updated && updated.status !== 'pending') {
+      const notifMsg: Record<string, string> = {
+        approved: `Your $${updated.amount?.toFixed(2)} withdrawal has been approved and is processing.`,
+        completed: `Your $${updated.amount?.toFixed(2)} withdrawal has been completed successfully!`,
+        rejected: `Your $${updated.amount?.toFixed(2)} withdrawal was rejected.${admin_notes ? ' Note: ' + admin_notes : ''}`,
+        processing: `Your $${updated.amount?.toFixed(2)} withdrawal is now being processed.`,
+      };
+      createNotification(
+        updated.user_id,
+        'withdrawal',
+        `Withdrawal ${updated.status.charAt(0).toUpperCase() + updated.status.slice(1)}`,
+        notifMsg[updated.status] || `Your withdrawal status was updated to ${updated.status}.`
+      ).catch(() => {});
+    }
 
     // Send withdrawal status email (async, don't wait)
     if (updated && updated.user_email && updated.status !== 'pending') {

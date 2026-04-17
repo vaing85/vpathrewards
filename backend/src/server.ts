@@ -1,11 +1,8 @@
-import dotenv from 'dotenv';
-dotenv.config({ override: true });
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
-import { initDatabase, dbGet } from './database';
-import { appConfig } from './config/appConfig';
-import { securityConfig } from './config/securityConfig';
+import dotenv from 'dotenv';
+import { initDatabase } from './database';
 import { apiLimiter, authLimiter, passwordLimiter, withdrawalLimiter, adminLimiter } from './middleware/rateLimiter';
 import { sanitizeInput, securityHeaders } from './middleware/security';
 import authRoutes from './routes/auth';
@@ -20,7 +17,6 @@ import featuredRoutes from './routes/featured';
 import referralRoutes from './routes/referrals';
 import favoritesRoutes from './routes/favorites';
 import analyticsRoutes from './routes/analytics';
-import statsRoutes from './routes/stats';
 import adminAuthRoutes from './routes/admin/auth';
 import adminMerchantRoutes from './routes/admin/merchants';
 import adminOfferRoutes from './routes/admin/offers';
@@ -29,18 +25,25 @@ import adminDashboardRoutes from './routes/admin/dashboard';
 import adminWithdrawalRoutes from './routes/admin/withdrawals';
 import adminAnalyticsRoutes from './routes/admin/analytics';
 import adminCashbackRoutes from './routes/admin/cashback';
-import adminJobsRoutes from './routes/admin/jobs';
-import adminBannerRoutes from './routes/admin/banners';
+import adminCommissionRoutes from './routes/admin/commissionSettings';
+import notificationRoutes from './routes/notifications';
+import statsRoutes from './routes/stats';
+import supportRoutes from './routes/support';
 import subscriptionRoutes from './routes/subscriptions';
 import webhookRoutes from './routes/webhooks';
-import supportRoutes from './routes/support';
+import stripeConnectRoutes from './routes/stripeConnect';
+import recommendationsRoutes from './routes/recommendations';
+import alertsRoutes from './routes/alerts';
+import leaderboardRoutes from './routes/leaderboard';
+import adminInsightsRoutes from './routes/admin/insights';
+import sseRoutes from './routes/sse';
+import { startJobs } from './jobs';
 import { errorHandler } from './middleware/errorHandler';
 
-const app = express();
-const PORT = appConfig.port;
+dotenv.config();
 
-// Trust Railway's proxy (fixes rate limiter X-Forwarded-For warning)
-app.set('trust proxy', 1);
+const app = express();
+const PORT = process.env.PORT || 3001;
 
 // Security middleware (apply before other middleware)
 app.use(helmet({
@@ -65,14 +68,14 @@ app.use(securityHeaders);
 
 // CORS configuration
 app.use(cors({
-  origin: securityConfig.cors.origin,
-  credentials: securityConfig.cors.credentials,
-  methods: [...securityConfig.cors.methods],
-  allowedHeaders: [...securityConfig.cors.allowedHeaders],
+  origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
 }));
 
-// Stripe webhook — must be registered BEFORE express.json() to get raw body
-app.use('/api/webhooks', webhookRoutes);
+// Raw body for Stripe webhooks (must come before express.json)
+app.use('/api/webhooks/stripe', express.raw({ type: 'application/json' }));
 
 // Body parsing with size limit
 app.use(express.json({ limit: '10mb' }));
@@ -97,9 +100,6 @@ app.use('/api/featured', featuredRoutes);
 app.use('/api/referrals', referralRoutes);
 app.use('/api/favorites', favoritesRoutes);
 app.use('/api/analytics', analyticsRoutes);
-app.use('/api/stats', statsRoutes);
-app.use('/api/subscriptions', subscriptionRoutes);
-app.use('/api/support', supportRoutes);
 
 // Admin routes with admin rate limiter
 app.use('/api/admin', adminLimiter);
@@ -111,17 +111,22 @@ app.use('/api/admin/dashboard', adminDashboardRoutes);
 app.use('/api/admin/withdrawals', adminWithdrawalRoutes);
 app.use('/api/admin/analytics', adminAnalyticsRoutes);
 app.use('/api/admin/cashback', adminCashbackRoutes);
-app.use('/api/admin/jobs', adminJobsRoutes);
-app.use('/api/admin/banners', adminBannerRoutes);
+app.use('/api/admin/commission', adminCommissionRoutes);
+app.use('/api/notifications', notificationRoutes);
+app.use('/api/stats', statsRoutes);
+app.use('/api/support', supportRoutes);
+app.use('/api/subscriptions', subscriptionRoutes);
+app.use('/api/webhooks', webhookRoutes);
+app.use('/api/stripe-connect', stripeConnectRoutes);
+app.use('/api/recommendations', recommendationsRoutes);
+app.use('/api/alerts', alertsRoutes);
+app.use('/api/leaderboard', leaderboardRoutes);
+app.use('/api/admin/insights', adminLimiter, adminInsightsRoutes);
+app.use('/api/sse', sseRoutes);
 
-// Health check (Phase 4: includes DB check for deployment/monitoring)
-app.get('/api/health', async (req, res) => {
-  try {
-    await dbGet('SELECT 1');
-    res.json({ status: 'ok', message: 'V PATHing Rewards API is running', database: 'connected' });
-  } catch (err) {
-    res.status(503).json({ status: 'error', message: 'Database unavailable', database: 'disconnected' });
-  }
+// Health check
+app.get('/api/health', (req, res) => {
+  res.json({ status: 'ok', message: 'Cashback API is running' });
 });
 
 // Error handling middleware (must be last)
@@ -129,16 +134,20 @@ app.use(errorHandler);
 
 // Initialize database and start server
 initDatabase().then(() => {
+  startJobs();
   app.listen(PORT, () => {
+    const env = process.env.NODE_ENV || 'development';
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+    
     console.log('='.repeat(60));
-    console.log(`🚀 V PATHing Rewards API Server`);
+    console.log(`🚀 Cashback Rewards API Server`);
     console.log('='.repeat(60));
-    console.log(`Environment: ${appConfig.nodeEnv}`);
+    console.log(`Environment: ${env}`);
     console.log(`Port: ${PORT}`);
-    console.log(`Frontend URL: ${appConfig.frontendUrl}`);
+    console.log(`Frontend URL: ${frontendUrl}`);
     console.log(`Health Check: http://localhost:${PORT}/api/health`);
     
-    if (appConfig.isProduction) {
+    if (env === 'production') {
       console.log('⚠️  Production Mode: Ensure all security settings are configured!');
       console.log('   - JWT_SECRET is set and secure');
       console.log('   - SMTP is configured');

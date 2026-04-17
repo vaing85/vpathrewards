@@ -1,0 +1,5 @@
+Contact: mailto:support@vpathrewards.store
+Expires: 2027-03-26T00:00:00.000Z
+Canonical: https://vpathrewards.store/.well-known/security.txt
+Preferred-Languages: en
+Policy: https://vpathrewards.store/privacy

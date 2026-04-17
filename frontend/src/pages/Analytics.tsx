@@ -351,12 +351,12 @@ const Analytics = () => {
                             </tr>
                           </thead>
                           <tbody className="bg-white divide-y divide-gray-200">
-                            {popular.merchants.map((merchant: any) => (
+                            {popular.merchants.map((merchant) => (
                               <tr key={merchant.id}>
                                 <td className="px-4 py-3">
                                   <Link to={`/merchants/${merchant.id}`} className="flex items-center space-x-2 hover:text-primary-600">
-                                    {merchant.logo_url && (
-                                      <LazyImage src={merchant.logo_url} alt={merchant.name} className="w-6 h-6 object-contain" width={24} height={24} fallback="https://via.placeholder.com/24" />
+                                    {merchant.merchant_logo && (
+                                      <LazyImage src={merchant.merchant_logo} alt={merchant.name || ''} className="w-6 h-6 object-contain" width={24} height={24} fallback="https://via.placeholder.com/24" />
                                     )}
                                     <div className="text-sm font-medium">{merchant.name}</div>
                                   </Link>
