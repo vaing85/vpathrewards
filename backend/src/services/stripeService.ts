@@ -80,7 +80,7 @@ export async function getOrCreateCustomer(
 ): Promise<string> {
   if (!stripe) throw new Error('Stripe is not configured');
 
-  const sub = await dbGet('SELECT stripe_customer_id FROM subscriptions WHERE user_id = ?', [userId]);
+  const sub = await dbGet<{ stripe_customer_id: string }>('SELECT stripe_customer_id FROM subscriptions WHERE user_id = ?', [userId]);
   if (sub?.stripe_customer_id) return sub.stripe_customer_id;
 
   const customer = await stripe.customers.create({
@@ -151,7 +151,7 @@ export async function createBillingPortalSession(
 ): Promise<Stripe.BillingPortal.Session> {
   if (!stripe) throw new Error('Stripe is not configured');
 
-  const sub = await dbGet('SELECT stripe_customer_id FROM subscriptions WHERE user_id = ?', [userId]);
+  const sub = await dbGet<{ stripe_customer_id: string }>('SELECT stripe_customer_id FROM subscriptions WHERE user_id = ?', [userId]);
   if (!sub?.stripe_customer_id) throw new Error('No Stripe customer found for this user');
 
   return stripe.billingPortal.sessions.create({
@@ -164,8 +164,8 @@ export async function createBillingPortalSession(
 // Subscription status helpers
 // ---------------------------------------------------------------------------
 
-export async function getUserSubscription(userId: number) {
-  const sub = await dbGet('SELECT * FROM subscriptions WHERE user_id = ?', [userId]);
+export async function getUserSubscription(userId: number): Promise<{ plan: string; status: string; current_period_end: string | null; [k: string]: unknown }> {
+  const sub = await dbGet<{ plan: string; status: string; current_period_end: string | null }>('SELECT * FROM subscriptions WHERE user_id = ?', [userId]);
   return sub ?? { plan: 'free', status: 'active', current_period_end: null };
 }
 
