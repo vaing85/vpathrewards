@@ -53,6 +53,12 @@ function pgToSqlite(sql: string): string {
   return sql.replace(/\$\d+/g, '?');
 }
 
+/** Translate ? → $1/$2/… for PostgreSQL */
+function sqliteToPg(sql: string): string {
+  let i = 0;
+  return sql.replace(/\?/g, () => `$${++i}`);
+}
+
 // ─── Unified query helpers ────────────────────────────────────────────────────
 
 /** Run an INSERT/UPDATE/DELETE; returns { lastID, rowCount } */
@@ -62,10 +68,10 @@ export async function dbRun(
 ): Promise<{ lastID?: number; rowCount?: number }> {
   if (USE_PG) {
     const pool = await getPgPool();
-    // Append RETURNING id for INSERT statements so we can surface lastID
     const isInsert = /^\s*INSERT/i.test(sql);
-    const finalSql = isInsert && !/RETURNING/i.test(sql) ? `${sql} RETURNING id` : sql;
-    const result = await pool.query(finalSql, params);
+    let pgSql = sqliteToPg(sql);
+    if (isInsert && !/RETURNING/i.test(pgSql)) pgSql = `${pgSql} RETURNING id`;
+    const result = await pool.query(pgSql, params);
     return { lastID: result.rows[0]?.id, rowCount: result.rowCount ?? 0 };
   }
 
@@ -85,7 +91,7 @@ export async function dbGet<T = Record<string, unknown>>(
 ): Promise<T | undefined> {
   if (USE_PG) {
     const pool = await getPgPool();
-    const result = await pool.query(sql, params);
+    const result = await pool.query(sqliteToPg(sql), params);
     return result.rows[0] as T | undefined;
   }
 
@@ -105,7 +111,7 @@ export async function dbAll<T = Record<string, unknown>>(
 ): Promise<T[]> {
   if (USE_PG) {
     const pool = await getPgPool();
-    const result = await pool.query(sql, params);
+    const result = await pool.query(sqliteToPg(sql), params);
     return result.rows as T[];
   }
 
@@ -128,7 +134,7 @@ export async function dbTransaction(
     try {
       await client.query('BEGIN');
       const txRun: typeof dbRun = (sql, params = []) =>
-        client.query(sql, params).then((r) => ({ lastID: r.rows[0]?.id, rowCount: r.rowCount ?? 0 }));
+        client.query(sqliteToPg(sql), params).then((r) => ({ lastID: r.rows[0]?.id, rowCount: r.rowCount ?? 0 }));
       await fn(txRun);
       await client.query('COMMIT');
     } catch (err) {
