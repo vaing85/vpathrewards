@@ -24,6 +24,7 @@ const Category         = lazy(() => import('./pages/Category'));
 const ReferralDashboard = lazy(() => import('./pages/ReferralDashboard'));
 const Favorites        = lazy(() => import('./pages/Favorites'));
 const CashbackHistory  = lazy(() => import('./pages/CashbackHistory'));
+const Leaderboard      = lazy(() => import('./pages/Leaderboard'));
 
 // Lazy-loaded admin pages
 const AdminLogin       = lazy(() => import('./pages/admin/AdminLogin'));
@@ -70,6 +71,7 @@ function App() {
                 <Route path="/referrals" element={<PageShell><ReferralDashboard /></PageShell>} />
                 <Route path="/favorites" element={<PageShell><Favorites /></PageShell>} />
                 <Route path="/cashback-history" element={<PageShell><CashbackHistory /></PageShell>} />
+                <Route path="/leaderboard" element={<PageShell><Leaderboard /></PageShell>} />
 
                 {/* Admin Routes */}
                 <Route path="/admin/login" element={<AdminLogin />} />
