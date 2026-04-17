@@ -45,6 +45,11 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 3001;
 
+// Trust Railway / reverse-proxy headers so express-rate-limit can read the real client IP
+if (process.env.NODE_ENV === 'production') {
+  app.set('trust proxy', 1);
+}
+
 // Security middleware (apply before other middleware)
 app.use(helmet({
   contentSecurityPolicy: {
