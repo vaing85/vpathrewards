@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import apiClient from '../api/client';
 import SearchBar from './SearchBar';
+import { useSSE } from '../hooks/useSSE';
 
 interface Category {
   category: string;
@@ -28,7 +29,7 @@ const BellIcon = () => (
 const POLL_INTERVAL = 60_000; // refresh every 60 s
 
 const Navbar = () => {
-  const { isAuthenticated, user, logout } = useAuth();
+  const { isAuthenticated, user, logout, token } = useAuth();
   const navigate = useNavigate();
   const [categories, setCategories] = useState<Category[]>([]);
   const [showCategories, setShowCategories] = useState(false);
@@ -40,17 +41,28 @@ const Navbar = () => {
   const [showNotifs, setShowNotifs] = useState(false);
   const notifRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    fetchCategories();
-  }, []);
+  useEffect(() => { fetchCategories(); }, []);
 
-  // Poll notifications when authenticated
+  // Initial fetch (no more polling — SSE handles live updates)
   useEffect(() => {
     if (!isAuthenticated) return;
     fetchNotifications();
-    const id = setInterval(fetchNotifications, POLL_INTERVAL);
-    return () => clearInterval(id);
   }, [isAuthenticated]);
+
+  // Real-time via SSE
+  useSSE(isAuthenticated ? token : null, (data) => {
+    if (data.type === 'notification') {
+      setNotifications((prev) => [{
+        id: data.id as number,
+        type: data.notificationType as string,
+        title: data.title as string,
+        message: data.message as string,
+        is_read: 0,
+        created_at: new Date().toISOString(),
+      }, ...prev.slice(0, 49)]);
+      setUnreadCount((n) => n + 1);
+    }
+  });
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -159,6 +171,9 @@ const Navbar = () => {
                 </Link>
                 <Link to="/favorites" className="text-gray-700 hover:text-primary-600">
                   Favorites
+                </Link>
+                <Link to="/leaderboard" className="text-gray-700 hover:text-primary-600">
+                  Leaderboard
                 </Link>
                 <Link to="/profile" className="text-gray-700 hover:text-primary-600">
                   Profile
@@ -316,6 +331,13 @@ const Navbar = () => {
                     onClick={() => setMobileMenuOpen(false)}
                   >
                     Favorites
+                  </Link>
+                  <Link
+                    to="/leaderboard"
+                    className="block px-3 py-2 text-gray-700 hover:bg-gray-50 rounded-lg"
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    Leaderboard
                   </Link>
                   <Link
                     to="/profile"

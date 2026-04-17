@@ -91,7 +91,8 @@ export async function getHistory(
     queryParams.push(status);
   }
 
-  const groupedData = await dbAll(
+  interface GroupedRow { period: string; total_amount: number; }
+  const groupedData = await dbAll<GroupedRow>(
     `SELECT ${dateFormat} as period, COUNT(*) as transaction_count,
       COALESCE(SUM(amount), 0) as total_amount,
       COALESCE(SUM(CASE WHEN status = 'confirmed' THEN amount ELSE 0 END), 0) as confirmed_amount,
@@ -102,7 +103,7 @@ export async function getHistory(
     queryParams
   );
 
-  const timeSeriesData = (groupedData || []).map((item: { period: string; total_amount: number }) => ({
+  const timeSeriesData = (groupedData || []).map((item) => ({
     period: item.period || '',
     amount: parseFloat(String(item.total_amount)) || 0
   })).sort((a, b) => (a.period || '').localeCompare(b.period || ''));

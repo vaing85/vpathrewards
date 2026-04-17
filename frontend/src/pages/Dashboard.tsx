@@ -5,6 +5,9 @@ import apiClient from '../api/client';
 import ReferralCode from '../components/ReferralCode';
 import Pagination from '../components/Pagination';
 import LazyImage from '../components/LazyImage';
+import RecommendationWidget from '../components/RecommendationWidget';
+import TierProgress from '../components/TierProgress';
+import CashbackAlerts from '../components/CashbackAlerts';
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
 } from 'recharts';
@@ -289,8 +292,19 @@ const Dashboard = () => {
           )}
         </div>
 
-        {/* Referral Code Section */}
+        {/* AI Recommendations */}
         <div className="mt-8">
+          <RecommendationWidget />
+        </div>
+
+        {/* Tier Progress + Alerts */}
+        <div className="mt-6 grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <TierProgress />
+          <CashbackAlerts />
+        </div>
+
+        {/* Referral Code Section */}
+        <div className="mt-6">
           <ReferralCode />
         </div>
       </div>
