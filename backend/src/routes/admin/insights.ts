@@ -5,8 +5,10 @@
 import { Router } from 'express';
 import Anthropic from '@anthropic-ai/sdk';
 import { authenticateAdmin, AdminRequest } from '../../middleware/adminAuth';
-import { dbGet, dbAll } from '../../database';
+import { dbGet, dbAll, USE_PG } from '../../db';
 import { get, set } from '../../utils/cache';
+
+const ago7d = USE_PG ? "NOW() - INTERVAL '7 days'" : "${ago7d}";
 
 const router = Router();
 const CACHE_TTL = 5 * 60 * 1000;
@@ -32,9 +34,9 @@ router.get('/', authenticateAdmin, async (req: AdminRequest, res) => {
       }>(`
         SELECT
           (SELECT COUNT(*) FROM users WHERE is_admin = 0) as total_users,
-          (SELECT COUNT(*) FROM users WHERE is_admin = 0 AND created_at >= datetime('now','-7 days')) as new_users_7d,
+          (SELECT COUNT(*) FROM users WHERE is_admin = 0 AND created_at >= ${ago7d}) as new_users_7d,
           (SELECT COALESCE(SUM(amount),0) FROM cashback_transactions WHERE status='confirmed') as total_cashback,
-          (SELECT COALESCE(SUM(amount),0) FROM cashback_transactions WHERE status='confirmed' AND transaction_date >= datetime('now','-7 days')) as cashback_7d,
+          (SELECT COALESCE(SUM(amount),0) FROM cashback_transactions WHERE status='confirmed' AND transaction_date >= ${ago7d}) as cashback_7d,
           (SELECT COUNT(*) FROM withdrawals WHERE status='pending') as pending_withdrawals,
           (SELECT COALESCE(SUM(amount),0) FROM withdrawals WHERE status='pending') as pending_amount,
           (SELECT COUNT(*) FROM offers WHERE is_active=1) as active_offers
@@ -50,7 +52,7 @@ router.get('/', authenticateAdmin, async (req: AdminRequest, res) => {
       ),
       dbGet<{ count: number; total: number }>(
         `SELECT COUNT(*) as count, COALESCE(SUM(amount),0) as total
-         FROM withdrawals WHERE status='approved' AND processed_at >= datetime('now','-7 days')`
+         FROM withdrawals WHERE status='approved' AND processed_at >= ${ago7d}`
       ),
       dbGet<{ count: number; total: number }>(
         `SELECT COUNT(*) as count, COALESCE(SUM(amount),0) as total FROM withdrawals WHERE status='pending'`
