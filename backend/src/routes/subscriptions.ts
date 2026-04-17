@@ -59,7 +59,7 @@ router.post('/checkout', authenticateToken, async (req: AuthRequest, res) => {
 
     const currentSub = await getUserSubscription(req.userId!);
     const hasPaidPlan = currentSub.plan !== 'free' && currentSub.status === 'active' && currentSub.stripe_subscription_id;
-    const previousSubscriptionId = hasPaidPlan ? currentSub.stripe_subscription_id : undefined;
+    const previousSubscriptionId = hasPaidPlan ? String(currentSub.stripe_subscription_id) : undefined;
 
     const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
     const session = await createCheckoutSession(
