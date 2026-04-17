@@ -27,6 +27,17 @@ import adminAnalyticsRoutes from './routes/admin/analytics';
 import adminCashbackRoutes from './routes/admin/cashback';
 import adminCommissionRoutes from './routes/admin/commissionSettings';
 import notificationRoutes from './routes/notifications';
+import statsRoutes from './routes/stats';
+import supportRoutes from './routes/support';
+import subscriptionRoutes from './routes/subscriptions';
+import webhookRoutes from './routes/webhooks';
+import stripeConnectRoutes from './routes/stripeConnect';
+import recommendationsRoutes from './routes/recommendations';
+import alertsRoutes from './routes/alerts';
+import leaderboardRoutes from './routes/leaderboard';
+import adminInsightsRoutes from './routes/admin/insights';
+import sseRoutes from './routes/sse';
+import { startJobs } from './jobs';
 import { errorHandler } from './middleware/errorHandler';
 
 dotenv.config();
@@ -62,6 +73,9 @@ app.use(cors({
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
 }));
+
+// Raw body for Stripe webhooks (must come before express.json)
+app.use('/api/webhooks/stripe', express.raw({ type: 'application/json' }));
 
 // Body parsing with size limit
 app.use(express.json({ limit: '10mb' }));
@@ -99,6 +113,16 @@ app.use('/api/admin/analytics', adminAnalyticsRoutes);
 app.use('/api/admin/cashback', adminCashbackRoutes);
 app.use('/api/admin/commission', adminCommissionRoutes);
 app.use('/api/notifications', notificationRoutes);
+app.use('/api/stats', statsRoutes);
+app.use('/api/support', supportRoutes);
+app.use('/api/subscriptions', subscriptionRoutes);
+app.use('/api/webhooks', webhookRoutes);
+app.use('/api/stripe-connect', stripeConnectRoutes);
+app.use('/api/recommendations', recommendationsRoutes);
+app.use('/api/alerts', alertsRoutes);
+app.use('/api/leaderboard', leaderboardRoutes);
+app.use('/api/admin/insights', adminLimiter, adminInsightsRoutes);
+app.use('/api/sse', sseRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {
@@ -110,6 +134,7 @@ app.use(errorHandler);
 
 // Initialize database and start server
 initDatabase().then(() => {
+  startJobs();
   app.listen(PORT, () => {
     const env = process.env.NODE_ENV || 'development';
     const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
