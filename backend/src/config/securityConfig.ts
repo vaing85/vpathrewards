@@ -6,11 +6,24 @@
 const nodeEnv = process.env.NODE_ENV || 'development';
 const isProduction = nodeEnv === 'production';
 
+const jwtSecret = process.env.JWT_SECRET;
+if (!jwtSecret) {
+  if (isProduction) {
+    throw new Error('FATAL: JWT_SECRET environment variable is not set. Refusing to start in production.');
+  } else {
+    console.warn('WARNING: JWT_SECRET is not set. Using insecure default — do NOT use in production.');
+  }
+}
+
 export const securityConfig = {
   jwt: {
-    secret: process.env.JWT_SECRET || 'your-secret-key',
-    /** Token expiry (e.g. '7d', '24h'). */
-    expiresIn: process.env.JWT_EXPIRES_IN || '7d',
+    secret: jwtSecret || 'dev-only-insecure-secret',
+    /** Short-lived access token: 2 hours. */
+    expiresIn: process.env.JWT_EXPIRES_IN || '2h',
+    /** Long-lived admin token: 7 days (admins have no refresh flow). */
+    adminExpiresIn: process.env.ADMIN_JWT_EXPIRES_IN || '7d',
+    /** Refresh token lifetime in milliseconds (7 days). */
+    refreshExpiresMs: 7 * 24 * 60 * 60 * 1000,
   },
 
   cors: {
@@ -20,7 +33,6 @@ export const securityConfig = {
         'http://localhost:3000',
         'https://vpathrewards.store',
         'https://www.vpathrewards.store',
-        'https://vaing85.github.io',
       ];
       if (!origin || allowed.includes(origin)) {
         callback(null, true);
@@ -30,7 +42,7 @@ export const securityConfig = {
     },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'x-csrf-token'],
   },
 
   rateLimit: {
@@ -40,7 +52,7 @@ export const securityConfig = {
     },
     auth: {
       windowMs: 15 * 60 * 1000,
-      max: isProduction ? 20 : 50,
+      max: isProduction ? 50 : 100,
     },
     password: {
       windowMs: 60 * 60 * 1000,
@@ -52,7 +64,11 @@ export const securityConfig = {
     },
     admin: {
       windowMs: 15 * 60 * 1000,
-      max: 50,
+      max: 1000,
+    },
+    tracking: {
+      windowMs: 60 * 1000, // 1 minute
+      max: isProduction ? 30 : 200,
     },
   },
 } as const;

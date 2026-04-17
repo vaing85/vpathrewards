@@ -33,25 +33,12 @@ interface ReferralStats {
   referred_users: ReferredUser[];
 }
 
-interface LeaderboardEntry {
-  user_id: number;
-  name: string;
-  total_referrals: number;
-  total_earnings: number;
-}
-
-interface LeaderboardData {
-  leaderboard: LeaderboardEntry[];
-  my_rank: number | null;
-}
-
 const ReferralDashboard = () => {
   const { isAuthenticated } = useAuth();
   const navigate = useNavigate();
   const [stats, setStats] = useState<ReferralStats | null>(null);
   const [earnings, setEarnings] = useState<ReferralEarning[]>([]);
   const [referralCode, setReferralCode] = useState<{ referral_code: string; referral_link: string; total_referrals: number; total_earnings: number } | null>(null);
-  const [leaderboard, setLeaderboard] = useState<LeaderboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'overview' | 'earnings' | 'referrals'>('overview');
 
@@ -65,16 +52,14 @@ const ReferralDashboard = () => {
 
   const fetchData = async () => {
     try {
-      const [statsRes, earningsRes, codeRes, leaderboardRes] = await Promise.all([
+      const [statsRes, earningsRes, codeRes] = await Promise.all([
         apiClient.get('/referrals/dashboard'),
         apiClient.get('/referrals/earnings'),
         apiClient.get('/referrals/code'),
-        apiClient.get('/referrals/leaderboard', { params: { limit: 5 } }).catch(() => ({ data: null })),
       ]);
       setStats(statsRes.data);
       setEarnings(earningsRes.data);
       setReferralCode(codeRes.data);
-      setLeaderboard(leaderboardRes.data);
     } catch (error) {
       console.error('Error fetching referral data:', error);
     } finally {
@@ -123,40 +108,6 @@ const ReferralDashboard = () => {
                 <p className="mt-4 text-sm opacity-90">
                   Share your referral link and earn 10% of your referrals' cashback earnings!
                 </p>
-              </div>
-            )}
-
-            {/* Leaderboard widget */}
-            {leaderboard && (leaderboard.leaderboard?.length > 0 || leaderboard.my_rank) && (
-              <div className="bg-white rounded-lg shadow p-6 mb-8">
-                <h2 className="text-lg font-semibold text-gray-800 mb-4">Referral Leaderboard</h2>
-                {leaderboard.my_rank != null && (
-                  <p className="text-sm text-primary-600 font-medium mb-3">
-                    Your rank: #{leaderboard.my_rank}
-                  </p>
-                )}
-                {leaderboard.leaderboard?.length > 0 ? (
-                  <div className="space-y-2">
-                    {leaderboard.leaderboard.map((entry, idx) => (
-                      <div
-                        key={entry.user_id}
-                        className="flex items-center justify-between py-2 border-b border-gray-100 last:border-0"
-                      >
-                        <div className="flex items-center gap-2">
-                          <span className="text-gray-400 font-mono w-6">#{idx + 1}</span>
-                          <span className="font-medium text-gray-800">{entry.name}</span>
-                        </div>
-                        <div className="text-right text-sm">
-                          <span className="text-gray-600">{entry.total_referrals} referrals</span>
-                          <span className="mx-2 text-gray-300">·</span>
-                          <span className="font-semibold text-green-600">${entry.total_earnings.toFixed(2)}</span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-gray-500 text-sm">No referrers yet. Be the first to climb the leaderboard!</p>
-                )}
               </div>
             )}
 

@@ -48,6 +48,7 @@ const Footer = () => {
             <ul className="space-y-2 text-sm">
               <li><Link to="/terms" className="hover:text-white transition">Terms of Service</Link></li>
               <li><Link to="/privacy" className="hover:text-white transition">Privacy Policy</Link></li>
+              <li><Link to="/temu-terms" className="hover:text-white transition">Temu Advertiser Terms</Link></li>
               <li>
                 <a href="mailto:support@vpathrewards.store" className="hover:text-white transition">
                   Contact Support

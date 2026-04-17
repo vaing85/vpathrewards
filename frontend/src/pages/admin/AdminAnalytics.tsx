@@ -2,6 +2,11 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAdmin } from '../../context/AdminContext';
 import apiClient from '../../api/client';
+import AIInsights from '../../components/admin/AIInsights';
+import {
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+  LineChart, Line, Legend
+} from 'recharts';
 
 interface AnalyticsOverview {
   clicks: {
@@ -63,6 +68,11 @@ const AdminAnalytics = () => {
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* AI Insights panel */}
+        <div className="mb-8">
+          <AIInsights />
+        </div>
+
         <div className="flex justify-between items-center mb-8">
           <h1 className="text-3xl font-bold text-gray-800">Analytics Overview</h1>
           <div className="flex items-center space-x-4">
@@ -154,6 +164,49 @@ const AdminAnalytics = () => {
                     Min: ${(revenue.overall?.min_order || 0).toFixed(2)} | Max: ${(revenue.overall?.max_order || 0).toFixed(2)}
                   </div>
                 </div>
+              </div>
+            )}
+
+            {/* Revenue Over Time Chart */}
+            {revenue?.by_day?.length > 0 && (
+              <div className="bg-white rounded-lg shadow p-6 mb-8">
+                <h2 className="text-xl font-semibold text-gray-800 mb-4">Revenue Over Time</h2>
+                <ResponsiveContainer width="100%" height={240}>
+                  <LineChart data={revenue.by_day} margin={{ top: 4, right: 16, left: 0, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                    <XAxis dataKey="period" tick={{ fontSize: 11 }} tickLine={false} />
+                    <YAxis tickFormatter={v => `$${v}`} tick={{ fontSize: 11 }} tickLine={false} axisLine={false} width={56} />
+                    <Tooltip formatter={(v: number, name: string) => [`$${v.toFixed(2)}`, name]} />
+                    <Legend />
+                    <Line type="monotone" dataKey="total_revenue" name="Revenue" stroke="#3b82f6" strokeWidth={2} dot={false} />
+                    <Line type="monotone" dataKey="total_commission" name="Commission" stroke="#10b981" strokeWidth={2} dot={false} />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            )}
+
+            {/* Top Offers Bar Chart */}
+            {overview.top_offers.length > 0 && (
+              <div className="bg-white rounded-lg shadow p-6 mb-8">
+                <h2 className="text-xl font-semibold text-gray-800 mb-4">Top Offers — Clicks vs Conversions</h2>
+                <ResponsiveContainer width="100%" height={220}>
+                  <BarChart
+                    data={overview.top_offers.slice(0, 8).map(o => ({
+                      name: (o.title || o.name || '').slice(0, 16),
+                      Clicks: o.click_count || 0,
+                      Conversions: o.conversion_count || 0,
+                    }))}
+                    margin={{ top: 4, right: 16, left: 0, bottom: 0 }}
+                  >
+                    <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                    <XAxis dataKey="name" tick={{ fontSize: 10 }} tickLine={false} />
+                    <YAxis tick={{ fontSize: 11 }} tickLine={false} axisLine={false} />
+                    <Tooltip />
+                    <Legend />
+                    <Bar dataKey="Clicks" fill="#2563eb" radius={[4,4,0,0]} />
+                    <Bar dataKey="Conversions" fill="#10b981" radius={[4,4,0,0]} />
+                  </BarChart>
+                </ResponsiveContainer>
               </div>
             )}
 

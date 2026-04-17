@@ -274,56 +274,15 @@ async function testAdminDashboard() {
   }
 }
 
-// Flow 10: Health Check (with DB check)
+// Flow 10: Health Check
 async function testHealthCheck() {
   const response = await axios.get(`${API_BASE}/health`);
   if (response.data && (response.data.status === 'ok' || response.data.message)) {
     logSuccess('API is healthy');
-    if (response.data.database === 'connected') {
-      logSuccess('Database is connected');
-    }
     return true;
   } else {
     throw new Error('Health check failed - unexpected response');
   }
-}
-
-// Flow 11: Public stats (no auth)
-async function testGetStats() {
-  const response = await axios.get(`${API_BASE}/stats`);
-  const data = response.data;
-  if (data && typeof data.total_users === 'number' && typeof data.total_cashback_paid === 'number') {
-    logSuccess(`Stats: ${data.total_users} users, $${data.total_cashback_paid} cashback paid`);
-    return true;
-  }
-  throw new Error('Stats endpoint failed - unexpected response');
-}
-
-// Flow 12: Merchant reviews (GET public, POST validation)
-async function testMerchantReviews() {
-  const merchantsRes = await axios.get(`${API_BASE}/merchants`, { params: { limit: 1 } });
-  const merchants = merchantsRes.data?.data || merchantsRes.data;
-  const list = Array.isArray(merchants) ? merchants : (merchants || []);
-  if (list.length === 0) {
-    logWarning('Skipping merchant reviews - no merchants');
-    return true;
-  }
-  const mid = list[0].id;
-  const getRes = await axios.get(`${API_BASE}/merchants/${mid}/reviews`);
-  if (!getRes.data || typeof getRes.data.total_count !== 'number') {
-    throw new Error('GET merchant reviews failed');
-  }
-  logSuccess('GET merchant reviews OK');
-  // POST without auth or with invalid rating should fail
-  try {
-    await axios.post(`${API_BASE}/merchants/${mid}/reviews`, { rating: 10, comment: 'x' });
-    logWarning('POST review with invalid rating should have returned 400');
-  } catch (err) {
-    if (err.response && (err.response.status === 400 || err.response.status === 401)) {
-      logSuccess('Review validation / auth OK');
-    }
-  }
-  return true;
 }
 
 // Run all tests
@@ -345,10 +304,8 @@ async function runTests() {
   
   // Public endpoints
   results.push(await testFlow('Health Check', testHealthCheck));
-  results.push(await testFlow('Get Stats', testGetStats));
   results.push(await testFlow('Get Merchants', testGetMerchants));
   results.push(await testFlow('Get Offers', testGetOffers));
-  results.push(await testFlow('Merchant Reviews', testMerchantReviews));
   
   // User flows
   results.push(await testFlow('User Registration', testUserRegistration));

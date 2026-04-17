@@ -1,16 +1,14 @@
-import crypto from 'crypto';
 import express from 'express';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { dbGet, dbRun } from '../database';
-import { securityConfig } from '../config/securityConfig';
-import { sendEmail, sendEmailToUser } from '../utils/emailService';
+import { sendEmailToUser } from '../utils/emailService';
 import { validateRegister, validateLogin } from '../middleware/validation';
 
 const router = express.Router();
 
 // Register
-router.post('/register', validateRegister, async (req: express.Request, res: express.Response) => {
+router.post('/register', validateRegister, async (req: import('express').Request, res: import('express').Response) => {
   try {
     const { email, password, name, referral_code } = req.body;
 
@@ -63,7 +61,7 @@ router.post('/register', validateRegister, async (req: express.Request, res: exp
       [userId, userReferralCode]
     );
 
-    const token = jwt.sign({ userId }, securityConfig.jwt.secret, { expiresIn: securityConfig.jwt.expiresIn } as jwt.SignOptions);
+    const token = jwt.sign({ userId }, process.env.JWT_SECRET || 'your-secret-key', { expiresIn: '7d' });
 
     // Send welcome email (async, don't wait for it)
     sendEmailToUser(userId, email, 'welcome', { name }, 'email').catch(err => {
@@ -86,7 +84,7 @@ router.post('/register', validateRegister, async (req: express.Request, res: exp
 });
 
 // Login
-router.post('/login', validateLogin, async (req: express.Request, res: express.Response) => {
+router.post('/login', validateLogin, async (req: import('express').Request, res: import('express').Response) => {
   try {
     const { email, password } = req.body;
 
@@ -106,7 +104,7 @@ router.post('/login', validateLogin, async (req: express.Request, res: express.R
       return res.status(401).json({ error: 'Invalid credentials' });
     }
 
-    const token = jwt.sign({ userId: user.id }, securityConfig.jwt.secret, { expiresIn: securityConfig.jwt.expiresIn } as jwt.SignOptions);
+    const token = jwt.sign({ userId: user.id }, process.env.JWT_SECRET || 'your-secret-key', { expiresIn: '7d' });
 
     res.json({
       token,
@@ -119,62 +117,6 @@ router.post('/login', validateLogin, async (req: express.Request, res: express.R
     });
   } catch (error) {
     console.error('Login error:', error);
-    res.status(500).json({ error: 'Internal server error' });
-  }
-});
-
-// Forgot Password — sends reset link
-router.post('/forgot-password', async (req: express.Request, res: express.Response) => {
-  try {
-    const { email } = req.body;
-    if (!email) return res.status(400).json({ error: 'Email is required' });
-
-    const user = await dbGet('SELECT id, name, email FROM users WHERE email = ?', [email]) as any;
-
-    // Always respond the same way to prevent email enumeration
-    if (!user) return res.json({ message: 'If that email exists, a reset link has been sent.' });
-
-    const token = crypto.randomBytes(32).toString('hex');
-    const expires = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
-
-    await dbRun(
-      'UPDATE users SET reset_token = ?, reset_token_expires = ? WHERE id = ?',
-      [token, expires.toISOString(), user.id]
-    );
-
-    const resetUrl = `${process.env.FRONTEND_URL}/reset-password?token=${token}`;
-    await sendEmail(user.email, 'passwordReset', { name: user.name, resetUrl });
-
-    res.json({ message: 'If that email exists, a reset link has been sent.' });
-  } catch (error) {
-    console.error('Forgot password error:', error);
-    res.status(500).json({ error: 'Internal server error' });
-  }
-});
-
-// Reset Password — validates token and sets new password
-router.post('/reset-password', async (req: express.Request, res: express.Response) => {
-  try {
-    const { token, password } = req.body;
-    if (!token || !password) return res.status(400).json({ error: 'Token and password are required' });
-    if (password.length < 8) return res.status(400).json({ error: 'Password must be at least 8 characters' });
-
-    const user = await dbGet(
-      "SELECT id FROM users WHERE reset_token = ? AND reset_token_expires > NOW()",
-      [token]
-    ) as any;
-
-    if (!user) return res.status(400).json({ error: 'This reset link is invalid or has expired.' });
-
-    const hashedPassword = await bcrypt.hash(password, 10);
-    await dbRun(
-      'UPDATE users SET password = ?, reset_token = NULL, reset_token_expires = NULL WHERE id = ?',
-      [hashedPassword, user.id]
-    );
-
-    res.json({ message: 'Password reset successfully. You can now log in.' });
-  } catch (error) {
-    console.error('Reset password error:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
