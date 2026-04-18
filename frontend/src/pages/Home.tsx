@@ -39,9 +39,9 @@ const Home = () => {
           apiClient.get('/featured/merchants', { params: { limit: 6 } }),
           apiClient.get('/featured/recent-offers', { params: { limit: 6 } }),
         ]);
-        setFeaturedOffers(featuredRes.data);
-        setTrendingMerchants(trendingRes.data);
-        setRecentOffers(recentRes.data);
+        setFeaturedOffers(Array.isArray(featuredRes.data) ? featuredRes.data : []);
+        setTrendingMerchants(Array.isArray(trendingRes.data) ? trendingRes.data : []);
+        setRecentOffers(Array.isArray(recentRes.data) ? recentRes.data : []);
       } catch (error) {
         console.error('Error fetching data:', error);
       } finally {
