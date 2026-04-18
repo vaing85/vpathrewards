@@ -3,7 +3,7 @@ import { authenticateToken, AuthRequest } from '../middleware/auth';
 import { dbAll, dbGet, dbRun } from '../database';
 import { sendEmailToUser } from '../utils/emailService';
 import { validateWithdrawal } from '../middleware/validation';
-import { passwordLimiter } from '../middleware/rateLimiter';
+import { withdrawalLimiter } from '../middleware/rateLimiter';
 
 const router = express.Router();
 
@@ -78,7 +78,7 @@ router.get('/balance/available', authenticateToken, async (req: AuthRequest, res
 });
 
 // Create withdrawal request
-router.post('/request', authenticateToken, passwordLimiter, validateWithdrawal, async (req: AuthRequest, res: import('express').Response) => {
+router.post('/request', authenticateToken, withdrawalLimiter, validateWithdrawal, async (req: AuthRequest, res: import('express').Response) => {
   try {
     const { amount, payment_method, payment_details } = req.body;
 
