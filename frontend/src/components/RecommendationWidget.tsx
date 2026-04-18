@@ -18,7 +18,7 @@ export default function RecommendationWidget() {
 
   useEffect(() => {
     apiClient.get('/recommendations')
-      .then(({ data }) => setRecs(data.recommendations ?? []))
+      .then(({ data }) => setRecs(Array.isArray(data.recommendations) ? data.recommendations : []))
       .catch(() => {})
       .finally(() => setLoading(false));
   }, []);
