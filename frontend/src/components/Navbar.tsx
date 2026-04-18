@@ -78,7 +78,7 @@ const Navbar = () => {
   const fetchCategories = async () => {
     try {
       const response = await apiClient.get('/search/categories');
-      setCategories(response.data);
+      setCategories(Array.isArray(response.data) ? response.data : []);
     } catch (error) {
       console.error('Error fetching categories:', error);
     }

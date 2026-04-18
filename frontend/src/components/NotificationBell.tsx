@@ -21,7 +21,7 @@ export default function NotificationBell() {
   const fetchNotifications = useCallback(async () => {
     try {
       const { data } = await apiClient.get('/notifications');
-      setNotifications(data.notifications);
+      setNotifications(Array.isArray(data.notifications) ? data.notifications : []);
       setUnread(data.unread_count);
     } catch (_) {}
   }, []);
