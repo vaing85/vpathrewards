@@ -25,8 +25,8 @@ export default function CashbackAlerts() {
   const [error, setError] = useState('');
 
   useEffect(() => {
-    apiClient.get('/alerts').then(({ data }) => setAlerts(data.alerts ?? [])).catch(() => {});
-    apiClient.get('/merchants').then(({ data }) => setMerchants(data.merchants ?? data ?? [])).catch(() => {});
+    apiClient.get('/alerts').then(({ data }) => setAlerts(Array.isArray(data.alerts) ? data.alerts : [])).catch(() => {});
+    apiClient.get('/merchants').then(({ data }) => setMerchants(Array.isArray(data.merchants) ? data.merchants : Array.isArray(data) ? data : [])).catch(() => {});
   }, []);
 
   const create = async () => {
