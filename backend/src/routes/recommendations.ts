@@ -85,7 +85,9 @@ Example: [{"offer_id": 3, "reason": "Matches your frequent electronics shopping.
       messages: [{ role: 'user', content: prompt }],
     });
 
-    const text = (response.content[0] as Anthropic.TextBlock).text.trim();
+    const raw = (response.content[0] as Anthropic.TextBlock).text.trim();
+    // Strip markdown code fences if Claude wraps the response
+    const text = raw.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim();
     const parsed: { offer_id: number; reason: string }[] = JSON.parse(text);
 
     // Hydrate with full offer data
