@@ -118,7 +118,7 @@ const Navbar = () => {
           {/* Logo */}
           <div className="flex items-center space-x-4">
             <Link to="/" className="flex items-center space-x-2" onClick={() => setMobileMenuOpen(false)}>
-              <img src="/vpathlogo.svg" alt="V PATHing Rewards" className="w-9 h-9 rounded-lg" />
+              <img src="/vpathlogo.svg" alt="V PATHing Rewards" className="h-8 w-auto" />
               <span className="text-lg sm:text-xl font-bold text-gray-800">V PATHing Rewards</span>
             </Link>
 
