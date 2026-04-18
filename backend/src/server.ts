@@ -3,7 +3,7 @@ import cors from 'cors';
 import helmet from 'helmet';
 import dotenv from 'dotenv';
 import { initDatabase } from './database';
-import { apiLimiter, authLimiter, passwordLimiter, withdrawalLimiter, adminLimiter } from './middleware/rateLimiter';
+import { apiLimiter, authLimiter, withdrawalLimiter, adminLimiter } from './middleware/rateLimiter';
 import { sanitizeInput, securityHeaders } from './middleware/security';
 import authRoutes from './routes/auth';
 import merchantRoutes from './routes/merchants';
