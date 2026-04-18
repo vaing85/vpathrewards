@@ -118,10 +118,8 @@ const Navbar = () => {
           {/* Logo */}
           <div className="flex items-center space-x-4">
             <Link to="/" className="flex items-center space-x-2" onClick={() => setMobileMenuOpen(false)}>
-              <div className="bg-primary-600 text-white px-2 sm:px-3 py-1 rounded-lg font-bold text-lg sm:text-xl">
-                $$$
-              </div>
-              <span className="text-lg sm:text-xl font-bold text-gray-800">CashBack Rewards</span>
+              <img src="/logo.svg" alt="V PATHing Rewards" className="w-9 h-9 rounded-lg" />
+              <span className="text-lg sm:text-xl font-bold text-gray-800">V PATHing Rewards</span>
             </Link>
 
             {/* Categories Dropdown - Desktop only */}
