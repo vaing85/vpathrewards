@@ -84,9 +84,6 @@ const AdminLogin = () => {
               {loading ? 'Signing in...' : 'Sign in'}
             </button>
           </div>
-          <div className="text-center text-xs text-gray-500">
-            Default: admin@cashback.com / admin123
-          </div>
         </form>
       </div>
     </div>
