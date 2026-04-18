@@ -1,52 +1,54 @@
 import rateLimit from 'express-rate-limit';
+import { securityConfig } from '../config/securityConfig';
 
-// General API rate limiter
-// More lenient in development, stricter in production
+const { rateLimit: rl } = securityConfig;
+
 export const apiLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: process.env.NODE_ENV === 'production' ? 100 : 1000, // Much higher limit in development
+  windowMs: rl.api.windowMs,
+  max: rl.api.max,
   message: 'Too many requests from this IP, please try again later.',
-  standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
-  legacyHeaders: false, // Disable the `X-RateLimit-*` headers
-  skip: (req) => {
-    // Skip rate limiting for health checks
-    return req.path === '/api/health';
-  },
+  standardHeaders: true,
+  legacyHeaders: false,
+  skip: (req) => req.path === '/api/health',
 });
 
-// Strict rate limiter for authentication endpoints
 export const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: process.env.NODE_ENV === 'production' ? 5 : 50, // More lenient in development
+  windowMs: rl.auth.windowMs,
+  max: rl.auth.max,
   message: 'Too many authentication attempts, please try again later.',
-  skipSuccessfulRequests: true, // Don't count successful requests
+  skipSuccessfulRequests: true,
   standardHeaders: true,
   legacyHeaders: false,
 });
 
-// Strict rate limiter for password reset/change
 export const passwordLimiter = rateLimit({
-  windowMs: 60 * 60 * 1000, // 1 hour
-  max: 3, // Limit each IP to 3 requests per hour
+  windowMs: rl.password.windowMs,
+  max: rl.password.max,
   message: 'Too many password change attempts, please try again later.',
   standardHeaders: true,
   legacyHeaders: false,
 });
 
-// Rate limiter for withdrawal requests
 export const withdrawalLimiter = rateLimit({
-  windowMs: 60 * 60 * 1000, // 1 hour
-  max: 5, // Limit each IP to 5 withdrawal requests per hour
+  windowMs: rl.withdrawal.windowMs,
+  max: rl.withdrawal.max,
   message: 'Too many withdrawal requests, please try again later.',
   standardHeaders: true,
   legacyHeaders: false,
 });
 
-// Rate limiter for admin endpoints
 export const adminLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 50, // Limit each IP to 50 requests per windowMs
+  windowMs: rl.admin.windowMs,
+  max: rl.admin.max,
   message: 'Too many admin requests, please try again later.',
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+export const trackingLimiter = rateLimit({
+  windowMs: rl.tracking.windowMs,
+  max: rl.tracking.max,
+  message: 'Too many tracking requests, please try again later.',
   standardHeaders: true,
   legacyHeaders: false,
 });
