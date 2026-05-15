@@ -72,8 +72,12 @@ app.use(helmet({
 // Additional security headers
 app.use(securityHeaders);
 
-// CORS configuration
-app.use(cors(securityConfig.cors));
+// CORS configuration — spread to satisfy cors()'s mutable array expectations
+app.use(cors({
+  ...securityConfig.cors,
+  methods: [...securityConfig.cors.methods],
+  allowedHeaders: [...securityConfig.cors.allowedHeaders],
+}));
 
 // Raw body for Stripe webhooks (must come before express.json)
 app.use('/api/webhooks/stripe', express.raw({ type: 'application/json' }));
