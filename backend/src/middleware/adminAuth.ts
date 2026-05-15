@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import { dbGet } from '../database';
+import { securityConfig } from '../config/securityConfig';
 
 export interface AdminRequest extends Request {
   userId?: number;
@@ -15,10 +16,8 @@ export const authenticateAdmin = async (req: AdminRequest, res: Response, next: 
     return res.status(401).json({ error: 'Access token required' });
   }
 
-  const secret = process.env.JWT_SECRET || 'your-secret-key';
-  
   try {
-    const decoded = jwt.verify(token, secret) as any;
+    const decoded = jwt.verify(token, securityConfig.jwt.secret) as any;
     req.userId = decoded.userId;
 
     // Check if user is admin

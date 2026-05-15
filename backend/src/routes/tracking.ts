@@ -1,12 +1,10 @@
 import express from 'express';
+import { randomBytes } from 'crypto';
 import { authenticateToken, AuthRequest } from '../middleware/auth';
 import { dbAll, dbGet, dbRun } from '../database';
 import { createReferralEarning } from './referrals';
 
-// Generate unique session ID
-const generateSessionId = (): string => {
-  return `sess_${Date.now()}_${Math.random().toString(36).substring(2, 15)}`;
-};
+const generateSessionId = (): string => `sess_${Date.now()}_${randomBytes(8).toString('hex')}`;
 
 const router = express.Router();
 

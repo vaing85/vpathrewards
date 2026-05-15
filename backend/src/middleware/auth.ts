@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
+import { securityConfig } from '../config/securityConfig';
 
 export interface AuthRequest extends Request {
   userId?: number;
@@ -13,9 +14,7 @@ export const authenticateToken = (req: AuthRequest, res: Response, next: NextFun
     return res.status(401).json({ error: 'Access token required' });
   }
 
-  const secret = process.env.JWT_SECRET || 'your-secret-key';
-  
-  jwt.verify(token, secret, (err: any, decoded: any) => {
+  jwt.verify(token, securityConfig.jwt.secret, (err: any, decoded: any) => {
     if (err) {
       return res.status(403).json({ error: 'Invalid or expired token' });
     }

@@ -3,7 +3,8 @@ import cors from 'cors';
 import helmet from 'helmet';
 import dotenv from 'dotenv';
 import { initDatabase } from './database';
-import { apiLimiter, authLimiter, withdrawalLimiter, adminLimiter } from './middleware/rateLimiter';
+import { apiLimiter, authLimiter, withdrawalLimiter, adminLimiter, trackingLimiter } from './middleware/rateLimiter';
+import { securityConfig } from './config/securityConfig';
 import { sanitizeInput, securityHeaders } from './middleware/security';
 import authRoutes from './routes/auth';
 import merchantRoutes from './routes/merchants';
@@ -72,12 +73,7 @@ app.use(helmet({
 app.use(securityHeaders);
 
 // CORS configuration
-app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:3000',
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
-}));
+app.use(cors(securityConfig.cors));
 
 // Raw body for Stripe webhooks (must come before express.json)
 app.use('/api/webhooks/stripe', express.raw({ type: 'application/json' }));
@@ -99,7 +95,7 @@ app.use('/api/offers', offerRoutes);
 app.use('/api/cashback', cashbackRoutes);
 app.use('/api/search', searchRoutes);
 app.use('/api/withdrawals', withdrawalLimiter, withdrawalRoutes);
-app.use('/api/tracking', trackingRoutes);
+app.use('/api/tracking', trackingLimiter, trackingRoutes);
 app.use('/api/profile', profileRoutes);
 app.use('/api/featured', featuredRoutes);
 app.use('/api/referrals', referralRoutes);

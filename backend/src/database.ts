@@ -324,7 +324,9 @@ export const initDatabase = async () => {
     // Seed default admin user
     const adminExists = await dbGet('SELECT id FROM users WHERE email = ?', ['admin@cashback.com']) as { id: number } | undefined;
     if (!adminExists) {
-      const hashedPassword = await bcrypt.hash('admin123', 10);
+      const crypto = await import('crypto');
+      const tempPassword = crypto.randomBytes(16).toString('hex');
+      const hashedPassword = await bcrypt.hash(tempPassword, 12);
       const result = await dbRun(
         'INSERT INTO users (email, password, name, is_admin) VALUES (?, ?, ?, ?)',
         ['admin@cashback.com', hashedPassword, 'Admin User', 1]
@@ -334,7 +336,8 @@ export const initDatabase = async () => {
         'INSERT INTO user_referral_codes (user_id, referral_code) VALUES (?, ?)',
         [adminId, `ADMIN${adminId}`]
       );
-      console.log('Default admin created: admin@cashback.com / admin123');
+      // Log to stderr only — never log credentials in production
+      process.stderr.write(`[SETUP] Default admin created: admin@cashback.com — TEMP PASSWORD: ${tempPassword}\nChange this immediately via the admin panel.\n`);
     }
 
     // Seed sample merchants/offers
