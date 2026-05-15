@@ -4,6 +4,7 @@ import jwt from 'jsonwebtoken';
 import { dbGet, dbRun } from '../database';
 import { sendEmailToUser } from '../utils/emailService';
 import { validateRegister, validateLogin } from '../middleware/validation';
+import { securityConfig } from '../config/securityConfig';
 
 const router = express.Router();
 
@@ -61,7 +62,7 @@ router.post('/register', validateRegister, async (req: import('express').Request
       [userId, userReferralCode]
     );
 
-    const token = jwt.sign({ userId }, process.env.JWT_SECRET || 'your-secret-key', { expiresIn: '7d' });
+    const token = jwt.sign({ userId }, securityConfig.jwt.secret, { expiresIn: '7d' });
 
     // Send welcome email (async, don't wait for it)
     sendEmailToUser(userId, email, 'welcome', { name }, 'email').catch(err => {
@@ -104,7 +105,7 @@ router.post('/login', validateLogin, async (req: import('express').Request, res:
       return res.status(401).json({ error: 'Invalid credentials' });
     }
 
-    const token = jwt.sign({ userId: user.id }, process.env.JWT_SECRET || 'your-secret-key', { expiresIn: '7d' });
+    const token = jwt.sign({ userId: user.id }, securityConfig.jwt.secret, { expiresIn: '7d' });
 
     res.json({
       token,

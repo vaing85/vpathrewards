@@ -2,6 +2,7 @@ import express from 'express';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { dbGet } from '../../database';
+import { securityConfig } from '../../config/securityConfig';
 
 const router = express.Router();
 
@@ -30,7 +31,7 @@ router.post('/login', async (req, res) => {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
 
-    const token = jwt.sign({ userId: user.id }, process.env.JWT_SECRET || 'your-secret-key', { expiresIn: '7d' });
+    const token = jwt.sign({ userId: user.id }, securityConfig.jwt.secret, { expiresIn: securityConfig.jwt.adminExpiresIn as jwt.SignOptions['expiresIn'] });
 
     res.json({
       token,
