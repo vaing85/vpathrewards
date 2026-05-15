@@ -11,7 +11,7 @@ if (!jwtSecret) {
   if (isProduction) {
     throw new Error('FATAL: JWT_SECRET environment variable is not set. Refusing to start in production.');
   } else {
-    console.warn('WARNING: JWT_SECRET is not set. Using insecure default — do NOT use in production.');
+    process.stderr.write('WARNING: JWT_SECRET is not set. Using insecure default — do NOT use in production.\n');
   }
 }
 

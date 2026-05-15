@@ -27,8 +27,13 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     const storedAdmin = localStorage.getItem('admin_user');
     
     if (storedToken && storedAdmin) {
-      setToken(storedToken);
-      setAdmin(JSON.parse(storedAdmin));
+      try {
+        setToken(storedToken);
+        setAdmin(JSON.parse(storedAdmin));
+      } catch {
+        localStorage.removeItem('admin_token');
+        localStorage.removeItem('admin_user');
+      }
     }
   }, []);
 
