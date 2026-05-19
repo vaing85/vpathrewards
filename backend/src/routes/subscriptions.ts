@@ -1,102 +1,74 @@
+/**
+ * Subscriptions route (post-pivot).
+ *
+ * The platform is now free for all members. Tiers are activity-based — climbed
+ * by accumulating confirmed cashback, not by paying a subscription.
+ *
+ * The Stripe checkout / billing portal endpoints return HTTP 410 (Gone). The
+ * underlying Stripe service code is preserved in stripeService.ts so a premium
+ * add-on tier can be re-enabled later without rewriting the integration.
+ *
+ * The endpoint path /api/subscriptions/status is intentionally retained so the
+ * frontend (TierProgress.tsx, Profile.tsx, etc.) continues to work with no API
+ * URL changes — only the response shape evolved.
+ */
+
 import express from 'express';
 import { authenticateToken, AuthRequest } from '../middleware/auth';
-import { dbGet } from '../database';
-import {
-  stripeEnabled,
-  createCheckoutSession,
-  createBillingPortalSession,
-  getUserSubscription,
-  PLANS,
-  type PlanKey,
-} from '../services/stripeService';
+import { ACTIVITY_TIERS, getUserActivityTier } from '../services/tierService';
 
 const router = express.Router();
 
-// GET /api/subscriptions/status — current user's subscription
+// GET /api/subscriptions/status — current user's activity tier
 router.get('/status', authenticateToken, async (req: AuthRequest, res) => {
   try {
-    const sub = await getUserSubscription(req.userId!);
-    const plan = (sub.plan ?? 'free') as PlanKey;
-    const planInfo = PLANS[plan] ?? PLANS.free;
-    const bonus = sub.status === 'active' ? planInfo.cashbackBonus : 0;
+    const t = await getUserActivityTier(req.userId!);
 
     res.json({
-      plan,
-      status: sub.status ?? 'active',
-      current_period_end: sub.current_period_end ?? null,
-      stripe_enabled: stripeEnabled(),
-      cashback_bonus: bonus,
-      plans: Object.entries(PLANS).map(([key, p]) => ({
-        key,
-        name: p.name,
-        amountCents: p.amountCents,
-        cashbackBonus: p.cashbackBonus,
-        description: p.description,
-        features: p.features,
-      })),
+      // Backwards-compatible field names so existing frontend code keeps working.
+      plan: t.tier,
+      status: 'active',
+      stripe_enabled: false,
+      cashback_bonus: t.cashbackBonus,
+
+      // New activity-tier fields.
+      lifetime_cashback_confirmed: t.lifetimeCashbackConfirmed,
+      next_plan: t.nextTier,
+      next_plan_threshold: t.nextTierThreshold,
+      amount_to_next_plan: t.amountToNextTier,
+
+      plans: (Object.keys(ACTIVITY_TIERS) as Array<keyof typeof ACTIVITY_TIERS>).map(
+        (key) => {
+          const p = ACTIVITY_TIERS[key];
+          return {
+            key,
+            name: p.name,
+            threshold: p.threshold,
+            cashbackBonus: p.cashbackBonus,
+            description: p.description,
+          };
+        }
+      ),
     });
   } catch (error) {
-    console.error('Error fetching subscription status:', error);
+    console.error('Error fetching tier status:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
 
-// POST /api/subscriptions/checkout — create Stripe Checkout session
-router.post('/checkout', authenticateToken, async (req: AuthRequest, res) => {
-  try {
-    if (!stripeEnabled()) {
-      return res.status(503).json({ error: 'Stripe is not configured' });
-    }
-
-    const user = await dbGet('SELECT email, name FROM users WHERE id = ?', [req.userId]) as any;
-    if (!user) return res.status(404).json({ error: 'User not found' });
-
-    const { plan = 'gold' } = req.body;
-    const validPlans: PlanKey[] = ['bronze', 'silver', 'gold', 'platinum'];
-    if (!validPlans.includes(plan as PlanKey)) {
-      return res.status(400).json({ error: 'Invalid plan. Choose bronze, silver, gold, or platinum.' });
-    }
-
-    const currentSub = await getUserSubscription(req.userId!);
-    const hasPaidPlan = currentSub.plan !== 'free' && currentSub.status === 'active' && currentSub.stripe_subscription_id;
-    const previousSubscriptionId = hasPaidPlan ? String(currentSub.stripe_subscription_id) : undefined;
-
-    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
-    const session = await createCheckoutSession(
-      req.userId!,
-      user.email,
-      user.name,
-      `${frontendUrl}/subscription/success`,
-      `${frontendUrl}/subscription/cancel`,
-      plan as PlanKey,
-      previousSubscriptionId
-    );
-
-    res.json({ url: session.url });
-  } catch (error: any) {
-    console.error('Error creating checkout session:', error);
-    res.status(500).json({ error: error.message || 'Internal server error' });
-  }
+// POST /api/subscriptions/checkout — DEPRECATED. Free model.
+router.post('/checkout', authenticateToken, async (_req: AuthRequest, res) => {
+  return res.status(410).json({
+    error:
+      'Paid subscriptions are no longer available. V PATHing Rewards is free for everyone — higher tiers unlock automatically as you earn confirmed cashback.',
+  });
 });
 
-// POST /api/subscriptions/portal — create Stripe Billing Portal session
-router.post('/portal', authenticateToken, async (req: AuthRequest, res) => {
-  try {
-    if (!stripeEnabled()) {
-      return res.status(503).json({ error: 'Stripe is not configured' });
-    }
-
-    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
-    const session = await createBillingPortalSession(
-      req.userId!,
-      `${frontendUrl}/profile`
-    );
-
-    res.json({ url: session.url });
-  } catch (error: any) {
-    console.error('Error creating billing portal session:', error);
-    res.status(500).json({ error: error.message || 'Internal server error' });
-  }
+// POST /api/subscriptions/portal — DEPRECATED. Free model.
+router.post('/portal', authenticateToken, async (_req: AuthRequest, res) => {
+  return res.status(410).json({
+    error: 'Billing portal is no longer available. All memberships are free.',
+  });
 });
 
 export default router;
