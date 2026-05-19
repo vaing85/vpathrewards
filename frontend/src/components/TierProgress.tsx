@@ -1,13 +1,14 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
 import apiClient from '../api/client';
 
-interface SubStatus {
+interface TierStatus {
   plan: string;
   status: string;
   cashback_bonus: number;
+  lifetime_cashback_confirmed: number;
   next_plan: string | null;
-  next_plan_price: number | null;
+  next_plan_threshold: number | null;
+  amount_to_next_plan: number | null;
 }
 
 const TIER_COLORS: Record<string, string> = {
@@ -21,10 +22,11 @@ const TIER_COLORS: Record<string, string> = {
 const TIER_ORDER = ['free', 'bronze', 'silver', 'gold', 'platinum'];
 
 export default function TierProgress() {
-  const [sub, setSub] = useState<SubStatus | null>(null);
+  const [sub, setSub] = useState<TierStatus | null>(null);
 
   useEffect(() => {
-    apiClient.get('/subscriptions/status')
+    apiClient
+      .get('/subscriptions/status')
       .then(({ data }) => setSub(data))
       .catch(() => {});
   }, []);
@@ -32,8 +34,10 @@ export default function TierProgress() {
   if (!sub) return null;
 
   const currentIdx = TIER_ORDER.indexOf(sub.plan);
-  const progress = ((currentIdx) / (TIER_ORDER.length - 1)) * 100;
+  const progress = (currentIdx / (TIER_ORDER.length - 1)) * 100;
   const gradient = TIER_COLORS[sub.plan] || TIER_COLORS.free;
+  const lifetime = sub.lifetime_cashback_confirmed || 0;
+  const toNext = sub.amount_to_next_plan;
 
   return (
     <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
@@ -41,10 +45,14 @@ export default function TierProgress() {
         <div>
           <h2 className="font-semibold text-gray-800">Membership Tier</h2>
           <p className="text-sm text-gray-500 mt-0.5">
-            {sub.cashback_bonus > 0 ? `+${sub.cashback_bonus}% cashback bonus` : 'Standard cashback rates'}
+            {sub.cashback_bonus > 0
+              ? `+${sub.cashback_bonus}% bonus on every offer`
+              : 'Free tier — shop to unlock bonus cashback'}
           </p>
         </div>
-        <span className={`bg-gradient-to-r ${gradient} text-white text-sm font-bold px-3 py-1 rounded-full capitalize`}>
+        <span
+          className={`bg-gradient-to-r ${gradient} text-white text-sm font-bold px-3 py-1 rounded-full capitalize`}
+        >
           {sub.plan}
         </span>
       </div>
@@ -62,24 +70,38 @@ export default function TierProgress() {
         {TIER_ORDER.map((t, i) => (
           <span
             key={t}
-            className={`text-xs capitalize ${i <= currentIdx ? 'text-gray-700 font-medium' : 'text-gray-300'}`}
+            className={`text-xs capitalize ${
+              i <= currentIdx ? 'text-gray-700 font-medium' : 'text-gray-300'
+            }`}
           >
             {t}
           </span>
         ))}
       </div>
 
-      {sub.next_plan && (
-        <div className="mt-4 flex items-center justify-between bg-gray-50 rounded-xl px-4 py-3">
-          <p className="text-sm text-gray-600">
-            Upgrade to <span className="font-semibold capitalize">{sub.next_plan}</span> for more cashback
+      {/* Lifetime confirmed cashback */}
+      <div className="mt-4 flex items-center justify-between bg-gray-50 rounded-xl px-4 py-3">
+        <p className="text-sm text-gray-600">
+          <span className="font-semibold text-gray-800">${lifetime.toFixed(2)}</span> in lifetime
+          confirmed cashback
+        </p>
+      </div>
+
+      {/* Next tier nudge */}
+      {sub.next_plan && toNext != null && toNext > 0 && (
+        <div className="mt-3 bg-emerald-50 border border-emerald-100 rounded-xl px-4 py-3">
+          <p className="text-sm text-emerald-800">
+            Earn <span className="font-semibold">${toNext.toFixed(2)}</span> more in cashback to
+            unlock <span className="font-semibold capitalize">{sub.next_plan}</span>
           </p>
-          <Link
-            to="/profile"
-            className="text-xs font-semibold text-blue-600 hover:underline whitespace-nowrap ml-3"
-          >
-            Upgrade →
-          </Link>
+        </div>
+      )}
+
+      {!sub.next_plan && (
+        <div className="mt-3 bg-emerald-50 border border-emerald-100 rounded-xl px-4 py-3">
+          <p className="text-sm font-medium text-emerald-800">
+            You've reached the top tier — every offer pays out at the maximum bonus.
+          </p>
         </div>
       )}
     </div>

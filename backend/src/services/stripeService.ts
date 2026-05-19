@@ -170,11 +170,13 @@ export async function getUserSubscription(userId: number): Promise<{ plan: strin
 }
 
 export async function getUserCashbackBonus(userId: number): Promise<number> {
-  const sub = await getUserSubscription(userId);
-  if (sub.status === 'active' && sub.plan in PLANS) {
-    return PLANS[sub.plan as PlanKey].cashbackBonus;
-  }
-  return 0;
+  // Post-pivot: cashback bonus is determined by the user's activity tier
+  // (lifetime confirmed cashback), not by a paid Stripe subscription.
+  // Imported dynamically to avoid creating a circular dependency at module
+  // load time between stripeService and tierService.
+  const { getUserActivityTier } = await import('./tierService');
+  const t = await getUserActivityTier(userId);
+  return t.cashbackBonus;
 }
 
 // ---------------------------------------------------------------------------
