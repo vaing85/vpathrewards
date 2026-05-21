@@ -169,14 +169,12 @@ export async function getUserSubscription(userId: number): Promise<{ plan: strin
   return sub ?? { plan: 'free', status: 'active', current_period_end: null };
 }
 
-export async function getUserCashbackBonus(userId: number): Promise<number> {
-  // Post-pivot: cashback bonus is determined by the user's activity tier
-  // (lifetime confirmed cashback), not by a paid Stripe subscription.
-  // Imported dynamically to avoid creating a circular dependency at module
-  // load time between stripeService and tierService.
-  const { getUserActivityTier } = await import('./tierService');
-  const t = await getUserActivityTier(userId);
-  return t.cashbackBonus;
+export async function getUserCashbackBonus(_userId: number): Promise<number> {
+  // Commission-share model: a member's tier sets their SHARE of each commission
+  // (see tierService.getUserCommissionShare), not a flat percentage bonus added
+  // on top of an offer rate. There is no rate bonus, so this returns 0. The
+  // function is kept only so any remaining external caller still resolves.
+  return 0;
 }
 
 // ---------------------------------------------------------------------------

@@ -1,5 +1,6 @@
 import { dbAll, dbGet, dbRun } from '../database';
-import { createReferralEarning } from './rewards-core';
+import { createReferralEarning, roundToCents } from './rewards-core';
+import { getUserCommissionShare } from './tierService';
 
 function generateSessionId(): string {
   return `sess_${Date.now()}_${Math.random().toString(36).substring(2, 15)}`;
@@ -102,13 +103,21 @@ export async function recordConversion(input: RecordConversionInput) {
   );
 
   if (click.user_id && commission > 0) {
+    // Commission-share tier split: the member keeps their tier's share of the
+    // commission; the platform keeps the rest. Both are recorded on the
+    // transaction so payouts and reporting stay accurate.
+    const share = await getUserCommissionShare(click.user_id); // 0.20 - 0.80
+    const userAmount = roundToCents(commission * share);
+    const platformAmount = roundToCents(commission - userAmount);
+
     const txResult = await dbRun(
-      'INSERT INTO cashback_transactions (user_id, offer_id, amount, status) VALUES (?, ?, ?, ?)',
-      [click.user_id, click.offer_id, commission, 'pending']
+      `INSERT INTO cashback_transactions (user_id, offer_id, amount, platform_amount, user_amount, status)
+       VALUES (?, ?, ?, ?, ?, ?)`,
+      [click.user_id, click.offer_id, userAmount, platformAmount, userAmount, 'pending']
     );
     const transactionId = (txResult as { lastID: number }).lastID;
-    await dbRun('UPDATE users SET total_earnings = total_earnings + ? WHERE id = ?', [commission, click.user_id]);
-    createReferralEarning(click.user_id, transactionId, commission).catch(err => console.error('Error creating referral earning:', err));
+    await dbRun('UPDATE users SET total_earnings = total_earnings + ? WHERE id = ?', [userAmount, click.user_id]);
+    createReferralEarning(click.user_id, transactionId, userAmount).catch(err => console.error('Error creating referral earning:', err));
   }
 
   return { existing: false, conversion_id: conversionId };

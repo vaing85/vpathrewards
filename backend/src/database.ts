@@ -290,6 +290,12 @@ export const initDatabase = async () => {
     await addCol('users', 'subscription_status', "TEXT DEFAULT 'active'");
     await addCol('withdrawals', 'stripe_transfer_id', 'TEXT');
 
+    // Commission-share tier columns (cached; recomputed from confirmed
+    // conversions by tierService). activity_tier defaults to the lowest tier.
+    await addCol('users', 'lifetime_spend', 'REAL DEFAULT 0');
+    await addCol('users', 'activity_tier', "TEXT DEFAULT 'bronze'");
+    await addCol('users', 'activity_tier_updated_at', 'DATETIME DEFAULT CURRENT_TIMESTAMP');
+
     // Indexes
     await dbRun('CREATE INDEX IF NOT EXISTS idx_users_email ON users(email)');
     await dbRun('CREATE INDEX IF NOT EXISTS idx_users_is_admin ON users(is_admin)');
