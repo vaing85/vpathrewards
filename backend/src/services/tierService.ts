@@ -1,64 +1,76 @@
 /**
- * Activity-based tier service.
+ * Commission-share tier service.
  *
- * Replaces the Stripe subscription-based tier model with a free, activity-based
- * tier system. Users climb tiers by accumulating confirmed cashback earnings
- * (sum of cashback_transactions.amount where status='confirmed').
+ * V PATHing Rewards is free for everyone. A member's tier sets the SHARE of the
+ * affiliate commission they keep on each confirmed purchase. Members climb tiers
+ * by accumulating lifetime confirmed spend — the sum of conversions.order_amount
+ * for conversions with status = 'confirmed'.
  *
- * Thresholds are in DOLLARS of lifetime confirmed cashback:
- *   free      → 0
- *   bronze    → $5
- *   silver    → $25
- *   gold      → $100
- *   platinum  → $500
+ * Tiers (member's share of the commission the platform earns):
+ *   bronze    20%   all new members           (>= $0 lifetime spend)
+ *   silver    35%   >= $250 lifetime spend
+ *   gold      50%   >= $750 lifetime spend
+ *   platinum  65%   >= $1,500 lifetime spend
+ *   diamond   80%   >= $3,000 lifetime spend
  *
- * Each tier adds a flat cashback bonus on top of the offer's base rate.
+ * Member cashback on a purchase = commission_earned * commissionSharePct / 100.
+ * The remaining (100 - commissionSharePct)% is the platform's cut.
  */
 
 import { dbGet, dbRun } from '../database';
 
-export const ACTIVITY_TIERS = {
-  free: {
-    name: 'Free',
-    threshold: 0,
-    cashbackBonus: 0,
-    description: 'Standard cashback rates on every offer',
-  },
+export const COMMISSION_TIERS = {
   bronze: {
     name: 'Bronze',
-    threshold: 5,
-    cashbackBonus: 1.0,
-    description: '+1% cashback bonus on every offer',
+    spendThreshold: 0,
+    commissionSharePct: 20,
+    description: 'Keep 20% of the commission on every purchase',
   },
   silver: {
     name: 'Silver',
-    threshold: 25,
-    cashbackBonus: 2.0,
-    description: '+2% cashback bonus on every offer',
+    spendThreshold: 250,
+    commissionSharePct: 35,
+    description: 'Keep 35% of the commission on every purchase',
   },
   gold: {
     name: 'Gold',
-    threshold: 100,
-    cashbackBonus: 3.0,
-    description: '+3% cashback bonus on every offer',
+    spendThreshold: 750,
+    commissionSharePct: 50,
+    description: 'Keep 50% of the commission on every purchase',
   },
   platinum: {
     name: 'Platinum',
-    threshold: 500,
-    cashbackBonus: 4.0,
-    description: '+4% cashback bonus on every offer',
+    spendThreshold: 1500,
+    commissionSharePct: 65,
+    description: 'Keep 65% of the commission on every purchase',
+  },
+  diamond: {
+    name: 'Diamond',
+    spendThreshold: 3000,
+    commissionSharePct: 80,
+    description: 'Keep 80% of the commission on every purchase',
   },
 } as const;
 
-export type ActivityTier = keyof typeof ACTIVITY_TIERS;
+export type CommissionTier = keyof typeof COMMISSION_TIERS;
 
-const TIER_ORDER: ActivityTier[] = ['free', 'bronze', 'silver', 'gold', 'platinum'];
+/** Lowest tier — every new member starts here. */
+export const DEFAULT_TIER: CommissionTier = 'bronze';
 
-/** Pure computation: which tier does a given lifetime confirmed cashback total qualify for? */
-export function computeTierFromLifetime(lifetimeCashbackConfirmed: number): ActivityTier {
-  let tier: ActivityTier = 'free';
+const TIER_ORDER: CommissionTier[] = ['bronze', 'silver', 'gold', 'platinum', 'diamond'];
+
+/**
+ * Lifetime spend is summed from CONFIRMED conversions only, so a member's tier
+ * reflects verified purchases. Change 'confirmed' to also count 'pending' if you
+ * want tier progress to advance before the affiliate network locks a sale.
+ */
+const SPEND_STATUS = 'confirmed';
+
+/** Pure computation: which tier does a given lifetime spend total qualify for? */
+export function computeTierFromSpend(lifetimeSpend: number): CommissionTier {
+  let tier: CommissionTier = DEFAULT_TIER;
   for (const t of TIER_ORDER) {
-    if (lifetimeCashbackConfirmed >= ACTIVITY_TIERS[t].threshold) {
+    if (lifetimeSpend >= COMMISSION_TIERS[t].spendThreshold) {
       tier = t;
     }
   }
@@ -66,86 +78,82 @@ export function computeTierFromLifetime(lifetimeCashbackConfirmed: number): Acti
 }
 
 /** Return the next tier above the given one, or null if already at the top. */
-export function getNextTier(currentTier: ActivityTier): ActivityTier | null {
+export function getNextTier(currentTier: CommissionTier): CommissionTier | null {
   const idx = TIER_ORDER.indexOf(currentTier);
   if (idx < 0 || idx === TIER_ORDER.length - 1) return null;
   return TIER_ORDER[idx + 1];
 }
 
 /**
- * Recompute and persist a user's tier from current confirmed cashback.
- *
- * Call this whenever a cashback_transactions row transitions to 'confirmed'
- * (or on a periodic cron job). Idempotent and safe to call repeatedly.
+ * Recompute a user's lifetime spend + tier from confirmed conversions and persist
+ * the cached columns (lifetime_spend, activity_tier). Idempotent — safe to call
+ * as often as you like.
  */
 export async function recomputeUserTier(userId: number): Promise<{
-  tier: ActivityTier;
-  cashbackBonus: number;
-  lifetimeCashbackConfirmed: number;
+  tier: CommissionTier;
+  commissionSharePct: number;
+  lifetimeSpend: number;
 }> {
-  const row = await dbGet<{ confirmed: number }>(
-    `SELECT COALESCE(SUM(amount), 0) AS confirmed
-       FROM cashback_transactions
+  const row = await dbGet<{ spend: number }>(
+    `SELECT COALESCE(SUM(order_amount), 0) AS spend
+       FROM conversions
       WHERE user_id = ?
-        AND status = 'confirmed'`,
-    [userId]
+        AND status = ?
+        AND order_amount IS NOT NULL`,
+    [userId, SPEND_STATUS]
   );
-  const lifetime = Number(row?.confirmed ?? 0);
-  const tier = computeTierFromLifetime(lifetime);
+  const lifetimeSpend = Number(row?.spend ?? 0);
+  const tier = computeTierFromSpend(lifetimeSpend);
 
   await dbRun(
     `UPDATE users
-        SET lifetime_cashback_confirmed = ?,
+        SET lifetime_spend = ?,
             activity_tier = ?,
             activity_tier_updated_at = CURRENT_TIMESTAMP
       WHERE id = ?`,
-    [lifetime, tier, userId]
+    [lifetimeSpend, tier, userId]
   );
 
   return {
     tier,
-    cashbackBonus: ACTIVITY_TIERS[tier].cashbackBonus,
-    lifetimeCashbackConfirmed: lifetime,
+    commissionSharePct: COMMISSION_TIERS[tier].commissionSharePct,
+    lifetimeSpend,
   };
 }
 
 /**
- * Read a user's activity tier, recomputing lazily if the cached value looks stale
- * (NULL on first read after migration).
+ * Read a user's current tier. Always recomputes from confirmed conversions so the
+ * answer is correct even if the cached columns are stale (e.g. a brand-new user,
+ * or a user migrated from the old subscription model).
  */
 export async function getUserActivityTier(userId: number): Promise<{
-  tier: ActivityTier;
-  cashbackBonus: number;
-  lifetimeCashbackConfirmed: number;
-  nextTier: ActivityTier | null;
+  tier: CommissionTier;
+  commissionSharePct: number;
+  lifetimeSpend: number;
+  nextTier: CommissionTier | null;
   nextTierThreshold: number | null;
   amountToNextTier: number | null;
 }> {
-  const u = await dbGet<{
-    lifetime_cashback_confirmed: number | null;
-    activity_tier: string | null;
-  }>(
-    'SELECT lifetime_cashback_confirmed, activity_tier FROM users WHERE id = ?',
-    [userId]
-  );
-
-  let lifetime = Number(u?.lifetime_cashback_confirmed ?? 0);
-  let tier = (u?.activity_tier as ActivityTier) ?? 'free';
-
-  // If the cached values are null (e.g. first read after migration), recompute.
-  if (u?.lifetime_cashback_confirmed == null || u?.activity_tier == null) {
-    const recomputed = await recomputeUserTier(userId);
-    lifetime = recomputed.lifetimeCashbackConfirmed;
-    tier = recomputed.tier;
-  }
-
+  const { tier, commissionSharePct, lifetimeSpend } = await recomputeUserTier(userId);
   const next = getNextTier(tier);
+
   return {
     tier,
-    cashbackBonus: ACTIVITY_TIERS[tier].cashbackBonus,
-    lifetimeCashbackConfirmed: lifetime,
+    commissionSharePct,
+    lifetimeSpend,
     nextTier: next,
-    nextTierThreshold: next ? ACTIVITY_TIERS[next].threshold : null,
-    amountToNextTier: next ? Math.max(0, ACTIVITY_TIERS[next].threshold - lifetime) : null,
+    nextTierThreshold: next ? COMMISSION_TIERS[next].spendThreshold : null,
+    amountToNextTier: next
+      ? Math.max(0, COMMISSION_TIERS[next].spendThreshold - lifetimeSpend)
+      : null,
   };
+}
+
+/**
+ * The fraction (0-1) of commission a member keeps right now. Used by the
+ * conversion-tracking flow to split each commission between member and platform.
+ */
+export async function getUserCommissionShare(userId: number): Promise<number> {
+  const { commissionSharePct } = await recomputeUserTier(userId);
+  return commissionSharePct / 100;
 }
