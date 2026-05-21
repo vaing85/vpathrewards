@@ -1,25 +1,25 @@
 /**
- * Subscriptions route (post-pivot).
+ * Subscriptions route (post-pivot, commission-share tiers).
  *
- * The platform is now free for all members. Tiers are activity-based — climbed
- * by accumulating confirmed cashback, not by paying a subscription.
+ * The platform is free for everyone. A member's tier sets the share of the
+ * affiliate commission they keep on each purchase, and tiers are climbed by
+ * lifetime confirmed spend — not by paying a subscription.
  *
- * The Stripe checkout / billing portal endpoints return HTTP 410 (Gone). The
- * underlying Stripe service code is preserved in stripeService.ts so a premium
- * add-on tier can be re-enabled later without rewriting the integration.
+ * The Stripe checkout / billing-portal endpoints return HTTP 410 (Gone). The
+ * underlying Stripe service code is preserved so a premium paid add-on can be
+ * layered on later without rewriting the integration.
  *
- * The endpoint path /api/subscriptions/status is intentionally retained so the
- * frontend (TierProgress.tsx, Profile.tsx, etc.) continues to work with no API
- * URL changes — only the response shape evolved.
+ * The path /api/subscriptions/status is intentionally retained so the frontend
+ * keeps working with no API URL changes — only the response shape evolved.
  */
 
 import express from 'express';
 import { authenticateToken, AuthRequest } from '../middleware/auth';
-import { ACTIVITY_TIERS, getUserActivityTier } from '../services/tierService';
+import { COMMISSION_TIERS, getUserActivityTier } from '../services/tierService';
 
 const router = express.Router();
 
-// GET /api/subscriptions/status — current user's activity tier
+// GET /api/subscriptions/status — current user's commission tier
 router.get('/status', authenticateToken, async (req: AuthRequest, res) => {
   try {
     const t = await getUserActivityTier(req.userId!);
@@ -29,22 +29,22 @@ router.get('/status', authenticateToken, async (req: AuthRequest, res) => {
       plan: t.tier,
       status: 'active',
       stripe_enabled: false,
-      cashback_bonus: t.cashbackBonus,
 
-      // New activity-tier fields.
-      lifetime_cashback_confirmed: t.lifetimeCashbackConfirmed,
+      // Commission-share tier fields.
+      commission_share: t.commissionSharePct,
+      lifetime_spend: t.lifetimeSpend,
       next_plan: t.nextTier,
       next_plan_threshold: t.nextTierThreshold,
       amount_to_next_plan: t.amountToNextTier,
 
-      plans: (Object.keys(ACTIVITY_TIERS) as Array<keyof typeof ACTIVITY_TIERS>).map(
+      plans: (Object.keys(COMMISSION_TIERS) as Array<keyof typeof COMMISSION_TIERS>).map(
         (key) => {
-          const p = ACTIVITY_TIERS[key];
+          const p = COMMISSION_TIERS[key];
           return {
             key,
             name: p.name,
-            threshold: p.threshold,
-            cashbackBonus: p.cashbackBonus,
+            commission_share: p.commissionSharePct,
+            spend_threshold: p.spendThreshold,
             description: p.description,
           };
         }
@@ -60,7 +60,7 @@ router.get('/status', authenticateToken, async (req: AuthRequest, res) => {
 router.post('/checkout', authenticateToken, async (_req: AuthRequest, res) => {
   return res.status(410).json({
     error:
-      'Paid subscriptions are no longer available. V PATHing Rewards is free for everyone — higher tiers unlock automatically as you earn confirmed cashback.',
+      'Paid subscriptions are no longer available. V PATHing Rewards is free for everyone — your tier, and the share of commission you keep, rises automatically as you shop.',
   });
 });
 
