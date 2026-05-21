@@ -1,6 +1,6 @@
 import { dbAll, dbGet, dbRun } from '../database';
-import { createReferralEarning, computeCashbackAmount } from './rewards-core';
-import { PLANS, PlanKey } from './stripeService';
+import { createReferralEarning, computeCashbackAmount, roundToCents } from './rewards-core';
+import { getUserCommissionShare } from './tierService';
 
 export interface PaginationOptions {
   page: number;
@@ -225,19 +225,20 @@ export async function trackCashback(userId: number, offerId: number, purchaseAmo
   const offer = await dbGet('SELECT * FROM offers WHERE id = ? AND is_active = 1', [offerId]) as { id: number; cashback_rate: number } | undefined;
   if (!offer) return null;
 
-  // Apply tier bonus on top of base cashback rate
-  const user = await dbGet('SELECT subscription_plan FROM users WHERE id = ?', [userId]) as { subscription_plan: string } | undefined;
-  const plan = (user?.subscription_plan || 'free') as PlanKey;
-  const tierBonus = PLANS[plan]?.cashbackBonus ?? 0;
-  const effectiveRate = offer.cashback_rate + tierBonus;
+  // Commission-share model: offer.cashback_rate is the commission the platform
+  // earns on the purchase; the member keeps their activity tier's share of it.
+  const commission = computeCashbackAmount(purchaseAmount, offer.cashback_rate);
+  const share = await getUserCommissionShare(userId); // 0.20 - 0.80
+  const userAmount = roundToCents(commission * share);
+  const platformAmount = roundToCents(commission - userAmount);
 
-  const cashbackAmount = computeCashbackAmount(purchaseAmount, effectiveRate);
   const result = await dbRun(
-    'INSERT INTO cashback_transactions (user_id, offer_id, amount, status) VALUES (?, ?, ?, ?)',
-    [userId, offerId, cashbackAmount, 'pending']
+    `INSERT INTO cashback_transactions (user_id, offer_id, amount, platform_amount, user_amount, status)
+     VALUES (?, ?, ?, ?, ?, ?)`,
+    [userId, offerId, userAmount, platformAmount, userAmount, 'pending']
   );
   const transactionId = (result as { lastID: number }).lastID;
-  await dbRun('UPDATE users SET total_earnings = total_earnings + ? WHERE id = ?', [cashbackAmount, userId]);
-  createReferralEarning(userId, transactionId, cashbackAmount).catch(err => console.error('Error creating referral earning:', err));
-  return { transactionId, cashbackAmount, tierBonus, effectiveRate };
+  await dbRun('UPDATE users SET total_earnings = total_earnings + ? WHERE id = ?', [userAmount, userId]);
+  createReferralEarning(userId, transactionId, userAmount).catch(err => console.error('Error creating referral earning:', err));
+  return { transactionId, commission, userAmount, platformAmount, commissionShare: share };
 }

@@ -4,22 +4,22 @@ import apiClient from '../api/client';
 interface TierStatus {
   plan: string;
   status: string;
-  cashback_bonus: number;
-  lifetime_cashback_confirmed: number;
+  commission_share: number;
+  lifetime_spend: number;
   next_plan: string | null;
   next_plan_threshold: number | null;
   amount_to_next_plan: number | null;
 }
 
 const TIER_COLORS: Record<string, string> = {
-  free: 'from-gray-400 to-gray-500',
   bronze: 'from-amber-600 to-amber-700',
   silver: 'from-slate-400 to-slate-500',
   gold: 'from-yellow-400 to-yellow-500',
-  platinum: 'from-violet-500 to-violet-700',
+  platinum: 'from-slate-700 to-slate-900',
+  diamond: 'from-violet-500 to-violet-700',
 };
 
-const TIER_ORDER = ['free', 'bronze', 'silver', 'gold', 'platinum'];
+const TIER_ORDER = ['bronze', 'silver', 'gold', 'platinum', 'diamond'];
 
 export default function TierProgress() {
   const [sub, setSub] = useState<TierStatus | null>(null);
@@ -33,10 +33,10 @@ export default function TierProgress() {
 
   if (!sub) return null;
 
-  const currentIdx = TIER_ORDER.indexOf(sub.plan);
+  const currentIdx = Math.max(0, TIER_ORDER.indexOf(sub.plan));
   const progress = (currentIdx / (TIER_ORDER.length - 1)) * 100;
-  const gradient = TIER_COLORS[sub.plan] || TIER_COLORS.free;
-  const lifetime = sub.lifetime_cashback_confirmed || 0;
+  const gradient = TIER_COLORS[sub.plan] || TIER_COLORS.bronze;
+  const spend = sub.lifetime_spend || 0;
   const toNext = sub.amount_to_next_plan;
 
   return (
@@ -45,9 +45,9 @@ export default function TierProgress() {
         <div>
           <h2 className="font-semibold text-gray-800">Membership Tier</h2>
           <p className="text-sm text-gray-500 mt-0.5">
-            {sub.cashback_bonus > 0
-              ? `+${sub.cashback_bonus}% bonus on every offer`
-              : 'Free tier — shop to unlock bonus cashback'}
+            You keep{' '}
+            <span className="font-semibold text-gray-700">{sub.commission_share}%</span> of the
+            commission on every purchase
           </p>
         </div>
         <span
@@ -79,11 +79,11 @@ export default function TierProgress() {
         ))}
       </div>
 
-      {/* Lifetime confirmed cashback */}
+      {/* Lifetime confirmed spend */}
       <div className="mt-4 flex items-center justify-between bg-gray-50 rounded-xl px-4 py-3">
         <p className="text-sm text-gray-600">
-          <span className="font-semibold text-gray-800">${lifetime.toFixed(2)}</span> in lifetime
-          confirmed cashback
+          <span className="font-semibold text-gray-800">${spend.toFixed(2)}</span> in lifetime
+          confirmed spend
         </p>
       </div>
 
@@ -91,8 +91,9 @@ export default function TierProgress() {
       {sub.next_plan && toNext != null && toNext > 0 && (
         <div className="mt-3 bg-emerald-50 border border-emerald-100 rounded-xl px-4 py-3">
           <p className="text-sm text-emerald-800">
-            Earn <span className="font-semibold">${toNext.toFixed(2)}</span> more in cashback to
-            unlock <span className="font-semibold capitalize">{sub.next_plan}</span>
+            Spend <span className="font-semibold">${toNext.toFixed(2)}</span> more to reach{' '}
+            <span className="font-semibold capitalize">{sub.next_plan}</span> and keep a bigger
+            share of every commission.
           </p>
         </div>
       )}
@@ -100,7 +101,7 @@ export default function TierProgress() {
       {!sub.next_plan && (
         <div className="mt-3 bg-emerald-50 border border-emerald-100 rounded-xl px-4 py-3">
           <p className="text-sm font-medium text-emerald-800">
-            You've reached the top tier — every offer pays out at the maximum bonus.
+            You've reached the top tier — you keep the maximum 80% share on every purchase.
           </p>
         </div>
       )}
