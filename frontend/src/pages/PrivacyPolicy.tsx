@@ -37,7 +37,6 @@ const PrivacyPolicy = () => {
                 <li>To create and manage your account.</li>
                 <li>To track qualifying purchases and calculate cashback earned.</li>
                 <li>To process withdrawal requests and payments.</li>
-                <li>To manage your membership subscription via Stripe.</li>
                 <li>To send transactional emails (e.g., withdrawal confirmations, account notices).</li>
                 <li>To send promotional communications (you may opt out at any time).</li>
                 <li>To prevent fraud and enforce our Terms of Service.</li>
@@ -51,7 +50,7 @@ const PrivacyPolicy = () => {
               <p className="mb-3">We do not sell your personal information. We may share your information with:</p>
               <ul className="list-disc pl-6 space-y-2">
                 <li><strong>Affiliate Networks (CJ Affiliate):</strong> Click and transaction data is shared to track qualifying purchases and calculate commissions.</li>
-                <li><strong>Stripe:</strong> Payment processing for subscriptions and withdrawals.</li>
+                <li><strong>Stripe:</strong> Payment processing for cashback withdrawals (Stripe Connect).</li>
                 <li><strong>Google Analytics:</strong> Aggregated usage data to analyze platform performance.</li>
                 <li><strong>Service Providers:</strong> Hosting (Railway), email delivery, and other operational services.</li>
                 <li><strong>Legal Authorities:</strong> When required by law, court order, or to protect our legal rights.</li>

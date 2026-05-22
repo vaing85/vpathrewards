@@ -50,12 +50,12 @@ const TermsOfService = () => {
             </section>
 
             <section>
-              <h2 className="text-xl font-semibold text-gray-900 mb-3">7. Membership Plans & Billing</h2>
+              <h2 className="text-xl font-semibold text-gray-900 mb-3">7. Membership Tiers</h2>
               <ul className="list-disc pl-6 space-y-2">
-                <li>Paid membership plans (Silver, Gold, Platinum) are billed monthly via Stripe.</li>
-                <li>Subscriptions automatically renew unless cancelled before the renewal date.</li>
-                <li>You may cancel your subscription at any time through your account settings.</li>
-                <li>Refunds are not provided for partial billing periods.</li>
+                <li>V PATHing Rewards is free for everyone — there are no paid membership plans.</li>
+                <li>Your tier (Bronze, Silver, Gold, Platinum, Diamond) sets the share of the affiliate commission you keep on each confirmed purchase.</li>
+                <li>Tiers are earned by accumulating lifetime confirmed spend; the higher your tier, the larger your share of every commission.</li>
+                <li>We may adjust tier thresholds or commission shares from time to time; changes will be communicated in advance.</li>
               </ul>
             </section>
 
