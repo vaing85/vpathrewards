@@ -17,6 +17,7 @@ import affiliateSyncJob from './affiliateSync.job';
 import payoutProcessorJob from './payoutProcessor.job';
 import trackingProcessorJob from './trackingProcessor.job';
 import linkCheckerJob from './linkChecker.job';
+import cjSyncJob from './cjSync.job';
 import cron from 'node-cron';
 import type { JobDefinition, JobResult } from './types';
 
@@ -25,12 +26,14 @@ export { default as affiliateSyncJob } from './affiliateSync.job';
 export { default as payoutProcessorJob } from './payoutProcessor.job';
 export { default as trackingProcessorJob } from './trackingProcessor.job';
 export { default as linkCheckerJob } from './linkChecker.job';
+export { default as cjSyncJob } from './cjSync.job';
 
 export const JOB_NAMES = {
   AFFILIATE_SYNC: affiliateSyncJob.name,
   PAYOUT_PROCESSOR: payoutProcessorJob.name,
   TRACKING_PROCESSOR: trackingProcessorJob.name,
   LINK_CHECKER: linkCheckerJob.name,
+  CJ_SYNC: cjSyncJob.name,
 } as const;
 
 const JOB_REGISTRY: Record<string, JobDefinition<unknown, unknown>> = {
@@ -38,6 +41,7 @@ const JOB_REGISTRY: Record<string, JobDefinition<unknown, unknown>> = {
   [payoutProcessorJob.name]: payoutProcessorJob as JobDefinition<unknown, unknown>,
   [trackingProcessorJob.name]: trackingProcessorJob as JobDefinition<unknown, unknown>,
   [linkCheckerJob.name]: linkCheckerJob as JobDefinition<unknown, unknown>,
+  [cjSyncJob.name]: cjSyncJob as JobDefinition<unknown, unknown>,
 };
 
 /**
@@ -62,6 +66,10 @@ export function startJobs() {
 
   // Link checker — daily at 3am
   cron.schedule('0 3 * * *', () => runJob(linkCheckerJob.name));
+
+  // CJ sync — daily at 3:30am, after link checker. Pulls last 7 days so missing
+  // a single run is harmless.
+  cron.schedule('30 3 * * *', () => runJob(cjSyncJob.name));
 
   console.log('[jobs] Cron jobs started');
 }

@@ -320,6 +320,35 @@ export const initDatabase = async () => {
     await addCol('cashback_transactions', 'platform_amount', 'REAL DEFAULT 0');
     await addCol('cashback_transactions', 'user_amount', 'REAL DEFAULT 0');
 
+    // CJ (Commission Junction) integration — link existing merchants to their
+    // CJ advertiser id so the sync job can match remote commission records.
+    await addCol('merchants', 'cj_advertiser_id', 'TEXT');
+
+    // Raw CJ commission records, fetched by the cjSync job. Kept in its own
+    // table (rather than written straight to cashback_transactions) because
+    // CJ tells us the advertiser, not which user or offer drove the click —
+    // user-level attribution happens in a later reconciliation step.
+    await dbRun(ddl(`
+      CREATE TABLE IF NOT EXISTS cj_commissions (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        cj_commission_id TEXT UNIQUE NOT NULL,
+        advertiser_id TEXT,
+        advertiser_name TEXT,
+        order_id TEXT,
+        sale_amount_usd REAL,
+        pub_commission_amount_usd REAL,
+        action_status TEXT,
+        action_type TEXT,
+        event_date DATETIME,
+        posting_date DATETIME,
+        raw_payload TEXT,
+        merchant_id INTEGER,
+        reconciled_at DATETIME,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (merchant_id) REFERENCES merchants(id)
+      )
+    `));
+
     // Indexes
     await dbRun('CREATE INDEX IF NOT EXISTS idx_users_email ON users(email)');
     await dbRun('CREATE INDEX IF NOT EXISTS idx_users_is_admin ON users(is_admin)');
@@ -350,6 +379,11 @@ export const initDatabase = async () => {
     await dbRun('CREATE INDEX IF NOT EXISTS idx_notifications_is_read ON notifications(is_read)');
     await dbRun('CREATE INDEX IF NOT EXISTS idx_alerts_user_id ON cashback_alerts(user_id)');
     await dbRun('CREATE INDEX IF NOT EXISTS idx_alerts_is_active ON cashback_alerts(is_active)');
+    await dbRun('CREATE INDEX IF NOT EXISTS idx_merchants_cj_advertiser_id ON merchants(cj_advertiser_id)');
+    await dbRun('CREATE INDEX IF NOT EXISTS idx_cj_commissions_advertiser_id ON cj_commissions(advertiser_id)');
+    await dbRun('CREATE INDEX IF NOT EXISTS idx_cj_commissions_merchant_id ON cj_commissions(merchant_id)');
+    await dbRun('CREATE INDEX IF NOT EXISTS idx_cj_commissions_posting_date ON cj_commissions(posting_date)');
+    await dbRun('CREATE INDEX IF NOT EXISTS idx_cj_commissions_action_status ON cj_commissions(action_status)');
 
     // ────────────────────────────────────────────────────────────────────────
     // PostgreSQL-only: apply a default-deny RLS policy to every public table.
