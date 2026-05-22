@@ -313,6 +313,13 @@ export const initDatabase = async () => {
     await addCol('users', 'activity_tier', "TEXT DEFAULT 'bronze'");
     await addCol('users', 'activity_tier_updated_at', 'DATETIME DEFAULT CURRENT_TIMESTAMP');
 
+    // Platform vs. user split on each cashback transaction. The CREATE TABLE
+    // above includes these columns, but pre-existing live tables that were
+    // created before these columns were added need an explicit ADD COLUMN.
+    // addCol uses IF NOT EXISTS on PG so this is idempotent and safe.
+    await addCol('cashback_transactions', 'platform_amount', 'REAL DEFAULT 0');
+    await addCol('cashback_transactions', 'user_amount', 'REAL DEFAULT 0');
+
     // Indexes
     await dbRun('CREATE INDEX IF NOT EXISTS idx_users_email ON users(email)');
     await dbRun('CREATE INDEX IF NOT EXISTS idx_users_is_admin ON users(is_admin)');
