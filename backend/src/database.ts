@@ -344,6 +344,48 @@ export const initDatabase = async () => {
     await dbRun('CREATE INDEX IF NOT EXISTS idx_alerts_user_id ON cashback_alerts(user_id)');
     await dbRun('CREATE INDEX IF NOT EXISTS idx_alerts_is_active ON cashback_alerts(is_active)');
 
+    // ────────────────────────────────────────────────────────────────────────
+    // PostgreSQL-only: apply a default-deny RLS policy to every public table.
+    //
+    // Supabase auto-enables Row Level Security on new tables in the public
+    // schema. Without an explicit policy, the security advisor flags them
+    // (lint 0008). This app does not use Supabase's auto-generated REST or
+    // GraphQL APIs — it talks to Postgres via a long-lived pg-pool as the
+    // `postgres` superuser, which bypasses RLS entirely. So a deny-all policy
+    // is the correct posture for the anon / authenticated roles: defense-
+    // in-depth on top of the schema-level REVOKE we already apply outside
+    // the app, and it clears the advisor as new tables are added.
+    //
+    // Skipped on SQLite (dev) because RLS is a PG-only feature.
+    // ────────────────────────────────────────────────────────────────────────
+    if (USE_PG) {
+      try {
+        const tables = await dbAll<{ tablename: string }>(
+          "SELECT tablename FROM pg_tables WHERE schemaname = 'public'"
+        );
+        for (const { tablename } of tables) {
+          try {
+            await dbRun(`ALTER TABLE public."${tablename}" ENABLE ROW LEVEL SECURITY`);
+            await dbRun(
+              `DROP POLICY IF EXISTS deny_all_to_api_roles ON public."${tablename}"`
+            );
+            await dbRun(
+              `CREATE POLICY deny_all_to_api_roles ON public."${tablename}"
+                 FOR ALL TO anon, authenticated
+                 USING (false) WITH CHECK (false)`
+            );
+          } catch (err) {
+            // Don't abort boot for a single table — log and continue. Most
+            // common cause: the role does not have privileges to alter a
+            // managed table (e.g. Supabase-internal). Safe to skip.
+            console.error(`RLS lockdown skipped for ${tablename}:`, (err as Error).message);
+          }
+        }
+      } catch (err) {
+        console.error('RLS lockdown pass failed:', (err as Error).message);
+      }
+    }
+
     // Seed default admin user
     const adminExists = await dbGet('SELECT id FROM users WHERE email = ?', ['admin@cashback.com']) as { id: number } | undefined;
     if (!adminExists) {
