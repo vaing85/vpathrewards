@@ -2,7 +2,10 @@
 nixPkgs = ["nodejs_20"]
 
 [phases.install]
-cmds = ["cd backend && npm install"]
+# --include=dev so TypeScript (in devDependencies) is available during the
+# build phase. NODE_ENV=production at runtime would otherwise cause npm to
+# skip devDependencies, and the build script invokes tsc directly.
+cmds = ["cd backend && npm install --include=dev"]
 
 [phases.build]
 cmds = ["cd backend && npm run build"]
