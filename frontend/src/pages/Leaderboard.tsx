@@ -2,16 +2,8 @@ import { useEffect, useState } from 'react';
 import apiClient from '../api/client';
 import { useAuth } from '../context/AuthContext';
 
-interface Entry { name: string; total_earnings: number; monthly_earnings?: number; subscription_plan: string; }
+interface Entry { name: string; total_earnings: number; monthly_earnings?: number; }
 interface MeStatus { opted_in: boolean; rank: number | null; }
-
-const PLAN_BADGE: Record<string, string> = {
-  platinum: 'bg-violet-100 text-violet-700',
-  gold: 'bg-yellow-100 text-yellow-700',
-  silver: 'bg-slate-100 text-slate-600',
-  bronze: 'bg-amber-100 text-amber-700',
-  free: 'bg-gray-100 text-gray-500',
-};
 
 const medals = ['🥇', '🥈', '🥉'];
 
@@ -100,9 +92,6 @@ export default function Leaderboard() {
               <span className="text-xl w-8 text-center">{medals[i] ?? `#${i + 1}`}</span>
               <div className="flex-1 min-w-0">
                 <p className="font-medium text-gray-800 truncate">{entry.name}</p>
-                <span className={`text-xs px-2 py-0.5 rounded-full font-medium capitalize ${PLAN_BADGE[entry.subscription_plan] ?? PLAN_BADGE.free}`}>
-                  {entry.subscription_plan}
-                </span>
               </div>
               <div className="text-right">
                 <p className="font-bold text-green-600">

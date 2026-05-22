@@ -12,11 +12,10 @@ const router = express.Router();
  * In your Stripe Dashboard → Webhooks, point to:
  *   https://yourdomain.com/api/webhooks/stripe
  *
- * Events to enable:
- *   - checkout.session.completed
- *   - customer.subscription.updated
- *   - customer.subscription.deleted
- *   - invoice.payment_failed
+ * Events to enable (Stripe Connect payouts — paid subscriptions are retired):
+ *   - transfer.created
+ *   - transfer.reversed
+ *   - account.updated
  */
 router.post('/stripe', express.raw({ type: 'application/json' }), async (req, res) => {
   const signature = req.headers['stripe-signature'] as string;
