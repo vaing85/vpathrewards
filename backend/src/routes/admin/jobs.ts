@@ -66,6 +66,42 @@ router.post('/cj-sync/run', authenticateAdmin, async (req: AdminRequest, res: ex
   }
 });
 
+// Convenience shortcut for the CJ advertiser sync job.
+router.post('/cj-advertisers/run', authenticateAdmin, async (req: AdminRequest, res: express.Response) => {
+  try {
+    const { dryRun } = (req.body ?? {}) as { dryRun?: boolean };
+    const result = await runJob(JOB_NAMES.CJ_ADVERTISER_SYNC, { dryRun });
+    if (!result.ok) {
+      return res.status(500).json({ ok: false, error: result.error, data: result.data, meta: result.meta });
+    }
+    res.json({ ok: true, data: result.data, meta: result.meta });
+  } catch (error) {
+    console.error('CJ advertiser sync run error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Status of CJ-linked merchants — total linked, auto-imported pending review,
+// latest sync timestamp.
+router.get('/cj-advertisers/status', authenticateAdmin, async (_req: AdminRequest, res: express.Response) => {
+  try {
+    const [totalRow, autoImportedRow, latestRow] = await Promise.all([
+      dbGet<{ count: number }>('SELECT COUNT(*) as count FROM merchants WHERE cj_advertiser_id IS NOT NULL'),
+      dbGet<{ count: number }>('SELECT COUNT(*) as count FROM merchants WHERE cj_auto_imported = 1'),
+      dbGet<{ synced_at: string | null }>('SELECT MAX(cj_synced_at) as synced_at FROM merchants'),
+    ]);
+
+    res.json({
+      total_linked: totalRow?.count ?? 0,
+      auto_imported_pending_review: autoImportedRow?.count ?? 0,
+      last_synced_at: latestRow?.synced_at ?? null,
+    });
+  } catch (error) {
+    console.error('CJ advertiser status error:', error);
+    res.status(500).json({ error: 'Failed to load CJ advertiser status' });
+  }
+});
+
 // Aggregate view of imported CJ commissions — counts and totals by action_status.
 router.get('/cj-sync/status', authenticateAdmin, async (_req: AdminRequest, res: express.Response) => {
   try {
