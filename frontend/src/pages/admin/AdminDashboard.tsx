@@ -1,60 +1,96 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { useAdmin } from '../../context/AdminContext';
 import apiClient from '../../api/client';
 
-interface DashboardStats {
-  users: { total: number };
-  merchants: { total: number };
-  offers: { total: number; active: number };
-  transactions: { total: number; pending: number; confirmed: number };
-  earnings: {
-    total_user_earnings: number;
-    total_cashback_paid: number;
-    total_cashback_pending: number;
+// ─── Types ────────────────────────────────────────────────────────────────────
+
+interface ActionQueue {
+  pending_withdrawals: { count: number; total_amount: number };
+  pending_transactions: { count: number };
+}
+
+interface PeriodMetrics {
+  commission_earned: number;
+  cashback_owed: number;
+  paid_out: number;
+}
+
+interface PlatformMetrics {
+  this_month: PeriodMetrics;
+  last_month: PeriodMetrics;
+  deltas: {
+    commission_pct: number | null;
+    cashback_pct: number | null;
+    paid_out_pct: number | null;
   };
 }
 
-interface RecentTransaction {
+interface Growth {
+  new_users_this_week: number;
+  new_users_last_week: number;
+  new_users_pct: number | null;
+  active_merchants: number;
+  active_offers: number;
+}
+
+interface ActivityRow {
   id: number;
   amount: number;
   status: string;
   transaction_date: string;
-  user_email: string;
+  user_id: number;
   user_name: string;
+  user_email: string;
   merchant_name: string;
   offer_title: string;
 }
 
+interface Overview {
+  action_queue: ActionQueue;
+  platform_metrics: PlatformMetrics;
+  growth: Growth;
+  recent_activity: ActivityRow[];
+}
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+const fmtMoney = (n: number) =>
+  n.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
+
+const fmtPct = (pct: number | null) => {
+  if (pct === null) return null;
+  const sign = pct > 0 ? '+' : '';
+  return `${sign}${pct.toFixed(0)}%`;
+};
+
+const pctColor = (pct: number | null) => {
+  if (pct === null || pct === 0) return 'text-gray-500';
+  return pct > 0 ? 'text-emerald-600' : 'text-red-500';
+};
+
+// ─── Component ────────────────────────────────────────────────────────────────
+
 const AdminDashboard = () => {
   const { isAuthenticated } = useAdmin();
   const navigate = useNavigate();
-  const [stats, setStats] = useState<DashboardStats | null>(null);
-  const [recentTransactions, setRecentTransactions] = useState<RecentTransaction[]>([]);
+  const [data, setData] = useState<Overview | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!isAuthenticated) {
       navigate('/admin/login');
       return;
     }
-
-    const fetchData = async () => {
-      try {
-        const [statsRes, transactionsRes] = await Promise.all([
-          apiClient.get('/admin/dashboard/stats'),
-          apiClient.get('/admin/dashboard/recent-transactions'),
-        ]);
-        setStats(statsRes.data);
-        setRecentTransactions(transactionsRes.data);
-      } catch (error) {
-        console.error('Error fetching dashboard data:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchData();
+    apiClient
+      .get<Overview>('/admin/dashboard/overview')
+      .then((res) => setData(res.data))
+      .catch((err) => {
+        console.error('Error fetching admin dashboard:', err);
+        setError(err.response?.data?.error || 'Failed to load dashboard.');
+      })
+      .finally(() => setLoading(false));
   }, [isAuthenticated, navigate]);
 
   if (!isAuthenticated) return null;
@@ -62,108 +98,266 @@ const AdminDashboard = () => {
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div>Loading...</div>
+        <div className="text-gray-500">Loading admin overview…</div>
       </div>
     );
   }
 
+  const aq = data?.action_queue;
+  const pm = data?.platform_metrics;
+  const gr = data?.growth;
+
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <h1 className="text-3xl font-bold text-gray-800 mb-8">Dashboard Overview</h1>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
+        <div className="flex items-center justify-between">
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-800">Admin Overview</h1>
+          <div className="text-xs text-gray-500">
+            As of {new Date().toLocaleString()}
+          </div>
+        </div>
 
-        {/* Stats Grid */}
-        {stats && (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-            <div className="bg-white rounded-lg shadow p-6">
-              <div className="text-gray-600 text-sm mb-1">Total Users</div>
-              <div className="text-3xl font-bold text-primary-600">{stats.users.total}</div>
-            </div>
-            <div className="bg-white rounded-lg shadow p-6">
-              <div className="text-gray-600 text-sm mb-1">Merchants</div>
-              <div className="text-3xl font-bold text-blue-600">{stats.merchants.total}</div>
-            </div>
-            <div className="bg-white rounded-lg shadow p-6">
-              <div className="text-gray-600 text-sm mb-1">Active Offers</div>
-              <div className="text-3xl font-bold text-green-600">
-                {stats.offers.active} / {stats.offers.total}
-              </div>
-            </div>
-            <div className="bg-white rounded-lg shadow p-6">
-              <div className="text-gray-600 text-sm mb-1">Total Transactions</div>
-              <div className="text-3xl font-bold text-purple-600">{stats.transactions.total}</div>
-            </div>
+        {error && (
+          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
+            {error}
           </div>
         )}
 
-        {/* Earnings Section */}
-        {stats && (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-            <div className="bg-white rounded-lg shadow p-6">
-              <div className="text-gray-600 text-sm mb-1">Total User Earnings</div>
-              <div className="text-2xl font-bold text-green-600">
-                ${stats.earnings.total_user_earnings.toFixed(2)}
+        {/* ─── Zone 1: Needs your attention ─────────────────────────────── */}
+        {aq && (
+          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+            <h2 className="text-sm font-semibold uppercase tracking-wider text-gray-500 mb-4">
+              Needs your attention
+            </h2>
+            {aq.pending_withdrawals.count === 0 && aq.pending_transactions.count === 0 ? (
+              <div className="text-sm text-gray-500 flex items-center gap-2">
+                <span className="text-emerald-500">✓</span> Nothing in the approval queue. Good work.
               </div>
-            </div>
-            <div className="bg-white rounded-lg shadow p-6">
-              <div className="text-gray-600 text-sm mb-1">Cashback Paid</div>
-              <div className="text-2xl font-bold text-blue-600">
-                ${stats.earnings.total_cashback_paid.toFixed(2)}
-              </div>
-            </div>
-            <div className="bg-white rounded-lg shadow p-6">
-              <div className="text-gray-600 text-sm mb-1">Cashback Pending</div>
-              <div className="text-2xl font-bold text-yellow-600">
-                ${stats.earnings.total_cashback_pending.toFixed(2)}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Recent Transactions */}
-        <div className="bg-white rounded-lg shadow">
-          <div className="px-6 py-4 border-b border-gray-200">
-            <h2 className="text-xl font-semibold text-gray-800">Recent Transactions</h2>
-          </div>
-          {recentTransactions.length === 0 ? (
-            <div className="text-center py-12 text-gray-500">No transactions yet</div>
-          ) : (
-            <div className="divide-y divide-gray-200">
-              {recentTransactions.map((transaction) => (
-                <div key={transaction.id} className="px-6 py-4 hover:bg-gray-50">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <div className="font-semibold text-gray-800">{transaction.merchant_name}</div>
-                      <div className="text-sm text-gray-500">
-                        {transaction.user_name} ({transaction.user_email})
-                      </div>
-                      <div className="text-xs text-gray-400">
-                        {new Date(transaction.transaction_date).toLocaleString()}
+            ) : (
+              <div className="space-y-3">
+                {aq.pending_withdrawals.count > 0 && (
+                  <Link
+                    to="/admin/withdrawals"
+                    className="flex items-center justify-between gap-4 p-4 bg-amber-50 border border-amber-200 rounded-lg hover:bg-amber-100 transition group"
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="text-2xl">💸</div>
+                      <div className="min-w-0">
+                        <div className="font-semibold text-gray-800">
+                          {aq.pending_withdrawals.count} withdrawal
+                          {aq.pending_withdrawals.count === 1 ? '' : 's'} awaiting approval
+                        </div>
+                        <div className="text-sm text-gray-600">
+                          Total: {fmtMoney(aq.pending_withdrawals.total_amount)}
+                        </div>
                       </div>
                     </div>
-                    <div className="text-right">
-                      <div className="text-lg font-bold text-primary-600">
-                        ${transaction.amount.toFixed(2)}
+                    <span className="text-amber-700 font-semibold group-hover:translate-x-1 transition flex-shrink-0">
+                      Review →
+                    </span>
+                  </Link>
+                )}
+                {aq.pending_transactions.count > 0 && (
+                  <Link
+                    to="/admin/users"
+                    className="flex items-center justify-between gap-4 p-4 bg-blue-50 border border-blue-200 rounded-lg hover:bg-blue-100 transition group"
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="text-2xl">📋</div>
+                      <div className="min-w-0">
+                        <div className="font-semibold text-gray-800">
+                          {aq.pending_transactions.count} cashback transaction
+                          {aq.pending_transactions.count === 1 ? '' : 's'} pending confirmation
+                        </div>
+                        <div className="text-sm text-gray-600">
+                          Awaiting affiliate network confirmation
+                        </div>
                       </div>
-                      <div
-                        className={`text-xs px-2 py-1 rounded ${
-                          transaction.status === 'confirmed'
-                            ? 'bg-green-100 text-green-700'
-                            : 'bg-yellow-100 text-yellow-700'
-                        }`}
-                      >
-                        {transaction.status}
-                      </div>
+                    </div>
+                    <span className="text-blue-700 font-semibold group-hover:translate-x-1 transition flex-shrink-0">
+                      View →
+                    </span>
+                  </Link>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ─── Zone 2: Platform metrics (this month) ────────────────────── */}
+        {pm && (
+          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+            <div className="flex items-baseline justify-between mb-4">
+              <h2 className="text-sm font-semibold uppercase tracking-wider text-gray-500">
+                Platform metrics
+              </h2>
+              <span className="text-xs text-gray-500">This month vs last month</span>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <MetricCard
+                label="Commission earned"
+                value={fmtMoney(pm.this_month.commission_earned)}
+                deltaPct={pm.deltas.commission_pct}
+                color="emerald"
+                primary
+              />
+              <MetricCard
+                label="Cashback owed to users"
+                value={fmtMoney(pm.this_month.cashback_owed)}
+                deltaPct={pm.deltas.cashback_pct}
+                color="blue"
+              />
+              <MetricCard
+                label="Paid out via withdrawals"
+                value={fmtMoney(pm.this_month.paid_out)}
+                deltaPct={pm.deltas.paid_out_pct}
+                color="violet"
+              />
+            </div>
+          </div>
+        )}
+
+        {/* ─── Zone 3: Growth ───────────────────────────────────────────── */}
+        {gr && (
+          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+            <h2 className="text-sm font-semibold uppercase tracking-wider text-gray-500 mb-4">
+              Growth
+            </h2>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div>
+                <div className="text-xs text-gray-500 mb-1">New users this week</div>
+                <div className="flex items-baseline gap-2">
+                  <span className="text-2xl font-bold text-gray-800">
+                    {gr.new_users_this_week}
+                  </span>
+                  {fmtPct(gr.new_users_pct) && (
+                    <span className={`text-sm font-medium ${pctColor(gr.new_users_pct)}`}>
+                      {fmtPct(gr.new_users_pct)}
+                    </span>
+                  )}
+                </div>
+                <div className="text-xs text-gray-400 mt-1">
+                  vs {gr.new_users_last_week} last week
+                </div>
+              </div>
+              <div>
+                <div className="text-xs text-gray-500 mb-1">Active merchants</div>
+                <div className="text-2xl font-bold text-gray-800">{gr.active_merchants}</div>
+              </div>
+              <div>
+                <div className="text-xs text-gray-500 mb-1">Active offers</div>
+                <div className="text-2xl font-bold text-gray-800">{gr.active_offers}</div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ─── Zone 4: Quick actions ────────────────────────────────────── */}
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+          <h2 className="text-sm font-semibold uppercase tracking-wider text-gray-500 mb-4">
+            Quick actions
+          </h2>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <QuickAction to="/admin/withdrawals" label="Withdrawals" emoji="💸" />
+            <QuickAction to="/admin/merchants" label="Merchants" emoji="🏬" />
+            <QuickAction to="/admin/offers" label="Offers" emoji="🏷️" />
+            <QuickAction to="/admin/users" label="Users" emoji="👥" />
+          </div>
+        </div>
+
+        {/* ─── Zone 5: Recent activity ──────────────────────────────────── */}
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+          <h2 className="text-sm font-semibold uppercase tracking-wider text-gray-500 mb-4">
+            Recent activity
+          </h2>
+          {!data?.recent_activity || data.recent_activity.length === 0 ? (
+            <div className="text-sm text-gray-500 text-center py-6">No activity yet.</div>
+          ) : (
+            <ul className="divide-y divide-gray-100">
+              {data.recent_activity.map((row) => (
+                <li key={row.id} className="py-3 flex items-center gap-4">
+                  <div className="flex-1 min-w-0">
+                    <div className="font-medium text-gray-800 truncate">
+                      {row.merchant_name} · {row.user_name}
+                    </div>
+                    <div className="text-xs text-gray-500 truncate">
+                      {row.offer_title} · {row.user_email} ·{' '}
+                      {new Date(row.transaction_date).toLocaleString()}
                     </div>
                   </div>
-                </div>
+                  <div className="text-right flex-shrink-0">
+                    <div className="font-bold text-gray-800 tabular-nums">
+                      {fmtMoney(row.amount)}
+                    </div>
+                    <span
+                      className={`inline-block text-xs px-2 py-0.5 rounded-full font-medium capitalize ${
+                        row.status === 'confirmed'
+                          ? 'bg-emerald-100 text-emerald-700'
+                          : row.status === 'pending'
+                          ? 'bg-amber-100 text-amber-700'
+                          : 'bg-gray-100 text-gray-700'
+                      }`}
+                    >
+                      {row.status}
+                    </span>
+                  </div>
+                </li>
               ))}
-            </div>
+            </ul>
           )}
         </div>
       </div>
     </div>
   );
 };
+
+// ─── Subcomponents ────────────────────────────────────────────────────────────
+
+interface MetricCardProps {
+  label: string;
+  value: string;
+  deltaPct: number | null;
+  color: 'emerald' | 'blue' | 'violet';
+  primary?: boolean;
+}
+
+const COLOR_CLASSES: Record<MetricCardProps['color'], { bg: string; text: string }> = {
+  emerald: { bg: 'bg-emerald-50 border-emerald-100', text: 'text-emerald-700' },
+  blue: { bg: 'bg-blue-50 border-blue-100', text: 'text-blue-700' },
+  violet: { bg: 'bg-violet-50 border-violet-100', text: 'text-violet-700' },
+};
+
+const MetricCard = ({ label, value, deltaPct, color, primary }: MetricCardProps) => {
+  const c = COLOR_CLASSES[color];
+  return (
+    <div className={`rounded-lg p-4 border ${c.bg}`}>
+      <div className="text-xs font-medium text-gray-600 mb-1">{label}</div>
+      <div className={`font-bold tabular-nums ${primary ? 'text-3xl' : 'text-2xl'} ${c.text}`}>
+        {value}
+      </div>
+      {fmtPct(deltaPct) && (
+        <div className={`text-xs mt-1 font-medium ${pctColor(deltaPct)}`}>
+          {fmtPct(deltaPct)} vs last month
+        </div>
+      )}
+    </div>
+  );
+};
+
+interface QuickActionProps {
+  to: string;
+  label: string;
+  emoji: string;
+}
+
+const QuickAction = ({ to, label, emoji }: QuickActionProps) => (
+  <Link
+    to={to}
+    className="flex flex-col items-center justify-center gap-2 p-4 bg-gray-50 hover:bg-gray-100 border border-gray-200 rounded-lg transition text-center"
+  >
+    <span className="text-2xl" aria-hidden>{emoji}</span>
+    <span className="text-sm font-medium text-gray-700">{label}</span>
+  </Link>
+);
 
 export default AdminDashboard;
