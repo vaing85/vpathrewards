@@ -5,6 +5,7 @@
  */
 import express from 'express';
 import { authenticateAdmin, AdminRequest } from '../../middleware/adminAuth';
+import { dbGet, dbAll } from '../../database';
 import { runJob, JOB_NAMES } from '../../jobs';
 import { getProgress } from '../../jobs/progress';
 
@@ -47,6 +48,49 @@ router.get('/progress', authenticateAdmin, (_req: AdminRequest, res: express.Res
 
 router.get('/names', authenticateAdmin, (_req: AdminRequest, res: express.Response) => {
   res.json({ jobs: JOB_NAMES });
+});
+
+// Convenience shortcut for the CJ sync job. Equivalent to POST /run with
+// jobName: 'cj-sync' but cleaner to wire into an admin UI button.
+router.post('/cj-sync/run', authenticateAdmin, async (req: AdminRequest, res: express.Response) => {
+  try {
+    const { lookbackDays } = (req.body ?? {}) as { lookbackDays?: number };
+    const result = await runJob(JOB_NAMES.CJ_SYNC, { lookbackDays });
+    if (!result.ok) {
+      return res.status(500).json({ ok: false, error: result.error, data: result.data, meta: result.meta });
+    }
+    res.json({ ok: true, data: result.data, meta: result.meta });
+  } catch (error) {
+    console.error('CJ sync run error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Aggregate view of imported CJ commissions — counts and totals by action_status.
+router.get('/cj-sync/status', authenticateAdmin, async (_req: AdminRequest, res: express.Response) => {
+  try {
+    const [totalRow, latestRow, statusRows] = await Promise.all([
+      dbGet<{ count: number }>('SELECT COUNT(*) as count FROM cj_commissions'),
+      dbGet<{ posting_date: string | null; created_at: string | null }>(
+        'SELECT MAX(posting_date) as posting_date, MAX(created_at) as created_at FROM cj_commissions'
+      ),
+      dbAll<{ action_status: string | null; count: number; total_usd: number | null }>(
+        `SELECT action_status, COUNT(*) as count, SUM(pub_commission_amount_usd) as total_usd
+         FROM cj_commissions
+         GROUP BY action_status`
+      ),
+    ]);
+
+    res.json({
+      total: totalRow?.count ?? 0,
+      latest_posting_date: latestRow?.posting_date ?? null,
+      last_synced_at: latestRow?.created_at ?? null,
+      by_status: statusRows,
+    });
+  } catch (error) {
+    console.error('CJ sync status error:', error);
+    res.status(500).json({ error: 'Failed to load CJ sync status' });
+  }
 });
 
 export default router;
