@@ -13,10 +13,13 @@ function ddl(sql: string): string {
 
 /** Add a column only if it doesn't already exist (PG: IF NOT EXISTS; SQLite: try/catch). */
 async function addCol(table: string, col: string, def: string): Promise<void> {
+  // Route the column definition through ddl() so SQLite-isms (DATETIME, REAL,
+  // INTEGER PRIMARY KEY AUTOINCREMENT) are translated to PG equivalents on Postgres.
+  const adapted = ddl(def);
   if (USE_PG) {
-    await dbRun(`ALTER TABLE ${table} ADD COLUMN IF NOT EXISTS ${col} ${def}`);
+    await dbRun(`ALTER TABLE ${table} ADD COLUMN IF NOT EXISTS ${col} ${adapted}`);
   } else {
-    try { await dbRun(`ALTER TABLE ${table} ADD COLUMN ${col} ${def}`); } catch (_) {}
+    try { await dbRun(`ALTER TABLE ${table} ADD COLUMN ${col} ${adapted}`); } catch (_) {}
   }
 }
 
