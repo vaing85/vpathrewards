@@ -141,6 +141,175 @@ router.get('/stats', authenticateAdmin, async (req, res) => {
   }
 });
 
+// ─────────────────────────────────────────────────────────────────────────────
+// GET /admin/dashboard/overview
+//
+// Action-oriented snapshot for the redesigned admin dashboard. Surfaces the
+// queue of things needing human action (pending withdrawals, unconfirmed
+// cashback), platform metrics (this month vs last month), growth indicators,
+// and a unified recent activity feed.
+// ─────────────────────────────────────────────────────────────────────────────
+router.get('/overview', authenticateAdmin, async (_req, res) => {
+  try {
+    // Compute date boundaries in JS so the SQL stays portable (PG + SQLite).
+    const now = new Date();
+    const startOfThisMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+    const startOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1).toISOString();
+    const dayMs = 24 * 60 * 60 * 1000;
+    const startOfThisWeek = new Date(now.getTime() - now.getDay() * dayMs).toISOString();
+    const startOfLastWeek = new Date(now.getTime() - (now.getDay() + 7) * dayMs).toISOString();
+
+    const [
+      pendingWithdrawals,
+      pendingTransactions,
+      thisMonthCommission,
+      lastMonthCommission,
+      thisMonthCashback,
+      lastMonthCashback,
+      thisMonthPaidOut,
+      lastMonthPaidOut,
+      newUsersThisWeek,
+      newUsersLastWeek,
+      activeMerchants,
+      activeOffers,
+      recentActivity,
+    ] = await Promise.all([
+      dbGet(
+        `SELECT COUNT(*) as count, COALESCE(SUM(amount), 0) as total
+         FROM withdrawals WHERE status = ?`,
+        ['pending']
+      ) as Promise<{ count: number; total: number }>,
+
+      dbGet(
+        `SELECT COUNT(*) as count FROM cashback_transactions WHERE status = ?`,
+        ['pending']
+      ) as Promise<{ count: number }>,
+
+      // Platform commission = platform_amount on confirmed cashback transactions.
+      dbGet(
+        `SELECT COALESCE(SUM(platform_amount), 0) as total
+         FROM cashback_transactions
+         WHERE status = ? AND transaction_date >= ?`,
+        ['confirmed', startOfThisMonth]
+      ) as Promise<{ total: number }>,
+
+      dbGet(
+        `SELECT COALESCE(SUM(platform_amount), 0) as total
+         FROM cashback_transactions
+         WHERE status = ? AND transaction_date >= ? AND transaction_date < ?`,
+        ['confirmed', startOfLastMonth, startOfThisMonth]
+      ) as Promise<{ total: number }>,
+
+      // Cashback owed to users (confirmed user_amount) for this/last month.
+      dbGet(
+        `SELECT COALESCE(SUM(user_amount), 0) as total
+         FROM cashback_transactions
+         WHERE status = ? AND transaction_date >= ?`,
+        ['confirmed', startOfThisMonth]
+      ) as Promise<{ total: number }>,
+
+      dbGet(
+        `SELECT COALESCE(SUM(user_amount), 0) as total
+         FROM cashback_transactions
+         WHERE status = ? AND transaction_date >= ? AND transaction_date < ?`,
+        ['confirmed', startOfLastMonth, startOfThisMonth]
+      ) as Promise<{ total: number }>,
+
+      // Money actually paid out via completed withdrawals (this/last month).
+      dbGet(
+        `SELECT COALESCE(SUM(amount), 0) as total
+         FROM withdrawals
+         WHERE status = ? AND processed_at >= ?`,
+        ['completed', startOfThisMonth]
+      ) as Promise<{ total: number }>,
+
+      dbGet(
+        `SELECT COALESCE(SUM(amount), 0) as total
+         FROM withdrawals
+         WHERE status = ? AND processed_at >= ? AND processed_at < ?`,
+        ['completed', startOfLastMonth, startOfThisMonth]
+      ) as Promise<{ total: number }>,
+
+      dbGet(
+        `SELECT COUNT(*) as count FROM users
+         WHERE is_admin = 0 AND created_at >= ?`,
+        [startOfThisWeek]
+      ) as Promise<{ count: number }>,
+
+      dbGet(
+        `SELECT COUNT(*) as count FROM users
+         WHERE is_admin = 0 AND created_at >= ? AND created_at < ?`,
+        [startOfLastWeek, startOfThisWeek]
+      ) as Promise<{ count: number }>,
+
+      dbGet(`SELECT COUNT(*) as count FROM merchants`) as Promise<{ count: number }>,
+
+      dbGet(
+        `SELECT COUNT(*) as count FROM offers WHERE is_active = 1`
+      ) as Promise<{ count: number }>,
+
+      // Unified recent activity: most recent 10 confirmed/pending cashback transactions.
+      dbAll(`
+        SELECT
+          ct.id, ct.amount, ct.status, ct.transaction_date,
+          u.id as user_id, u.name as user_name, u.email as user_email,
+          m.name as merchant_name, o.title as offer_title
+        FROM cashback_transactions ct
+        JOIN users u ON ct.user_id = u.id
+        JOIN offers o ON ct.offer_id = o.id
+        JOIN merchants m ON o.merchant_id = m.id
+        ORDER BY ct.transaction_date DESC
+        LIMIT 10
+      `),
+    ]);
+
+    const pctChange = (current: number, prior: number): number | null => {
+      if (prior === 0) return current === 0 ? 0 : null; // null = no prior baseline
+      return ((current - prior) / prior) * 100;
+    };
+
+    res.json({
+      action_queue: {
+        pending_withdrawals: {
+          count: pendingWithdrawals.count,
+          total_amount: pendingWithdrawals.total,
+        },
+        pending_transactions: {
+          count: pendingTransactions.count,
+        },
+      },
+      platform_metrics: {
+        this_month: {
+          commission_earned: thisMonthCommission.total,
+          cashback_owed: thisMonthCashback.total,
+          paid_out: thisMonthPaidOut.total,
+        },
+        last_month: {
+          commission_earned: lastMonthCommission.total,
+          cashback_owed: lastMonthCashback.total,
+          paid_out: lastMonthPaidOut.total,
+        },
+        deltas: {
+          commission_pct: pctChange(thisMonthCommission.total, lastMonthCommission.total),
+          cashback_pct: pctChange(thisMonthCashback.total, lastMonthCashback.total),
+          paid_out_pct: pctChange(thisMonthPaidOut.total, lastMonthPaidOut.total),
+        },
+      },
+      growth: {
+        new_users_this_week: newUsersThisWeek.count,
+        new_users_last_week: newUsersLastWeek.count,
+        new_users_pct: pctChange(newUsersThisWeek.count, newUsersLastWeek.count),
+        active_merchants: activeMerchants.count,
+        active_offers: activeOffers.count,
+      },
+      recent_activity: recentActivity,
+    });
+  } catch (error) {
+    console.error('Error fetching dashboard overview:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 // Get recent transactions
 router.get('/recent-transactions', authenticateAdmin, async (req, res) => {
   try {
