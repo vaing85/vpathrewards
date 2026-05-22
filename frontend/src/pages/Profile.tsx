@@ -23,9 +23,7 @@ const Profile = () => {
   const navigate = useNavigate();
   const [profile, setProfile] = useState<ProfileData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'profile' | 'password' | 'notifications' | 'subscription'>('profile');
-  const [subscription, setSubscription] = useState<any>(null);
-  const [subLoading, setSubLoading] = useState(false);
+  const [activeTab, setActiveTab] = useState<'profile' | 'password' | 'notifications'>('profile');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -78,35 +76,7 @@ const Profile = () => {
       return;
     }
     fetchProfile();
-    fetchSubscription();
   }, [isAuthenticated, navigate]);
-
-  const fetchSubscription = async () => {
-    setSubLoading(true);
-    try {
-      const res = await apiClient.get('/subscriptions/status');
-      setSubscription(res.data);
-    } catch (_) {}
-    setSubLoading(false);
-  };
-
-  const handleManageBilling = async () => {
-    try {
-      const res = await apiClient.post('/subscriptions/portal');
-      if (res.data?.url) window.location.href = res.data.url;
-    } catch (err: any) {
-      setError(err.response?.data?.error || 'Failed to open billing portal');
-    }
-  };
-
-  const handleUpgrade = async (plan: string) => {
-    try {
-      const res = await apiClient.post('/subscriptions/checkout', { plan });
-      if (res.data?.url) window.location.href = res.data.url;
-    } catch (err: any) {
-      setError(err.response?.data?.error || 'Failed to start checkout');
-    }
-  };
 
   const fetchProfile = async () => {
     try {
@@ -292,16 +262,6 @@ const Profile = () => {
                 }`}
               >
                 Notifications
-              </button>
-              <button
-                onClick={() => setActiveTab('subscription')}
-                className={`px-6 py-3 text-sm font-medium ${
-                  activeTab === 'subscription'
-                    ? 'border-b-2 border-primary-500 text-primary-600'
-                    : 'text-gray-500 hover:text-gray-700'
-                }`}
-              >
-                Subscription
               </button>
             </nav>
           </div>
@@ -508,77 +468,6 @@ const Profile = () => {
                     </label>
                   </div>
                 </div>
-              </div>
-            )}
-            {/* Subscription Tab */}
-            {activeTab === 'subscription' && (
-              <div>
-                {subLoading ? (
-                  <div className="py-8 text-center text-gray-400">Loading subscription...</div>
-                ) : (
-                  <>
-                    {/* Current plan banner */}
-                    <div className="bg-primary-50 border border-primary-200 rounded-lg p-4 mb-6">
-                      <div className="flex justify-between items-center">
-                        <div>
-                          <div className="text-xs text-primary-500 uppercase font-semibold tracking-wide mb-0.5">Current Plan</div>
-                          <div className="text-xl font-bold text-primary-700 capitalize">
-                            {subscription?.plan || 'Free'}
-                          </div>
-                          {subscription?.subscription_status === 'active' && (
-                            <div className="text-xs text-primary-500 mt-0.5">
-                              Renews {subscription?.current_period_end ? new Date(subscription.current_period_end * 1000).toLocaleDateString() : '—'}
-                            </div>
-                          )}
-                        </div>
-                        {subscription?.subscription_status === 'active' && (
-                          <button
-                            onClick={handleManageBilling}
-                            className="text-sm bg-white border border-primary-300 text-primary-600 px-4 py-2 rounded-lg hover:bg-primary-50 transition"
-                          >
-                            Manage Billing
-                          </button>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Plan cards */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      {[
-                        { key: 'bronze', name: 'Bronze', price: '$4.99/mo', bonus: '+1% cashback', color: 'amber' },
-                        { key: 'silver', name: 'Silver', price: '$9.99/mo', bonus: '+2% cashback', color: 'gray' },
-                        { key: 'gold',   name: 'Gold',   price: '$14.99/mo', bonus: '+3% cashback', color: 'yellow' },
-                        { key: 'platinum', name: 'Platinum', price: '$19.99/mo', bonus: '+4% cashback', color: 'indigo' },
-                      ].map(plan => {
-                        const isCurrent = subscription?.plan === plan.key;
-                        return (
-                          <div
-                            key={plan.key}
-                            className={`border rounded-lg p-4 ${isCurrent ? 'border-primary-400 bg-primary-50' : 'border-gray-200 bg-white'}`}
-                          >
-                            <div className="flex justify-between items-start mb-2">
-                              <div>
-                                <div className="font-semibold text-gray-800">{plan.name}</div>
-                                <div className="text-sm text-primary-600 font-medium">{plan.bonus}</div>
-                              </div>
-                              <div className="text-sm font-bold text-gray-700">{plan.price}</div>
-                            </div>
-                            {isCurrent ? (
-                              <span className="inline-block text-xs bg-primary-100 text-primary-700 px-2 py-0.5 rounded-full font-medium">Current</span>
-                            ) : (
-                              <button
-                                onClick={() => handleUpgrade(plan.key)}
-                                className="mt-2 w-full text-sm bg-primary-600 hover:bg-primary-700 text-white py-1.5 rounded-lg transition"
-                              >
-                                Upgrade
-                              </button>
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </>
-                )}
               </div>
             )}
           </div>
