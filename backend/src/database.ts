@@ -285,6 +285,20 @@ export const initDatabase = async () => {
       )
     `));
 
+    await dbRun(ddl(`
+      CREATE TABLE IF NOT EXISTS password_reset_tokens (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
+        token_hash TEXT NOT NULL,
+        expires_at DATETIME NOT NULL,
+        used_at DATETIME,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users(id)
+      )
+    `));
+    await dbRun('CREATE INDEX IF NOT EXISTS idx_password_reset_tokens_hash ON password_reset_tokens(token_hash)');
+    await dbRun('CREATE INDEX IF NOT EXISTS idx_password_reset_tokens_user_expires ON password_reset_tokens(user_id, expires_at)');
+
     // Add optional columns to existing tables (idempotent)
     await addCol('users', 'leaderboard_opt_in', 'INTEGER DEFAULT 0');
     await addCol('users', 'stripe_customer_id', 'TEXT');
