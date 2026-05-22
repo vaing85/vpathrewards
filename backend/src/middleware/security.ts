@@ -29,7 +29,15 @@ export const sanitizeInput = (req: Request, res: Response, next: NextFunction) =
     req.body = sanitize(req.body);
   }
   if (req.query) {
-    req.query = sanitize(req.query);
+    // Express 5 made req.query a getter-only property; plain assignment throws
+    // "Cannot set property query of #<IncomingMessage> which has only a getter".
+    // Override the getter with a writable property holding the sanitized value.
+    Object.defineProperty(req, 'query', {
+      value: sanitize(req.query),
+      writable: true,
+      configurable: true,
+      enumerable: true,
+    });
   }
   if (req.params) {
     req.params = sanitize(req.params);
