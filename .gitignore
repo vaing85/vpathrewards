@@ -3,9 +3,17 @@ node_modules/
 package-lock.json
 yarn.lock
 
-# Environment variables
+# Environment variables — only .env.example and .env.production.example should
+# be committed. Any concrete .env file may contain secrets.
 .env
 .env.local
+.env.development
+.env.production
+.env.test
+# Any other .env.* except the templates
+.env.*
+!.env.example
+!.env.production.example
 
 # Database
 *.db
