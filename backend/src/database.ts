@@ -323,6 +323,17 @@ export const initDatabase = async () => {
     // CJ (Commission Junction) integration — link existing merchants to their
     // CJ advertiser id so the sync job can match remote commission records.
     await addCol('merchants', 'cj_advertiser_id', 'TEXT');
+    // Max commission percentage CJ pays us for this advertiser (gross, before
+    // platform/user split). Used by admins to decide the user-facing cashback
+    // rate, not surfaced to users directly.
+    await addCol('merchants', 'cj_max_commission_rate', 'REAL');
+    // Raw JSON of CJ action types + commission tiers per merchant, for the
+    // admin UI to inspect when setting cashback rates.
+    await addCol('merchants', 'cj_commission_terms', 'TEXT');
+    // Auto-discovered merchants are flagged so admins can review them before
+    // the merchant is shown to users.
+    await addCol('merchants', 'cj_auto_imported', 'INTEGER DEFAULT 0');
+    await addCol('merchants', 'cj_synced_at', 'DATETIME');
 
     // Raw CJ commission records, fetched by the cjSync job. Kept in its own
     // table (rather than written straight to cashback_transactions) because
