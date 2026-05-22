@@ -13,6 +13,8 @@ import Login from './pages/Login';
 import Register from './pages/Register';
 
 // Lazy-loaded user pages
+const ForgotPassword   = lazy(() => import('./pages/ForgotPassword'));
+const ResetPassword    = lazy(() => import('./pages/ResetPassword'));
 const Dashboard        = lazy(() => import('./pages/Dashboard'));
 const MerchantDetail   = lazy(() => import('./pages/MerchantDetail'));
 const OfferDetail      = lazy(() => import('./pages/OfferDetail'));
@@ -60,6 +62,8 @@ function App() {
                 <Route path="/" element={<PageShell><Home /></PageShell>} />
                 <Route path="/login" element={<PageShell><Login /></PageShell>} />
                 <Route path="/register" element={<PageShell><Register /></PageShell>} />
+                <Route path="/forgot-password" element={<PageShell><ForgotPassword /></PageShell>} />
+                <Route path="/reset-password" element={<PageShell><ResetPassword /></PageShell>} />
                 <Route path="/dashboard" element={<PageShell><Dashboard /></PageShell>} />
                 <Route path="/merchants/:id" element={<PageShell><MerchantDetail /></PageShell>} />
                 <Route path="/offers/:id" element={<PageShell><OfferDetail /></PageShell>} />
