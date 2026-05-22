@@ -263,6 +263,27 @@ router.get('/overview', authenticateAdmin, async (_req, res) => {
       `),
     ]);
 
+    // CJ integration block — surfaces the state of the three CJ sync jobs so
+    // an admin can tell at a glance whether the automation is healthy and
+    // whether there are auto-imported merchants needing review.
+    const [
+      cjCommissionsCount,
+      cjMerchantsLinked,
+      cjMerchantsPendingReview,
+      cjMerchantsMissingLink,
+      cjCommissionsSyncedAt,
+      cjAdvertisersSyncedAt,
+      cjLinksSyncedAt,
+    ] = await Promise.all([
+      dbGet(`SELECT COUNT(*) as count FROM cj_commissions`) as Promise<{ count: number }>,
+      dbGet(`SELECT COUNT(*) as count FROM merchants WHERE cj_advertiser_id IS NOT NULL`) as Promise<{ count: number }>,
+      dbGet(`SELECT COUNT(*) as count FROM merchants WHERE cj_auto_imported = 1`) as Promise<{ count: number }>,
+      dbGet(`SELECT COUNT(*) as count FROM merchants WHERE cj_advertiser_id IS NOT NULL AND cj_recommended_link IS NULL`) as Promise<{ count: number }>,
+      dbGet(`SELECT MAX(created_at) as t FROM cj_commissions`) as Promise<{ t: string | null }>,
+      dbGet(`SELECT MAX(cj_synced_at) as t FROM merchants`) as Promise<{ t: string | null }>,
+      dbGet(`SELECT MAX(cj_links_synced_at) as t FROM merchants`) as Promise<{ t: string | null }>,
+    ]);
+
     const pctChange = (current: number, prior: number): number | null => {
       if (prior === 0) return current === 0 ? 0 : null; // null = no prior baseline
       return ((current - prior) / prior) * 100;
@@ -301,6 +322,17 @@ router.get('/overview', authenticateAdmin, async (_req, res) => {
         new_users_pct: pctChange(newUsersThisWeek.count, newUsersLastWeek.count),
         active_merchants: activeMerchants.count,
         active_offers: activeOffers.count,
+      },
+      cj: {
+        commissions_imported: cjCommissionsCount.count,
+        merchants_linked: cjMerchantsLinked.count,
+        merchants_pending_review: cjMerchantsPendingReview.count,
+        merchants_missing_link: cjMerchantsMissingLink.count,
+        last_synced: {
+          commissions: cjCommissionsSyncedAt.t,
+          advertisers: cjAdvertisersSyncedAt.t,
+          links: cjLinksSyncedAt.t,
+        },
       },
       recent_activity: recentActivity,
     });

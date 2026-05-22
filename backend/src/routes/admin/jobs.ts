@@ -129,4 +129,46 @@ router.get('/cj-sync/status', authenticateAdmin, async (_req: AdminRequest, res:
   }
 });
 
+// Convenience shortcut for the CJ link refresh job.
+router.post('/cj-links/run', authenticateAdmin, async (req: AdminRequest, res: express.Response) => {
+  try {
+    const { merchantId, dryRun } = (req.body ?? {}) as { merchantId?: number; dryRun?: boolean };
+    const result = await runJob(JOB_NAMES.CJ_LINK_REFRESH, { merchantId, dryRun });
+    if (!result.ok) {
+      return res.status(500).json({ ok: false, error: result.error, data: result.data, meta: result.meta });
+    }
+    res.json({ ok: true, data: result.data, meta: result.meta });
+  } catch (error) {
+    console.error('CJ link refresh run error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Status of CJ link refresh — how many merchants have a recommended link,
+// how many are still missing one, last sync timestamp.
+router.get('/cj-links/status', authenticateAdmin, async (_req: AdminRequest, res: express.Response) => {
+  try {
+    const [withLink, missingLink, latestRow] = await Promise.all([
+      dbGet<{ count: number }>(
+        'SELECT COUNT(*) as count FROM merchants WHERE cj_recommended_link IS NOT NULL'
+      ),
+      dbGet<{ count: number }>(
+        'SELECT COUNT(*) as count FROM merchants WHERE cj_advertiser_id IS NOT NULL AND cj_recommended_link IS NULL'
+      ),
+      dbGet<{ synced_at: string | null }>(
+        'SELECT MAX(cj_links_synced_at) as synced_at FROM merchants'
+      ),
+    ]);
+
+    res.json({
+      merchants_with_link: withLink?.count ?? 0,
+      merchants_missing_link: missingLink?.count ?? 0,
+      last_synced_at: latestRow?.synced_at ?? null,
+    });
+  } catch (error) {
+    console.error('CJ link status error:', error);
+    res.status(500).json({ error: 'Failed to load CJ link status' });
+  }
+});
+
 export default router;

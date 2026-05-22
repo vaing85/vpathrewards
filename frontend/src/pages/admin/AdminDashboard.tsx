@@ -34,6 +34,18 @@ interface Growth {
   active_offers: number;
 }
 
+interface CjIntegration {
+  commissions_imported: number;
+  merchants_linked: number;
+  merchants_pending_review: number;
+  merchants_missing_link: number;
+  last_synced: {
+    commissions: string | null;
+    advertisers: string | null;
+    links: string | null;
+  };
+}
+
 interface ActivityRow {
   id: number;
   amount: number;
@@ -50,6 +62,7 @@ interface Overview {
   action_queue: ActionQueue;
   platform_metrics: PlatformMetrics;
   growth: Growth;
+  cj?: CjIntegration;
   recent_activity: ActivityRow[];
 }
 
@@ -67,6 +80,19 @@ const fmtPct = (pct: number | null) => {
 const pctColor = (pct: number | null) => {
   if (pct === null || pct === 0) return 'text-gray-500';
   return pct > 0 ? 'text-emerald-600' : 'text-red-500';
+};
+
+const fmtRelativeTime = (iso: string | null): string => {
+  if (!iso) return 'never';
+  const ms = Date.now() - new Date(iso).getTime();
+  if (ms < 0) return 'just now';
+  const m = Math.floor(ms / 60000);
+  if (m < 1) return 'just now';
+  if (m < 60) return `${m}m ago`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h}h ago`;
+  const d = Math.floor(h / 24);
+  return `${d}d ago`;
 };
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -106,6 +132,7 @@ const AdminDashboard = () => {
   const aq = data?.action_queue;
   const pm = data?.platform_metrics;
   const gr = data?.growth;
+  const cj = data?.cj;
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -252,6 +279,43 @@ const AdminDashboard = () => {
           </div>
         )}
 
+        {/* ─── Zone 3b: CJ integration ──────────────────────────────────── */}
+        {cj && (
+          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+            <div className="flex items-baseline justify-between mb-4">
+              <h2 className="text-sm font-semibold uppercase tracking-wider text-gray-500">
+                CJ integration
+              </h2>
+              <span className="text-xs text-gray-500">
+                Daily auto-sync · Commissions, advertisers, links
+              </span>
+            </div>
+
+            {cj.merchants_pending_review > 0 && (
+              <div className="mb-4 flex items-center justify-between gap-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                <div className="flex items-center gap-2 text-sm text-amber-800">
+                  <span className="text-lg">🔍</span>
+                  {cj.merchants_pending_review} auto-imported merchant
+                  {cj.merchants_pending_review === 1 ? '' : 's'} awaiting review
+                </div>
+                <Link
+                  to="/admin/merchants"
+                  className="text-amber-700 font-semibold text-sm hover:underline whitespace-nowrap"
+                >
+                  Review →
+                </Link>
+              </div>
+            )}
+
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+              <CjStat label="Commissions imported" value={cj.commissions_imported.toLocaleString()} relTime={cj.last_synced.commissions} />
+              <CjStat label="Merchants linked" value={cj.merchants_linked.toLocaleString()} relTime={cj.last_synced.advertisers} />
+              <CjStat label="Pending review" value={cj.merchants_pending_review.toLocaleString()} relTime={cj.last_synced.advertisers} highlighted={cj.merchants_pending_review > 0} />
+              <CjStat label="Missing CJ link" value={cj.merchants_missing_link.toLocaleString()} relTime={cj.last_synced.links} />
+            </div>
+          </div>
+        )}
+
         {/* ─── Zone 4: Quick actions ────────────────────────────────────── */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
           <h2 className="text-sm font-semibold uppercase tracking-wider text-gray-500 mb-4">
@@ -343,6 +407,23 @@ const MetricCard = ({ label, value, deltaPct, color, primary }: MetricCardProps)
     </div>
   );
 };
+
+interface CjStatProps {
+  label: string;
+  value: string;
+  relTime: string | null;
+  highlighted?: boolean;
+}
+
+const CjStat = ({ label, value, relTime, highlighted }: CjStatProps) => (
+  <div>
+    <div className="text-xs text-gray-500 mb-1">{label}</div>
+    <div className={`text-2xl font-bold ${highlighted ? 'text-amber-700' : 'text-gray-800'}`}>
+      {value}
+    </div>
+    <div className="text-xs text-gray-400 mt-1">synced {fmtRelativeTime(relTime)}</div>
+  </div>
+);
 
 interface QuickActionProps {
   to: string;
