@@ -7,7 +7,25 @@ import { withdrawalLimiter } from '../middleware/rateLimiter';
 
 const router = express.Router();
 
-const MIN_WITHDRAWAL_AMOUNT = 10.0; // Minimum $10 to withdraw
+/**
+ * Minimum withdrawal amount, in USD. Read from MIN_WITHDRAWAL_USD env var
+ * with a $10 default. Allows tuning on Railway without a deploy.
+ *
+ * Invalid values (non-numeric, non-finite, zero or negative) fall back
+ * to the default and are logged once at startup.
+ */
+const MIN_WITHDRAWAL_AMOUNT: number = (() => {
+  const raw = process.env.MIN_WITHDRAWAL_USD;
+  if (!raw) return 10.0;
+  const parsed = parseFloat(raw);
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    console.warn(
+      `MIN_WITHDRAWAL_USD="${raw}" is invalid; falling back to default $10.`
+    );
+    return 10.0;
+  }
+  return parsed;
+})();
 
 // Get user's withdrawal history
 router.get('/history', authenticateToken, async (req: AuthRequest, res) => {

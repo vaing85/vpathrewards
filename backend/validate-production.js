@@ -91,6 +91,20 @@ function validateProduction() {
     warnings.push('PORT is not set (will default to 3001)');
   }
 
+  // Check MIN_WITHDRAWAL_USD (optional, validated)
+  if (process.env.MIN_WITHDRAWAL_USD) {
+    const parsed = parseFloat(process.env.MIN_WITHDRAWAL_USD);
+    if (!Number.isFinite(parsed) || parsed <= 0) {
+      warnings.push(`MIN_WITHDRAWAL_USD="${process.env.MIN_WITHDRAWAL_USD}" is invalid; backend will fall back to $10`);
+    } else if (parsed < 1) {
+      warnings.push(`MIN_WITHDRAWAL_USD=${parsed} is unusually low (< $1) — most payout rails have per-transaction fees that exceed this`);
+    } else if (parsed > 1000) {
+      warnings.push(`MIN_WITHDRAWAL_USD=${parsed} is unusually high (> $1000) — verify this is intentional`);
+    } else {
+      checks.push(`✅ MIN_WITHDRAWAL_USD is set to $${parsed}`);
+    }
+  }
+
   // Check Logging
   if (process.env.LOG_TO_FILE === 'true') {
     checks.push('✅ File logging is enabled');
