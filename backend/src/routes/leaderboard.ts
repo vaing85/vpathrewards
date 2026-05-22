@@ -19,8 +19,7 @@ router.get('/', async (req, res) => {
     const [monthly, allTime] = await Promise.all([
       dbAll(
         `SELECT u.name, u.total_earnings,
-                COALESCE(SUM(ct.amount), 0) as monthly_earnings,
-                u.subscription_plan
+                COALESCE(SUM(ct.amount), 0) as monthly_earnings
          FROM users u
          LEFT JOIN cashback_transactions ct
            ON ct.user_id = u.id
@@ -32,7 +31,7 @@ router.get('/', async (req, res) => {
          LIMIT 20`
       ),
       dbAll(
-        `SELECT u.name, u.total_earnings, u.subscription_plan
+        `SELECT u.name, u.total_earnings
          FROM users u
          WHERE u.is_admin = 0 AND u.leaderboard_opt_in = 1
          ORDER BY u.total_earnings DESC

@@ -27,8 +27,8 @@ router.get('/', authenticateToken, async (req: AuthRequest, res) => {
   try {
     // Gather user context
     const [user, recentTx, favorites, allOffers] = await Promise.all([
-      dbGet<{ name: string; total_earnings: number; subscription_plan: string }>(
-        'SELECT name, total_earnings, subscription_plan FROM users WHERE id = ?', [userId]
+      dbGet<{ name: string; total_earnings: number }>(
+        'SELECT name, total_earnings FROM users WHERE id = ?', [userId]
       ),
       dbAll<{ merchant_name: string; amount: number; category: string }>(
         `SELECT m.name as merchant_name, ct.amount, m.category
@@ -53,7 +53,6 @@ router.get('/', authenticateToken, async (req: AuthRequest, res) => {
 
     const userContext = {
       totalEarnings: user?.total_earnings ?? 0,
-      plan: user?.subscription_plan ?? 'free',
       recentCategories: [...new Set(recentTx.map((t) => t.category))],
       favoriteCategories: [...new Set(favorites.map((f) => f.category))],
       recentMerchants: recentTx.map((t) => t.merchant_name),
@@ -63,7 +62,6 @@ router.get('/', authenticateToken, async (req: AuthRequest, res) => {
 
 User profile:
 - Total earnings: $${userContext.totalEarnings.toFixed(2)}
-- Plan: ${userContext.plan}
 - Recent categories: ${userContext.recentCategories.join(', ') || 'none yet'}
 - Favorite categories: ${userContext.favoriteCategories.join(', ') || 'none yet'}
 - Recent merchants: ${userContext.recentMerchants.join(', ') || 'none yet'}
