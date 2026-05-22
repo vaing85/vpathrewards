@@ -215,6 +215,64 @@ const emailTemplates = {
     `
   }),
 
+  passwordReset: (name: string, resetLink: string) => ({
+    subject: 'Reset your VPathRewards password',
+    html: `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <meta charset="utf-8">
+          <style>
+            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+            .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+            .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+            .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }
+            .button { display: inline-block; padding: 12px 30px; background: #667eea; color: white; text-decoration: none; border-radius: 5px; margin: 20px 0; font-weight: bold; }
+            .link-fallback { word-break: break-all; color: #667eea; font-size: 12px; }
+            .footer { text-align: center; margin-top: 30px; color: #666; font-size: 12px; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="header">
+              <h1>Reset your password</h1>
+            </div>
+            <div class="content">
+              <h2>Hi ${name},</h2>
+              <p>We received a request to reset the password on your VPathRewards account. Click the button below to choose a new password.</p>
+              <p style="text-align: center;">
+                <a href="${resetLink}" class="button">Reset Password</a>
+              </p>
+              <p>This link will expire in <strong>1 hour</strong>. If you didn't request a password reset, you can safely ignore this email — your password won't change.</p>
+              <hr style="border: none; border-top: 1px solid #ddd; margin: 24px 0;">
+              <p style="font-size: 12px; color: #666;">If the button above doesn't work, copy and paste this link into your browser:</p>
+              <p class="link-fallback">${resetLink}</p>
+            </div>
+            <div class="footer">
+              <p>© ${new Date().getFullYear()} VPathRewards. All rights reserved.</p>
+              <p>You're receiving this email because a password reset was requested for your account.</p>
+            </div>
+          </div>
+        </body>
+      </html>
+    `,
+    text: `
+      Reset your VPathRewards password
+
+      Hi ${name},
+
+      We received a request to reset the password on your VPathRewards account.
+      Click the link below to choose a new password:
+
+      ${resetLink}
+
+      This link will expire in 1 hour. If you didn't request a password reset,
+      you can safely ignore this email — your password won't change.
+
+      © ${new Date().getFullYear()} VPathRewards. All rights reserved.
+    `
+  }),
+
   newOfferAlert: (name: string, offerTitle: string, merchantName: string, cashbackRate: number, offerId: number) => ({
     subject: `🎉 New Offer: ${cashbackRate}% Cashback at ${merchantName}!`,
     html: `
@@ -402,7 +460,7 @@ const emailTemplates = {
 // Send email function
 export const sendEmail = async (
   to: string,
-  template: 'welcome' | 'cashbackConfirmation' | 'withdrawalStatus' | 'newOfferAlert',
+  template: 'welcome' | 'cashbackConfirmation' | 'withdrawalStatus' | 'newOfferAlert' | 'passwordReset',
   data: any
 ): Promise<boolean> => {
   try {
@@ -443,6 +501,9 @@ export const sendEmail = async (
           data.cashbackRate,
           data.offerId
         );
+        break;
+      case 'passwordReset':
+        emailContent = emailTemplates.passwordReset(data.name, data.resetLink);
         break;
       default:
         throw new Error('Invalid email template');
