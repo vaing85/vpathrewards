@@ -10,6 +10,7 @@
 
 const CJ_COMMISSIONS_ENDPOINT = 'https://commissions.api.cj.com/query';
 const CJ_ADVERTISER_LOOKUP_ENDPOINT = 'https://advertiser-lookup.api.cj.com/query';
+const CJ_LINK_SEARCH_ENDPOINT = 'https://link-search.api.cj.com/query';
 
 export interface CjCommissionRecord {
   commissionId: string;
@@ -208,4 +209,84 @@ export function extractMaxCommissionRate(actions: unknown): number | null {
 
   walk(actions);
   return max;
+}
+
+export interface CjLinkRecord {
+  advertiserId: string;
+  linkId: string | null;
+  linkName: string | null;
+  linkType: string | null;
+  promotionType: string | null;
+  clickUrl: string | null;
+  destination: string | null;
+}
+
+interface CjLinkSearchResponse {
+  count: number;
+  payloadComplete: boolean;
+  links: CjLinkRecord[];
+}
+
+/**
+ * Fetch CJ deep links for one or more advertisers. Returns a flat list of all
+ * link records — multiple per advertiser is normal (banners, text links, etc).
+ * The caller is responsible for picking the "best" link per advertiser; see
+ * pickBestCjLink() below.
+ */
+export async function fetchCjLinks(advertiserIds: string[]): Promise<CjLinkSearchResponse> {
+  const publisherId = process.env.CJ_PUBLISHER_ID;
+  if (!publisherId) throw new Error('CJ_PUBLISHER_ID not set');
+  if (advertiserIds.length === 0) return { count: 0, payloadComplete: true, links: [] };
+
+  // CJ accepts the publisher's website id as `websiteId`. For accounts with a
+  // single property the publisher id doubles as the website id; multi-site
+  // publishers will need to override this via env.
+  const websiteId = process.env.CJ_WEBSITE_ID || publisherId;
+  const idsList = advertiserIds.map(id => `"${id}"`).join(',');
+
+  const query = `
+    {
+      linkSearch(
+        requestId: "${publisherId}"
+        websiteId: "${websiteId}"
+        advertiserIds: [${idsList}]
+      ) {
+        count
+        payloadComplete
+        links {
+          advertiserId
+          linkId
+          linkName
+          linkType
+          promotionType
+          clickUrl
+          destination
+        }
+      }
+    }
+  `;
+
+  const data = await cjQuery<{ linkSearch: CjLinkSearchResponse }>(CJ_LINK_SEARCH_ENDPOINT, query);
+  return data.linkSearch;
+}
+
+/**
+ * Pick the most appropriate CJ link for a given advertiser. Prefers:
+ *   1. Promotion type "automatic" (deep link to advertiser homepage)
+ *   2. Link type "Text Link" (cleanest URL, no banner image)
+ *   3. Anything with a non-null clickUrl
+ *
+ * Returns null if no usable link found.
+ */
+export function pickBestCjLink(links: CjLinkRecord[]): CjLinkRecord | null {
+  const usable = links.filter(l => l.clickUrl);
+  if (usable.length === 0) return null;
+
+  const automatic = usable.find(l => (l.promotionType || '').toLowerCase().includes('automatic'));
+  if (automatic) return automatic;
+
+  const textLink = usable.find(l => (l.linkType || '').toLowerCase().includes('text'));
+  if (textLink) return textLink;
+
+  return usable[0];
 }

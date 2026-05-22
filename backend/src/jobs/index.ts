@@ -19,6 +19,7 @@ import trackingProcessorJob from './trackingProcessor.job';
 import linkCheckerJob from './linkChecker.job';
 import cjSyncJob from './cjSync.job';
 import cjAdvertiserSyncJob from './cjAdvertiserSync.job';
+import cjLinkRefreshJob from './cjLinkRefresh.job';
 import cron from 'node-cron';
 import type { JobDefinition, JobResult } from './types';
 
@@ -29,6 +30,7 @@ export { default as trackingProcessorJob } from './trackingProcessor.job';
 export { default as linkCheckerJob } from './linkChecker.job';
 export { default as cjSyncJob } from './cjSync.job';
 export { default as cjAdvertiserSyncJob } from './cjAdvertiserSync.job';
+export { default as cjLinkRefreshJob } from './cjLinkRefresh.job';
 
 export const JOB_NAMES = {
   AFFILIATE_SYNC: affiliateSyncJob.name,
@@ -37,6 +39,7 @@ export const JOB_NAMES = {
   LINK_CHECKER: linkCheckerJob.name,
   CJ_SYNC: cjSyncJob.name,
   CJ_ADVERTISER_SYNC: cjAdvertiserSyncJob.name,
+  CJ_LINK_REFRESH: cjLinkRefreshJob.name,
 } as const;
 
 const JOB_REGISTRY: Record<string, JobDefinition<unknown, unknown>> = {
@@ -46,6 +49,7 @@ const JOB_REGISTRY: Record<string, JobDefinition<unknown, unknown>> = {
   [linkCheckerJob.name]: linkCheckerJob as JobDefinition<unknown, unknown>,
   [cjSyncJob.name]: cjSyncJob as JobDefinition<unknown, unknown>,
   [cjAdvertiserSyncJob.name]: cjAdvertiserSyncJob as JobDefinition<unknown, unknown>,
+  [cjLinkRefreshJob.name]: cjLinkRefreshJob as JobDefinition<unknown, unknown>,
 };
 
 /**
@@ -78,6 +82,10 @@ export function startJobs() {
   // CJ advertiser sync — daily at 3:45am, after commissions sync. Less
   // frequent change rate than commissions; daily is plenty.
   cron.schedule('45 3 * * *', () => runJob(cjAdvertiserSyncJob.name));
+
+  // CJ link refresh — daily at 4:00am, after advertiser sync so newly
+  // discovered merchants get their links populated on the same day.
+  cron.schedule('0 4 * * *', () => runJob(cjLinkRefreshJob.name));
 
   console.log('[jobs] Cron jobs started');
 }
