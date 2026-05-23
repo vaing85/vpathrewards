@@ -1,17 +1,22 @@
 /**
  * CJ advertiser sync job.
  *
- * Pulls the publisher's joined CJ advertisers and reconciles them with the
- * local `merchants` table:
- *   - existing merchant (matched by cj_advertiser_id) → refresh CJ fields
- *   - new advertiser → INSERT with cj_auto_imported = 1 so an admin can
- *     review and curate before exposing to users
+ * Pulls the publisher's ACTIVE advertiser contracts and **enriches** existing
+ * merchants that an admin has already linked to a CJ advertiser. CJ's programs
+ * API does NOT expose advertiser display names, so auto-creating new merchant
+ * rows by name isn't possible — admins must:
+ *   1. Look up the CJ advertiser ID in the CJ Member portal
+ *   2. Set merchants.cj_advertiser_id on the matching row
+ *   3. Let this job populate cj_max_commission_rate + cj_commission_terms
  *
- * The user-facing `offers.cashback_rate` is intentionally NOT touched here —
- * what we earn from CJ (cj_max_commission_rate) is gross; the split with
- * users is an admin policy call, not an automatic mapping.
+ * Unmatched advertiser IDs returned by CJ are surfaced in the result so an
+ * admin can see at a glance how many advertisers haven't been linked yet.
+ *
+ * The user-facing offers.cashback_rate is intentionally not modified —
+ * cj_max_commission_rate is the gross rate CJ pays us; the user split is an
+ * admin policy call.
  */
-import { dbAll, dbGet, dbRun } from '../database';
+import { dbAll, dbRun } from '../database';
 import {
   fetchJoinedAdvertisers,
   isCjConfigured,
@@ -27,8 +32,8 @@ export interface CjAdvertiserSyncPayload {
 
 export interface CjAdvertiserSyncResult {
   fetched: number;
-  inserted: number;
-  updated: number;
+  enriched: number;
+  unmatched: string[]; // advertiser IDs CJ returned that aren't on any merchant
   errors: string[];
 }
 
@@ -38,13 +43,13 @@ const cjAdvertiserSyncJob: JobDefinition<CjAdvertiserSyncPayload, CjAdvertiserSy
   async run(payload, _ctx?: JobContext): Promise<JobResult<CjAdvertiserSyncResult>> {
     const errors: string[] = [];
     let fetched = 0;
-    let inserted = 0;
-    let updated = 0;
+    let enriched = 0;
+    const unmatched: string[] = [];
 
     if (!isCjConfigured()) {
       return {
         ok: true,
-        data: { fetched: 0, inserted: 0, updated: 0, errors: ['CJ not configured — skipping'] },
+        data: { fetched: 0, enriched: 0, unmatched: [], errors: ['CJ not configured — skipping'] },
         meta: { skipped: 1 },
       };
     }
@@ -56,20 +61,24 @@ const cjAdvertiserSyncJob: JobDefinition<CjAdvertiserSyncPayload, CjAdvertiserSy
 
       // Pre-load existing CJ-linked merchants in one query.
       const advertiserIds = response.advertisers.map(a => a.advertiserId).filter(Boolean);
-      const existingByAdvertiser = new Map<string, { id: number }>();
+      const existingByAdvertiser = new Map<string, number>();
       if (advertiserIds.length > 0) {
         const rows = await dbAll<{ id: number; cj_advertiser_id: string }>(
           `SELECT id, cj_advertiser_id FROM merchants WHERE cj_advertiser_id IN (${advertiserIds.map(() => '?').join(',')})`,
           advertiserIds
         );
-        for (const r of rows) existingByAdvertiser.set(r.cj_advertiser_id, { id: r.id });
+        for (const r of rows) existingByAdvertiser.set(r.cj_advertiser_id, r.id);
       }
 
       for (const adv of response.advertisers) {
+        const merchantId = existingByAdvertiser.get(adv.advertiserId);
+        if (merchantId == null) {
+          unmatched.push(adv.advertiserId);
+          continue;
+        }
         try {
-          const result = await upsertAdvertiser(adv, existingByAdvertiser.get(adv.advertiserId)?.id ?? null, dryRun);
-          if (result === 'inserted') inserted++;
-          else if (result === 'updated') updated++;
+          if (!dryRun) await enrichMerchant(adv, merchantId);
+          enriched++;
         } catch (err) {
           errors.push(`advertiser ${adv.advertiserId}: ${err instanceof Error ? err.message : String(err)}`);
         }
@@ -77,8 +86,14 @@ const cjAdvertiserSyncJob: JobDefinition<CjAdvertiserSyncPayload, CjAdvertiserSy
 
       return {
         ok: true,
-        data: { fetched, inserted, updated, errors },
-        meta: { fetched, inserted, updated, errorCount: errors.length, dryRun: dryRun ? 1 : 0 },
+        data: { fetched, enriched, unmatched, errors },
+        meta: {
+          fetched,
+          enriched,
+          unmatchedCount: unmatched.length,
+          errorCount: errors.length,
+          dryRun: dryRun ? 1 : 0,
+        },
       };
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
@@ -86,78 +101,24 @@ const cjAdvertiserSyncJob: JobDefinition<CjAdvertiserSyncPayload, CjAdvertiserSy
       return {
         ok: false,
         error: message,
-        data: { fetched, inserted, updated, errors },
-        meta: { fetched, inserted, updated },
+        data: { fetched, enriched, unmatched, errors },
+        meta: { fetched, enriched, unmatchedCount: unmatched.length },
       };
     }
   },
 };
 
-async function upsertAdvertiser(
-  adv: CjAdvertiserRecord,
-  existingMerchantId: number | null,
-  dryRun: boolean
-): Promise<'inserted' | 'updated' | 'skipped'> {
-  const maxRate = extractMaxCommissionRate(adv.actions);
-  const termsJson = JSON.stringify(adv.actions ?? null);
-  const category = adv.primaryCategory?.parent ?? null;
-
-  if (existingMerchantId != null) {
-    if (dryRun) return 'updated';
-    await dbRun(
-      `UPDATE merchants SET
-         cj_max_commission_rate = ?,
-         cj_commission_terms = ?,
-         cj_synced_at = CURRENT_TIMESTAMP,
-         website_url = COALESCE(website_url, ?)
-       WHERE id = ?`,
-      [maxRate, termsJson, adv.programUrl, existingMerchantId]
-    );
-    return 'updated';
-  }
-
-  // Auto-imported merchants need a name; skip if CJ didn't return one.
-  if (!adv.advertiserName) return 'skipped';
-
-  // Guard against accidental duplicate by name (could be a user-created merchant
-  // that hasn't been linked yet). Link instead of inserting a duplicate.
-  const byName = await dbGet<{ id: number }>(
-    'SELECT id FROM merchants WHERE LOWER(name) = LOWER(?) AND cj_advertiser_id IS NULL',
-    [adv.advertiserName]
-  );
-  if (byName) {
-    if (dryRun) return 'updated';
-    await dbRun(
-      `UPDATE merchants SET
-         cj_advertiser_id = ?,
-         cj_max_commission_rate = ?,
-         cj_commission_terms = ?,
-         cj_synced_at = CURRENT_TIMESTAMP,
-         website_url = COALESCE(website_url, ?)
-       WHERE id = ?`,
-      [adv.advertiserId, maxRate, termsJson, adv.programUrl, byName.id]
-    );
-    return 'updated';
-  }
-
-  if (dryRun) return 'inserted';
+async function enrichMerchant(adv: CjAdvertiserRecord, merchantId: number): Promise<void> {
+  const maxRate = extractMaxCommissionRate(adv.programTerms);
+  const termsJson = JSON.stringify(adv.programTerms ?? null);
   await dbRun(
-    `INSERT INTO merchants
-       (name, description, website_url, category,
-        cj_advertiser_id, cj_max_commission_rate, cj_commission_terms,
-        cj_auto_imported, cj_synced_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, 1, CURRENT_TIMESTAMP)`,
-    [
-      adv.advertiserName,
-      null,
-      adv.programUrl,
-      category,
-      adv.advertiserId,
-      maxRate,
-      termsJson,
-    ]
+    `UPDATE merchants SET
+       cj_max_commission_rate = ?,
+       cj_commission_terms = ?,
+       cj_synced_at = CURRENT_TIMESTAMP
+     WHERE id = ?`,
+    [maxRate, termsJson, merchantId]
   );
-  return 'inserted';
 }
 
 export default cjAdvertiserSyncJob;

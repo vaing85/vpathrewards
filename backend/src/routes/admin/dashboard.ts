@@ -269,19 +269,21 @@ router.get('/overview', authenticateAdmin, async (_req, res) => {
     const [
       cjCommissionsCount,
       cjMerchantsLinked,
-      cjMerchantsPendingReview,
-      cjMerchantsMissingLink,
+      cjUnmatchedCount,
       cjCommissionsSyncedAt,
       cjAdvertisersSyncedAt,
-      cjLinksSyncedAt,
     ] = await Promise.all([
       dbGet(`SELECT COUNT(*) as count FROM cj_commissions`) as Promise<{ count: number }>,
       dbGet(`SELECT COUNT(*) as count FROM merchants WHERE cj_advertiser_id IS NOT NULL`) as Promise<{ count: number }>,
-      dbGet(`SELECT COUNT(*) as count FROM merchants WHERE cj_auto_imported = 1`) as Promise<{ count: number }>,
-      dbGet(`SELECT COUNT(*) as count FROM merchants WHERE cj_advertiser_id IS NOT NULL AND cj_recommended_link IS NULL`) as Promise<{ count: number }>,
+      // Merchants linked to CJ that haven't been enriched yet — they have a
+      // cj_advertiser_id but cj_max_commission_rate is still null, which
+      // suggests the advertiser sync hasn't found them or hasn't run yet.
+      dbGet(
+        `SELECT COUNT(*) as count FROM merchants
+         WHERE cj_advertiser_id IS NOT NULL AND cj_max_commission_rate IS NULL`
+      ) as Promise<{ count: number }>,
       dbGet(`SELECT MAX(created_at) as t FROM cj_commissions`) as Promise<{ t: string | null }>,
       dbGet(`SELECT MAX(cj_synced_at) as t FROM merchants`) as Promise<{ t: string | null }>,
-      dbGet(`SELECT MAX(cj_links_synced_at) as t FROM merchants`) as Promise<{ t: string | null }>,
     ]);
 
     const pctChange = (current: number, prior: number): number | null => {
@@ -326,12 +328,10 @@ router.get('/overview', authenticateAdmin, async (_req, res) => {
       cj: {
         commissions_imported: cjCommissionsCount.count,
         merchants_linked: cjMerchantsLinked.count,
-        merchants_pending_review: cjMerchantsPendingReview.count,
-        merchants_missing_link: cjMerchantsMissingLink.count,
+        merchants_unenriched: cjUnmatchedCount.count,
         last_synced: {
           commissions: cjCommissionsSyncedAt.t,
           advertisers: cjAdvertisersSyncedAt.t,
-          links: cjLinksSyncedAt.t,
         },
       },
       recent_activity: recentActivity,

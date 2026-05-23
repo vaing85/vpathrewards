@@ -334,13 +334,6 @@ export const initDatabase = async () => {
     // the merchant is shown to users.
     await addCol('merchants', 'cj_auto_imported', 'INTEGER DEFAULT 0');
     await addCol('merchants', 'cj_synced_at', 'DATETIME');
-    // CJ Link Search results — the best deep link CJ recommends for this
-    // advertiser, refreshed nightly. Stored at the merchant level (not on
-    // each offer) so admins opt-in per offer by copying it into the offer's
-    // affiliate_link. affiliate_link is never overwritten automatically.
-    await addCol('merchants', 'cj_recommended_link', 'TEXT');
-    await addCol('merchants', 'cj_link_raw', 'TEXT');
-    await addCol('merchants', 'cj_links_synced_at', 'DATETIME');
 
     // Raw CJ commission records, fetched by the cjSync job. Kept in its own
     // table (rather than written straight to cashback_transactions) because

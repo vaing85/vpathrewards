@@ -79,13 +79,14 @@ export function startJobs() {
   // a single run is harmless.
   cron.schedule('30 3 * * *', () => runJob(cjSyncJob.name));
 
-  // CJ advertiser sync — daily at 3:45am, after commissions sync. Less
-  // frequent change rate than commissions; daily is plenty.
+  // CJ advertiser sync — daily at 3:45am, enriches existing merchants that
+  // an admin has linked via cj_advertiser_id with the latest commission terms.
   cron.schedule('45 3 * * *', () => runJob(cjAdvertiserSyncJob.name));
 
-  // CJ link refresh — daily at 4:00am, after advertiser sync so newly
-  // discovered merchants get their links populated on the same day.
-  cron.schedule('0 4 * * *', () => runJob(cjLinkRefreshJob.name));
+  // cjLinkRefreshJob is registered but not scheduled — it's dormant because
+  // CJ's Link Search GraphQL endpoint doesn't exist (only legacy REST with
+  // separate auth). The job no-ops when called. Left registered so manual
+  // calls return a predictable result instead of "unknown job".
 
   console.log('[jobs] Cron jobs started');
 }

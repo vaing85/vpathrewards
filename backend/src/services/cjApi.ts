@@ -9,8 +9,11 @@
  */
 
 const CJ_COMMISSIONS_ENDPOINT = 'https://commissions.api.cj.com/query';
-const CJ_ADVERTISER_LOOKUP_ENDPOINT = 'https://advertiser-lookup.api.cj.com/query';
-const CJ_LINK_SEARCH_ENDPOINT = 'https://link-search.api.cj.com/query';
+// Advertiser relationships and commission terms live on the "programs" service.
+// Discovered via schema introspection — CJ's docs are inconsistent about the
+// hostname. The query field exposed here is `publisher.contracts`, which
+// returns each advertiser relationship (status, commission terms, etc.).
+const CJ_PROGRAMS_ENDPOINT = 'https://programs.api.cj.com/query';
 
 export interface CjCommissionRecord {
   commissionId: string;
@@ -31,20 +34,28 @@ interface CjCommissionResponse {
   records: CjCommissionRecord[];
 }
 
+/**
+ * One advertiser relationship ("contract" in CJ's vocabulary).
+ *
+ * Note: CJ's programs API does NOT expose the advertiser's display name —
+ * only the advertiser ID. To populate a merchant's name, look it up in the
+ * CJ Member portal or the products API. This means cjAdvertiserSync can only
+ * enrich existing merchants (matched by cj_advertiser_id), not auto-create
+ * them by name.
+ */
 export interface CjAdvertiserRecord {
   advertiserId: string;
-  advertiserName: string | null;
-  programUrl: string | null;
-  networkRank: number | null;
-  relationshipStatus: string | null;
-  primaryCategory: { parent: string | null; child: string | null } | null;
-  // Raw passthrough so the job can store full terms as JSON without losing data.
-  actions: unknown;
+  status: string | null; // ACTIVE | CANCELLED | EXPIRED | PENDING_OFFER | PENDING_REVERSION
+  startTime: string | null;
+  endTime: string | null;
+  // Raw program terms passthrough — actionTerms[].commissions[].rate.value
+  // is the structured form of the commission rate.
+  programTerms: unknown;
 }
 
 interface CjAdvertiserResponse {
   count: number;
-  payloadComplete: boolean;
+  totalCount: number;
   advertisers: CjAdvertiserRecord[];
 }
 
@@ -124,45 +135,43 @@ export async function fetchPublisherCommissions(
 }
 
 /**
- * Fetch advertisers the publisher has joined (i.e. has an active relationship
- * with). Returns the raw `actions` payload so the caller can store full
- * commission terms as JSON.
- *
- * Note: CJ's GraphQL schema for advertiser lookup has gone through revisions
- * over the years. If field names differ on your account, adjust the query
- * below rather than the response shape — extractMaxCommissionRate() walks
- * the raw `actions` defensively so it tolerates minor schema variation.
+ * Fetch the publisher's advertiser contracts (relationships). By default
+ * filters client-side for status === "ACTIVE" so callers only see live
+ * relationships. Pass { allStatuses: true } to see everything (cancelled,
+ * expired, etc.) — useful for cleaning up stale data.
  */
-export async function fetchJoinedAdvertisers(): Promise<CjAdvertiserResponse> {
+export async function fetchJoinedAdvertisers(
+  opts: { allStatuses?: boolean; limit?: number } = {}
+): Promise<CjAdvertiserResponse> {
   const publisherId = process.env.CJ_PUBLISHER_ID;
   if (!publisherId) throw new Error('CJ_PUBLISHER_ID not set');
 
+  // CJ caps `limit` at 100. For accounts with more than 100 active contracts
+  // we'd need to paginate via `offset`; leaving that for a follow-up if needed.
+  const limit = Math.min(opts.limit ?? 100, 100);
+
   const query = `
     {
-      advertiserLookup(
-        requestId: "${publisherId}"
-        advertiserIds: "joined"
-      ) {
-        count
-        payloadComplete
-        advertisers {
-          advertiserId
-          advertiserName
-          programUrl
-          networkRank
-          relationshipStatus
-          primaryCategory {
-            parent
-            child
-          }
-          actions {
-            id
-            name
-            type
-            commissions {
-              itemList {
-                rate
-                type
+      publisher {
+        contracts(publisherId: "${publisherId}", limit: ${limit}) {
+          totalCount
+          count
+          resultList {
+            startTime
+            endTime
+            status
+            advertiserId
+            programTerms {
+              id
+              name
+              isDefault
+              actionTerms {
+                id
+                actionTracker { id name type }
+                commissions {
+                  rank
+                  rate { type value currency }
+                }
               }
             }
           }
@@ -171,21 +180,63 @@ export async function fetchJoinedAdvertisers(): Promise<CjAdvertiserResponse> {
     }
   `;
 
-  const data = await cjQuery<{ advertiserLookup: CjAdvertiserResponse }>(CJ_ADVERTISER_LOOKUP_ENDPOINT, query);
-  return data.advertiserLookup;
+  const data = await cjQuery<{
+    publisher: {
+      contracts: {
+        totalCount: number;
+        count: number;
+        resultList: Array<{
+          startTime: string | null;
+          endTime: string | null;
+          status: string;
+          advertiserId: string;
+          programTerms: unknown;
+        }>;
+      };
+    };
+  }>(CJ_PROGRAMS_ENDPOINT, query);
+
+  const all = data.publisher.contracts.resultList.map<CjAdvertiserRecord>((c) => ({
+    advertiserId: c.advertiserId,
+    status: c.status,
+    startTime: c.startTime,
+    endTime: c.endTime,
+    programTerms: c.programTerms,
+  }));
+
+  const filtered = opts.allStatuses ? all : all.filter((a) => a.status === 'ACTIVE');
+
+  return {
+    totalCount: data.publisher.contracts.totalCount,
+    count: filtered.length,
+    advertisers: filtered,
+  };
 }
 
 /**
- * Walk the raw CJ `actions` payload and return the maximum commission rate
- * (as a percentage, e.g. 8.5). Defensive against schema drift — returns null
- * if no numeric rate is found rather than throwing.
+ * Walk the raw programTerms payload and return the maximum percentage
+ * commission rate (e.g. 8.5 for 8.5%). Defensive against schema drift —
+ * returns null if no percentage rate is found rather than throwing.
  *
- * CJ rates can be percentages ("8.50%") or flat amounts ("$5.00"). Only
- * percentage rates are returned; flat amounts can't be expressed as a single
- * cashback %.
+ * Looks for nodes shaped like CommissionRate: { type, value, currency? }
+ * where `type` is the CJ enum (e.g. PERCENTAGE, FLAT) and `value` is a
+ * BigDecimal serialized as string or number. Flat-rate commissions can't
+ * be expressed as a single cashback % so they're skipped.
  */
-export function extractMaxCommissionRate(actions: unknown): number | null {
+export function extractMaxCommissionRate(programTerms: unknown): number | null {
   let max: number | null = null;
+
+  const isPercentType = (t: unknown): boolean =>
+    typeof t === 'string' && /percent|%/i.test(t);
+
+  const toNumber = (v: unknown): number | null => {
+    if (typeof v === 'number') return Number.isFinite(v) ? v : null;
+    if (typeof v === 'string') {
+      const n = parseFloat(v.replace('%', ''));
+      return Number.isFinite(n) ? n : null;
+    }
+    return null;
+  };
 
   const walk = (node: unknown) => {
     if (node == null) return;
@@ -195,98 +246,32 @@ export function extractMaxCommissionRate(actions: unknown): number | null {
     }
     if (typeof node === 'object') {
       const obj = node as Record<string, unknown>;
-      const rate = obj.rate;
-      const type = obj.type;
-      if (typeof rate === 'string' && (type === 'percentage' || type === 'PERCENTAGE' || type === '%')) {
-        const num = parseFloat(rate.replace('%', ''));
-        if (!Number.isNaN(num) && (max == null || num > max)) max = num;
-      } else if (typeof rate === 'number' && (type === 'percentage' || type === 'PERCENTAGE' || type === '%')) {
-        if (max == null || rate > max) max = rate;
+      // CommissionRate shape: { type, value, currency? }
+      if ('type' in obj && 'value' in obj && isPercentType(obj.type)) {
+        const num = toNumber(obj.value);
+        if (num != null && (max == null || num > max)) max = num;
       }
       for (const v of Object.values(obj)) walk(v);
     }
   };
 
-  walk(actions);
+  walk(programTerms);
   return max;
 }
 
-export interface CjLinkRecord {
-  advertiserId: string;
-  linkId: string | null;
-  linkName: string | null;
-  linkType: string | null;
-  promotionType: string | null;
-  clickUrl: string | null;
-  destination: string | null;
-}
-
-interface CjLinkSearchResponse {
-  count: number;
-  payloadComplete: boolean;
-  links: CjLinkRecord[];
-}
-
-/**
- * Fetch CJ deep links for one or more advertisers. Returns a flat list of all
- * link records — multiple per advertiser is normal (banners, text links, etc).
- * The caller is responsible for picking the "best" link per advertiser; see
- * pickBestCjLink() below.
- */
-export async function fetchCjLinks(advertiserIds: string[]): Promise<CjLinkSearchResponse> {
-  const publisherId = process.env.CJ_PUBLISHER_ID;
-  if (!publisherId) throw new Error('CJ_PUBLISHER_ID not set');
-  if (advertiserIds.length === 0) return { count: 0, payloadComplete: true, links: [] };
-
-  // CJ accepts the publisher's website id as `websiteId`. For accounts with a
-  // single property the publisher id doubles as the website id; multi-site
-  // publishers will need to override this via env.
-  const websiteId = process.env.CJ_WEBSITE_ID || publisherId;
-  const idsList = advertiserIds.map(id => `"${id}"`).join(',');
-
-  const query = `
-    {
-      linkSearch(
-        requestId: "${publisherId}"
-        websiteId: "${websiteId}"
-        advertiserIds: [${idsList}]
-      ) {
-        count
-        payloadComplete
-        links {
-          advertiserId
-          linkId
-          linkName
-          linkType
-          promotionType
-          clickUrl
-          destination
-        }
-      }
-    }
-  `;
-
-  const data = await cjQuery<{ linkSearch: CjLinkSearchResponse }>(CJ_LINK_SEARCH_ENDPOINT, query);
-  return data.linkSearch;
-}
-
-/**
- * Pick the most appropriate CJ link for a given advertiser. Prefers:
- *   1. Promotion type "automatic" (deep link to advertiser homepage)
- *   2. Link type "Text Link" (cleanest URL, no banner image)
- *   3. Anything with a non-null clickUrl
- *
- * Returns null if no usable link found.
- */
-export function pickBestCjLink(links: CjLinkRecord[]): CjLinkRecord | null {
-  const usable = links.filter(l => l.clickUrl);
-  if (usable.length === 0) return null;
-
-  const automatic = usable.find(l => (l.promotionType || '').toLowerCase().includes('automatic'));
-  if (automatic) return automatic;
-
-  const textLink = usable.find(l => (l.linkType || '').toLowerCase().includes('text'));
-  if (textLink) return textLink;
-
-  return usable[0];
-}
+// ─────────────────────────────────────────────────────────────────────────────
+// Link Search — NOT YET WIRED.
+//
+// CJ no longer exposes a GraphQL Link Search endpoint at any of the obvious
+// hostnames (link-search.api.cj.com, links.api.cj.com — both 404). The
+// legacy REST link-search API at https://link-search.api.cj.com/v2/link-search
+// is still available but uses developer-key auth, not the Personal Access
+// Token, so it's a separate integration path.
+//
+// For now, link-refresh is a no-op. To revive it, either:
+//   1. Add CJ_DEVELOPER_KEY env var and implement REST against the v2
+//      link-search endpoint, OR
+//   2. Pull click URLs out of products query on ads.api.cj.com (each product
+//      includes a clickUrl), which works with the PAT but is wasteful.
+// ─────────────────────────────────────────────────────────────────────────────
+export const cjLinkSearchIsAvailable = false;

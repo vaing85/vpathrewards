@@ -37,12 +37,10 @@ interface Growth {
 interface CjIntegration {
   commissions_imported: number;
   merchants_linked: number;
-  merchants_pending_review: number;
-  merchants_missing_link: number;
+  merchants_unenriched: number;
   last_synced: {
     commissions: string | null;
     advertisers: string | null;
-    links: string | null;
   };
 }
 
@@ -287,32 +285,35 @@ const AdminDashboard = () => {
                 CJ integration
               </h2>
               <span className="text-xs text-gray-500">
-                Daily auto-sync · Commissions, advertisers, links
+                Daily auto-sync · Commissions + advertiser terms
               </span>
             </div>
 
-            {cj.merchants_pending_review > 0 && (
-              <div className="mb-4 flex items-center justify-between gap-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
-                <div className="flex items-center gap-2 text-sm text-amber-800">
-                  <span className="text-lg">🔍</span>
-                  {cj.merchants_pending_review} auto-imported merchant
-                  {cj.merchants_pending_review === 1 ? '' : 's'} awaiting review
-                </div>
-                <Link
-                  to="/admin/merchants"
-                  className="text-amber-700 font-semibold text-sm hover:underline whitespace-nowrap"
-                >
-                  Review →
-                </Link>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <CjStat
+                label="Commissions imported"
+                value={cj.commissions_imported.toLocaleString()}
+                relTime={cj.last_synced.commissions}
+              />
+              <CjStat
+                label="Merchants linked to CJ"
+                value={cj.merchants_linked.toLocaleString()}
+                relTime={cj.last_synced.advertisers}
+              />
+              <CjStat
+                label="Linked but not enriched"
+                value={cj.merchants_unenriched.toLocaleString()}
+                relTime={cj.last_synced.advertisers}
+                highlighted={cj.merchants_unenriched > 0}
+              />
+            </div>
+
+            {cj.merchants_linked === 0 && (
+              <div className="mt-4 text-xs text-gray-500">
+                Set <code className="px-1 py-0.5 bg-gray-100 rounded">merchants.cj_advertiser_id</code> on a merchant to enable CJ enrichment.
+                Find the ID in the CJ Member portal.
               </div>
             )}
-
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-              <CjStat label="Commissions imported" value={cj.commissions_imported.toLocaleString()} relTime={cj.last_synced.commissions} />
-              <CjStat label="Merchants linked" value={cj.merchants_linked.toLocaleString()} relTime={cj.last_synced.advertisers} />
-              <CjStat label="Pending review" value={cj.merchants_pending_review.toLocaleString()} relTime={cj.last_synced.advertisers} highlighted={cj.merchants_pending_review > 0} />
-              <CjStat label="Missing CJ link" value={cj.merchants_missing_link.toLocaleString()} relTime={cj.last_synced.links} />
-            </div>
           </div>
         )}
 
