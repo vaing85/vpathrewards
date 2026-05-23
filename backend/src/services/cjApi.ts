@@ -259,6 +259,51 @@ export function extractMaxCommissionRate(programTerms: unknown): number | null {
   return max;
 }
 
+/**
+ * Walk the raw programTerms payload and return the maximum flat USD amount
+ * (e.g. 100 for $100/conversion). Returns null if no flat-amount commission
+ * is found.
+ *
+ * Looks for the same CommissionRate shape but matches FIXED / FIXED_PER_ORDER
+ * (or anything with "FIX" in the type and a positive value). Currency is
+ * assumed USD — if you support multi-currency you'd want to convert; for now
+ * CJ's USD bounty is the only thing surfaced.
+ */
+export function extractMaxFixedAmount(programTerms: unknown): number | null {
+  let max: number | null = null;
+
+  const isFixedType = (t: unknown): boolean =>
+    typeof t === 'string' && /fix/i.test(t);
+
+  const toNumber = (v: unknown): number | null => {
+    if (typeof v === 'number') return Number.isFinite(v) ? v : null;
+    if (typeof v === 'string') {
+      const n = parseFloat(v.replace(/[$,]/g, ''));
+      return Number.isFinite(n) ? n : null;
+    }
+    return null;
+  };
+
+  const walk = (node: unknown) => {
+    if (node == null) return;
+    if (Array.isArray(node)) {
+      for (const x of node) walk(x);
+      return;
+    }
+    if (typeof node === 'object') {
+      const obj = node as Record<string, unknown>;
+      if ('type' in obj && 'value' in obj && isFixedType(obj.type)) {
+        const num = toNumber(obj.value);
+        if (num != null && num > 0 && (max == null || num > max)) max = num;
+      }
+      for (const v of Object.values(obj)) walk(v);
+    }
+  };
+
+  walk(programTerms);
+  return max;
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Link Search — NOT YET WIRED.
 //

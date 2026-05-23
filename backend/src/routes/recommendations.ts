@@ -43,11 +43,12 @@ router.get('/', authenticateToken, async (req: AuthRequest, res) => {
          JOIN merchants m ON uf.merchant_id = m.id
          WHERE uf.user_id = ?`, [userId]
       ),
-      dbAll<{ id: number; merchant_id: number; title: string; cashback_rate: number; merchant_name: string; category: string }>(
-        `SELECT o.id, o.merchant_id, o.title, o.cashback_rate, m.name as merchant_name, m.category
+      dbAll<{ id: number; merchant_id: number; title: string; cashback_rate: number; cashback_fixed_usd: number | null; merchant_name: string; category: string }>(
+        `SELECT o.id, o.merchant_id, o.title, o.cashback_rate, o.cashback_fixed_usd,
+                m.name as merchant_name, m.category
          FROM offers o JOIN merchants m ON o.merchant_id = m.id
          WHERE o.is_active = 1
-         ORDER BY o.cashback_rate DESC LIMIT 40`
+         ORDER BY o.cashback_rate DESC, COALESCE(o.cashback_fixed_usd, 0) DESC LIMIT 40`
       ),
     ]);
 
@@ -100,10 +101,11 @@ Example: [{"offer_id": 3, "reason": "Matches your frequent electronics shopping.
     console.error('Recommendations error:', err);
     // Fallback: return top offers by cashback rate
     const fallback = await dbAll(
-      `SELECT o.id, o.merchant_id, o.title, o.cashback_rate, m.name as merchant_name, m.category
+      `SELECT o.id, o.merchant_id, o.title, o.cashback_rate, o.cashback_fixed_usd,
+              m.name as merchant_name, m.category
        FROM offers o JOIN merchants m ON o.merchant_id = m.id
        WHERE o.is_active = 1
-       ORDER BY o.cashback_rate DESC LIMIT 6`
+       ORDER BY GREATEST(o.cashback_rate, COALESCE(o.cashback_fixed_usd, 0)) DESC LIMIT 6`
     );
     res.json({ recommendations: fallback.map((o) => ({ ...o, reason: 'Top cashback rate available.' })), cached: false });
   }

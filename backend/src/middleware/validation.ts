@@ -144,6 +144,10 @@ export const validateOffer = [
   body('cashback_rate')
     .isFloat({ min: 0, max: 100 })
     .withMessage('Cashback rate must be between 0 and 100'),
+  body('cashback_fixed_usd')
+    .optional({ nullable: true })
+    .isFloat({ min: 0, max: 10000 })
+    .withMessage('cashback_fixed_usd must be a non-negative number under $10,000'),
   body('affiliate_link')
     .isURL()
     .withMessage('Affiliate link must be a valid URL'),

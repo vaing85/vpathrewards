@@ -5,6 +5,7 @@ import apiClient from '../api/client';
 import FavoriteButton from '../components/FavoriteButton';
 import ShareButton from '../components/ShareButton';
 import LazyImage from '../components/LazyImage';
+import { formatCashback } from '../utils/cashback';
 
 // Get or create session ID for tracking
 const getOrCreateSessionId = (): string => {
@@ -21,6 +22,7 @@ interface Offer {
   title: string;
   description?: string;
   cashback_rate: number;
+  cashback_fixed_usd?: number | null;
   merchant_name?: string;
   merchant_logo?: string;
   merchant_website?: string;
@@ -119,7 +121,7 @@ const OfferDetail = () => {
                 />
               </div>
               <div className="bg-primary-600 text-white px-6 py-4 rounded-lg text-center">
-                <div className="text-4xl font-bold">{offer.cashback_rate}%</div>
+                <div className="text-4xl font-bold">{formatCashback(offer)}</div>
                 <div className="text-sm">Cashback</div>
               </div>
             </div>

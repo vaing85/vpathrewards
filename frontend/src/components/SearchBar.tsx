@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import apiClient from '../api/client';
+import { formatCashback } from '../utils/cashback';
 
 interface SearchResult {
   merchants: any[];
@@ -158,7 +159,7 @@ const SearchBar = () => {
                           <div className="text-sm text-gray-500">{offer.title}</div>
                         </div>
                       </div>
-                      <div className="text-sm font-semibold text-primary-600">{offer.cashback_rate}%</div>
+                      <div className="text-sm font-semibold text-primary-600">{formatCashback(offer)}</div>
                     </div>
                   ))}
                 </div>

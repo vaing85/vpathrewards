@@ -187,7 +187,8 @@ router.get('/', authenticateAdmin, async (req, res) => {
         m.name as merchant_name,
         m.logo_url as merchant_logo,
         m.cj_advertiser_id as merchant_cj_advertiser_id,
-        m.cj_max_commission_rate as merchant_cj_max_commission_rate
+        m.cj_max_commission_rate as merchant_cj_max_commission_rate,
+        m.cj_max_fixed_usd as merchant_cj_max_fixed_usd
       FROM offers o
       JOIN merchants m ON o.merchant_id = m.id
       ORDER BY o.created_at DESC
@@ -234,10 +235,20 @@ router.get('/:id', authenticateAdmin, async (req, res) => {
 // Create offer
 router.post('/', authenticateAdmin, validateOffer, async (req: import('express').Request, res: import('express').Response) => {
   try {
-    const { merchant_id, title, description, cashback_rate, terms, affiliate_link, is_active } = req.body;
+    const { merchant_id, title, description, cashback_rate, cashback_fixed_usd, terms, affiliate_link, is_active } = req.body;
 
-    if (!merchant_id || !title || !cashback_rate || !affiliate_link) {
-      return res.status(400).json({ error: 'Merchant ID, title, cashback rate, and affiliate link are required' });
+    if (!merchant_id || !title || !affiliate_link) {
+      return res.status(400).json({ error: 'Merchant ID, title, and affiliate link are required' });
+    }
+    // At least one of cashback_rate (> 0) or cashback_fixed_usd (> 0) must be set,
+    // otherwise the offer is "free clicks" — let admins do that explicitly with 0/0
+    // but warn so it's not silent.
+    const rate = Number(cashback_rate) || 0;
+    const fixed = cashback_fixed_usd == null ? null : Number(cashback_fixed_usd);
+    if (rate === 0 && (fixed == null || fixed === 0)) {
+      return res.status(400).json({
+        error: 'Either cashback_rate or cashback_fixed_usd must be greater than 0',
+      });
     }
 
     // Verify merchant exists
@@ -247,12 +258,13 @@ router.post('/', authenticateAdmin, validateOffer, async (req: import('express')
     }
 
     const result = await dbRun(
-      'INSERT INTO offers (merchant_id, title, description, cashback_rate, terms, affiliate_link, is_active) VALUES (?, ?, ?, ?, ?, ?, ?)',
+      'INSERT INTO offers (merchant_id, title, description, cashback_rate, cashback_fixed_usd, terms, affiliate_link, is_active) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
       [
         merchant_id,
         title,
         description || null,
-        cashback_rate,
+        rate,
+        fixed,
         terms || null,
         affiliate_link,
         is_active !== undefined ? (is_active ? 1 : 0) : 1
@@ -289,7 +301,7 @@ router.post('/', authenticateAdmin, validateOffer, async (req: import('express')
 // Update offer
 router.put('/:id', authenticateAdmin, validateId, validateOffer, async (req: import('express').Request, res: import('express').Response) => {
   try {
-    const { merchant_id, title, description, cashback_rate, terms, affiliate_link, is_active } = req.body;
+    const { merchant_id, title, description, cashback_rate, cashback_fixed_usd, terms, affiliate_link, is_active } = req.body;
 
     const offer = await dbGet('SELECT * FROM offers WHERE id = ?', [req.params.id]);
     if (!offer) {
@@ -303,13 +315,21 @@ router.put('/:id', authenticateAdmin, validateId, validateOffer, async (req: imp
       }
     }
 
+    // Pass `cashback_fixed_usd: null` explicitly to clear the flat amount;
+    // omit it from the request body to leave it unchanged.
+    const newFixed =
+      cashback_fixed_usd === undefined ? (offer as any).cashback_fixed_usd
+      : cashback_fixed_usd === null    ? null
+      : Number(cashback_fixed_usd);
+
     await dbRun(
-      'UPDATE offers SET merchant_id = ?, title = ?, description = ?, cashback_rate = ?, terms = ?, affiliate_link = ?, is_active = ? WHERE id = ?',
+      'UPDATE offers SET merchant_id = ?, title = ?, description = ?, cashback_rate = ?, cashback_fixed_usd = ?, terms = ?, affiliate_link = ?, is_active = ? WHERE id = ?',
       [
         merchant_id !== undefined ? merchant_id : (offer as any).merchant_id,
         title !== undefined ? title : (offer as any).title,
         description !== undefined ? description : (offer as any).description,
         cashback_rate !== undefined ? cashback_rate : (offer as any).cashback_rate,
+        newFixed,
         terms !== undefined ? terms : (offer as any).terms,
         affiliate_link !== undefined ? affiliate_link : (offer as any).affiliate_link,
         is_active !== undefined ? (is_active ? 1 : 0) : (offer as any).is_active,
