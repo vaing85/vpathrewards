@@ -22,6 +22,7 @@ interface MerchantRow {
   category: string | null;
   cj_advertiser_id: string | null;
   cj_max_commission_rate: number | null;
+  cj_max_fixed_usd: number | null;
   cj_commission_terms: string | null;
   cj_synced_at: string | null;
   offer_count?: number;
@@ -40,6 +41,7 @@ interface MerchantWithCj {
   offer_count: number;
   cj_advertiser_id: string;
   cj_max_commission_rate: number | null;
+  cj_max_fixed_usd: number | null;
   cj_synced_at: string | null;
   term_name: string | null;
   actions: ActionBreakdown[];
@@ -92,12 +94,14 @@ router.get('/merchants', authenticateAdmin, async (_req: AdminRequest, res: expr
   try {
     const rows = await dbAll<MerchantRow>(
       `SELECT m.id, m.name, m.category,
-              m.cj_advertiser_id, m.cj_max_commission_rate,
+              m.cj_advertiser_id, m.cj_max_commission_rate, m.cj_max_fixed_usd,
               m.cj_commission_terms, m.cj_synced_at,
               (SELECT COUNT(*) FROM offers o WHERE o.merchant_id = m.id) AS offer_count
        FROM merchants m
        WHERE m.cj_advertiser_id IS NOT NULL
-       ORDER BY m.cj_max_commission_rate DESC NULLS LAST, m.name`
+       ORDER BY m.cj_max_commission_rate DESC NULLS LAST,
+                m.cj_max_fixed_usd DESC NULLS LAST,
+                m.name`
     );
 
     const out: MerchantWithCj[] = rows.map((m) => {
@@ -116,6 +120,7 @@ router.get('/merchants', authenticateAdmin, async (_req: AdminRequest, res: expr
         offer_count: Number(m.offer_count ?? 0),
         cj_advertiser_id: m.cj_advertiser_id!,
         cj_max_commission_rate: m.cj_max_commission_rate,
+        cj_max_fixed_usd: m.cj_max_fixed_usd,
         cj_synced_at: m.cj_synced_at,
         term_name: parsed.termName,
         actions: parsed.actions,
@@ -173,6 +178,7 @@ router.put('/merchants/:id', authenticateAdmin, async (req: AdminRequest, res: e
         `UPDATE merchants SET
            cj_advertiser_id = NULL,
            cj_max_commission_rate = NULL,
+           cj_max_fixed_usd = NULL,
            cj_commission_terms = NULL,
            cj_synced_at = NULL
          WHERE id = ?`,

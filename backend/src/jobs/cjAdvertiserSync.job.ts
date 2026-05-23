@@ -21,6 +21,7 @@ import {
   fetchJoinedAdvertisers,
   isCjConfigured,
   extractMaxCommissionRate,
+  extractMaxFixedAmount,
   type CjAdvertiserRecord,
 } from '../services/cjApi';
 import type { JobContext, JobDefinition, JobResult } from './types';
@@ -110,14 +111,16 @@ const cjAdvertiserSyncJob: JobDefinition<CjAdvertiserSyncPayload, CjAdvertiserSy
 
 async function enrichMerchant(adv: CjAdvertiserRecord, merchantId: number): Promise<void> {
   const maxRate = extractMaxCommissionRate(adv.programTerms);
+  const maxFixed = extractMaxFixedAmount(adv.programTerms);
   const termsJson = JSON.stringify(adv.programTerms ?? null);
   await dbRun(
     `UPDATE merchants SET
        cj_max_commission_rate = ?,
+       cj_max_fixed_usd = ?,
        cj_commission_terms = ?,
        cj_synced_at = CURRENT_TIMESTAMP
      WHERE id = ?`,
-    [maxRate, termsJson, merchantId]
+    [maxRate, maxFixed, termsJson, merchantId]
   );
 }
 

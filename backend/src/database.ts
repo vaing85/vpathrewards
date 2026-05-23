@@ -334,6 +334,18 @@ export const initDatabase = async () => {
     // the merchant is shown to users.
     await addCol('merchants', 'cj_auto_imported', 'INTEGER DEFAULT 0');
     await addCol('merchants', 'cj_synced_at', 'DATETIME');
+    // Some CJ advertisers pay a flat-dollar bounty per conversion rather than
+    // a percentage of sale (e.g. Sucuri $209/order, GetResponse $100/account,
+    // Choice Home Warranty $20/lead). Stored alongside cj_max_commission_rate
+    // so admins can see both forms — at most one is usually meaningful per
+    // merchant, but advertisers occasionally combine them.
+    await addCol('merchants', 'cj_max_fixed_usd', 'REAL');
+
+    // Offer-level: when set, this offer pays a flat USD amount instead of
+    // (or in addition to) a percentage cashback. NULL means use cashback_rate
+    // only. Both can be present for mixed offers, though the typical case is
+    // one or the other.
+    await addCol('offers', 'cashback_fixed_usd', 'REAL');
 
     // Raw CJ commission records, fetched by the cjSync job. Kept in its own
     // table (rather than written straight to cashback_transactions) because

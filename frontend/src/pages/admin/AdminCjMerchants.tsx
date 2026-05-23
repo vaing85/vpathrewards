@@ -16,6 +16,7 @@ interface CjMerchant {
   offer_count: number;
   cj_advertiser_id: string;
   cj_max_commission_rate: number | null;
+  cj_max_fixed_usd: number | null;
   cj_synced_at: string | null;
   term_name: string | null;
   actions: ActionBreakdown[];
@@ -41,6 +42,9 @@ const fmtRel = (iso: string | null): string => {
 
 const fmtPct = (n: number | null): string =>
   n == null ? '—' : Number.isInteger(n) ? `${n}%` : `${n.toFixed(1)}%`;
+
+const fmtUsd = (n: number | null): string =>
+  n == null ? '—' : `$${Number.isInteger(n) ? n : n.toFixed(2)}`;
 
 const AdminCjMerchants = () => {
   const { isAuthenticated } = useAdmin();
@@ -236,6 +240,7 @@ const AdminCjMerchants = () => {
                 <th className="text-left px-4 py-3">Merchant</th>
                 <th className="text-left px-4 py-3">CJ Advertiser ID</th>
                 <th className="text-right px-4 py-3">Max CJ %</th>
+                <th className="text-right px-4 py-3" title="Max flat bounty CJ pays per conversion">Max CJ $</th>
                 <th className="text-right px-4 py-3">Offers</th>
                 <th className="text-left px-4 py-3">Last synced</th>
                 <th className="text-right px-4 py-3 w-32">Actions</th>
@@ -244,7 +249,7 @@ const AdminCjMerchants = () => {
             <tbody className="divide-y divide-gray-100">
               {merchants.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="text-center text-gray-500 py-8">
+                  <td colSpan={7} className="text-center text-gray-500 py-8">
                     No CJ-linked merchants yet. Use the form above to link one.
                   </td>
                 </tr>
@@ -283,6 +288,9 @@ const AdminCjMerchants = () => {
                       </td>
                       <td className="px-4 py-3 text-right font-bold text-gray-800 tabular-nums">
                         {fmtPct(m.cj_max_commission_rate)}
+                      </td>
+                      <td className="px-4 py-3 text-right font-bold text-gray-800 tabular-nums">
+                        {fmtUsd(m.cj_max_fixed_usd)}
                       </td>
                       <td className="px-4 py-3 text-right text-gray-600 tabular-nums">
                         {m.offer_count}
@@ -326,7 +334,7 @@ const AdminCjMerchants = () => {
                     </tr>
                     {isExpanded && (
                       <tr key={`details-${m.id}`} className="bg-gray-50">
-                        <td colSpan={6} className="px-8 py-4">
+                        <td colSpan={7} className="px-8 py-4">
                           {m.term_name && (
                             <div className="text-xs text-gray-600 mb-2">
                               <span className="font-semibold">Term:</span> {m.term_name}
