@@ -38,6 +38,7 @@ import alertsRoutes from './routes/alerts';
 import leaderboardRoutes from './routes/leaderboard';
 import adminInsightsRoutes from './routes/admin/insights';
 import adminJobsRoutes from './routes/admin/jobs';
+import adminCjRoutes from './routes/admin/cj';
 import sseRoutes from './routes/sse';
 import { startJobs } from './jobs';
 import { errorHandler } from './middleware/errorHandler';
@@ -129,6 +130,7 @@ app.use('/api/alerts', alertsRoutes);
 app.use('/api/leaderboard', leaderboardRoutes);
 app.use('/api/admin/insights', adminLimiter, adminInsightsRoutes);
 app.use('/api/admin/jobs', adminJobsRoutes);
+app.use('/api/admin/cj', adminCjRoutes);
 app.use('/api/sse', sseRoutes);
 
 // Health check
