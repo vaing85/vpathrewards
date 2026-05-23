@@ -284,9 +284,9 @@ const AdminDashboard = () => {
               <h2 className="text-sm font-semibold uppercase tracking-wider text-gray-500">
                 CJ integration
               </h2>
-              <span className="text-xs text-gray-500">
-                Daily auto-sync · Commissions + advertiser terms
-              </span>
+              <Link to="/admin/cj" className="text-xs text-blue-600 hover:underline font-medium">
+                Manage →
+              </Link>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">

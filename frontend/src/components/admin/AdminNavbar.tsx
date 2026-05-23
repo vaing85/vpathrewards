@@ -55,6 +55,12 @@ const AdminNavbar = () => {
               >
                 Analytics
               </Link>
+              <Link
+                to="/admin/cj"
+                className="px-3 py-2 rounded-md text-sm font-medium hover:bg-gray-700"
+              >
+                CJ
+              </Link>
             </div>
           </div>
           
