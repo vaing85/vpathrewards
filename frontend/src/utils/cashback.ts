@@ -27,6 +27,26 @@ export function formatCashbackLabel(o: CashbackFields): string {
   return `${formatCashback(o)} cashback`;
 }
 
+/**
+ * User-facing headline form: "Up to 5%" or "Up to $10".
+ *
+ * The raw cashback_rate / cashback_fixed_usd on an offer is the *commission*
+ * VPathRewards earns from CJ. Users keep a tier-based share of (commission −
+ * $5 platform fee), so the actual user payout varies from 20% (Bronze) to
+ * 80% (Diamond) of the remainder. We frame this as "Up to" to set expectation:
+ *
+ *   Diecast 10% offer  → "Up to 10%"  (Diamond on a small/medium order)
+ *   Sucuri $15 flat    → "Up to $15"  (sub-$5-fee-waiver case for small comms,
+ *                                       Diamond approaches it for large comms)
+ *
+ * For sub-$5 commissions the fee is waived entirely so the headline IS what
+ * the user gets. For larger commissions the headline is an aspirational
+ * ceiling — exactly how mainstream cashback sites label.
+ */
+export function formatHeadlineCashback(o: CashbackFields): string {
+  return `Up to ${formatCashback(o)}`;
+}
+
 /** True if this offer pays a flat amount; useful for visual treatment. */
 export function isFixedCashback(o: CashbackFields): boolean {
   return (o.cashback_fixed_usd ?? 0) > 0;

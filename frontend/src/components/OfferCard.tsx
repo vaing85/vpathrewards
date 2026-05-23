@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
 import FavoriteButton from './FavoriteButton';
 import LazyImage from './LazyImage';
-import { formatCashback } from '../utils/cashback';
+import { formatHeadlineCashback } from '../utils/cashback';
 
 interface Offer {
   id: number;
@@ -43,7 +43,7 @@ const OfferCard = ({ offer }: OfferCardProps) => {
             </div>
           </div>
           <div className="bg-primary-600 text-white px-4 py-2 rounded-lg">
-            <div className="text-2xl font-bold">{formatCashback(offer)}</div>
+            <div className="text-2xl font-bold">{formatHeadlineCashback(offer)}</div>
             <div className="text-xs">Cashback</div>
           </div>
         </div>

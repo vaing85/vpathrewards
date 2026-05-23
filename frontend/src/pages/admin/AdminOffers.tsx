@@ -203,10 +203,15 @@ const AdminOffers = () => {
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Merchant</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Title</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Cashback (user)</th>
                   <th
                     className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase"
-                    title="Gross % CJ pays this merchant. Use to size the user cashback rate. Set via /admin/cj."
+                    title="Commission stored on this offer (cashback_rate or cashback_fixed_usd). This is what CJ pays VPathRewards on conversion — the actual user payout is computed at conversion time as (commission − $5 fee) × tier share."
+                  >
+                    Commission
+                  </th>
+                  <th
+                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase"
+                    title="Gross % CJ pays this merchant per its programTerms. Set via /admin/cj."
                   >
                     CJ gross
                   </th>
@@ -269,8 +274,11 @@ const AdminOffers = () => {
                             {cjFixed != null && `$${Number.isInteger(cjFixed) ? cjFixed : cjFixed.toFixed(2)}`}
                           </span>
                           {passThroughPct != null && (
-                            <span className="text-xs text-gray-400 tabular-nums">
-                              {passThroughPct.toFixed(0)}% to user
+                            <span
+                              className="text-xs text-gray-400 tabular-nums"
+                              title="Ratio of our stored commission to CJ's published gross rate. 100% means we record the full CJ rate. Less means we're keeping some upfront margin before the $5 platform fee + tier split."
+                            >
+                              {passThroughPct.toFixed(0)}% of CJ
                             </span>
                           )}
                         </div>
