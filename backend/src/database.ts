@@ -319,6 +319,14 @@ export const initDatabase = async () => {
     // addCol uses IF NOT EXISTS on PG so this is idempotent and safe.
     await addCol('cashback_transactions', 'platform_amount', 'REAL DEFAULT 0');
     await addCol('cashback_transactions', 'user_amount', 'REAL DEFAULT 0');
+    // platform_amount above is the TOTAL platform keep (fee + variable margin).
+    // platform_fee_amount breaks out just the flat fee portion so we can show
+    // "service fee revenue" separately from the "coffer" (variable margin) on
+    // the admin dashboard. Variable margin is derived as
+    //   platform_amount - platform_fee_amount.
+    // Existing rows default to 0 — they predate this split and can't be
+    // retroactively decomposed.
+    await addCol('cashback_transactions', 'platform_fee_amount', 'REAL DEFAULT 0');
 
     // CJ (Commission Junction) integration — link existing merchants to their
     // CJ advertiser id so the sync job can match remote commission records.

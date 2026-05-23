@@ -40,8 +40,19 @@ export const PLATFORM_FEE_USD = 5;
 export interface PayoutSplit {
   /** What gets credited to the user on this conversion. */
   userAmount: number;
-  /** What the platform keeps (flat fee + share of the remainder). */
+  /**
+   * Total platform keep (flat fee + share of the remainder). Equal to
+   * platformFee + (commission - PLATFORM_FEE_USD) × (1 - tierShare) when the
+   * fee applies, or 0 when the fee is waived.
+   */
   platformAmount: number;
+  /**
+   * Just the flat fee portion of platformAmount. 0 when the fee is waived
+   * (commission ≤ PLATFORM_FEE_USD), PLATFORM_FEE_USD otherwise. Surfaced
+   * separately so callers can split fee revenue from variable margin in
+   * their books — see /admin/dashboard for the breakdown.
+   */
+  platformFee: number;
   /** True if the conversion was below the fee threshold (fee waived). */
   feeWaived: boolean;
 }
@@ -67,6 +78,7 @@ export function computePayout(commission: number, tierShare: number): PayoutSpli
     return {
       userAmount: roundToCents(c),
       platformAmount: 0,
+      platformFee: 0,
       feeWaived: true,
     };
   }
@@ -78,5 +90,10 @@ export function computePayout(commission: number, tierShare: number): PayoutSpli
   // back to the original commission (modulo rounding to cents).
   const platformAmount = roundToCents(c - userAmount);
 
-  return { userAmount, platformAmount, feeWaived: false };
+  return {
+    userAmount,
+    platformAmount,
+    platformFee: PLATFORM_FEE_USD,
+    feeWaived: false,
+  };
 }
