@@ -182,10 +182,12 @@ router.get('/', authenticateAdmin, async (req, res) => {
     const totalPages = Math.ceil(total / limitNum);
     
     const offers = await dbAll(`
-      SELECT 
+      SELECT
         o.*,
         m.name as merchant_name,
-        m.logo_url as merchant_logo
+        m.logo_url as merchant_logo,
+        m.cj_advertiser_id as merchant_cj_advertiser_id,
+        m.cj_max_commission_rate as merchant_cj_max_commission_rate
       FROM offers o
       JOIN merchants m ON o.merchant_id = m.id
       ORDER BY o.created_at DESC
