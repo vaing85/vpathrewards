@@ -15,6 +15,11 @@ interface Offer {
   affiliate_link: string;
   is_active: number;
   merchant_name?: string;
+  // CJ context — populated when the offer's merchant is linked to a CJ
+  // advertiser. Used to surface the gross % CJ pays so admins can set a
+  // fair user-facing cashback_rate without tabbing to /admin/cj.
+  merchant_cj_advertiser_id?: string | null;
+  merchant_cj_max_commission_rate?: number | null;
 }
 
 interface Merchant {
@@ -178,20 +183,58 @@ const AdminOffers = () => {
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Merchant</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Title</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Cashback</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Cashback (user)</th>
+                  <th
+                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase"
+                    title="Gross % CJ pays this merchant. Use to size the user cashback rate. Set via /admin/cj."
+                  >
+                    CJ gross
+                  </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {offers.map((offer) => (
+                {offers.map((offer) => {
+                  const cjRate = offer.merchant_cj_max_commission_rate;
+                  const userRate = offer.cashback_rate;
+                  const passThroughPct =
+                    cjRate != null && cjRate > 0 ? (userRate / cjRate) * 100 : null;
+                  const overpaying = cjRate != null && userRate > cjRate;
+                  return (
                   <tr key={offer.id}>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                       {offer.merchant_name}
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-500">{offer.title}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-primary-600">
-                      {offer.cashback_rate}%
+                    <td className="px-6 py-4 whitespace-nowrap text-sm">
+                      <span className={`font-semibold ${overpaying ? 'text-red-600' : 'text-primary-600'}`}>
+                        {userRate}%
+                      </span>
+                      {overpaying && (
+                        <span
+                          className="ml-1 text-xs text-red-600"
+                          title="User rate is higher than what CJ pays — you'd lose money on every conversion."
+                        >
+                          ⚠
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm">
+                      {offer.merchant_cj_advertiser_id == null ? (
+                        <span className="text-xs text-gray-400">not linked</span>
+                      ) : cjRate == null ? (
+                        <span className="text-xs text-gray-400">unenriched</span>
+                      ) : (
+                        <div className="flex items-baseline gap-2">
+                          <span className="text-gray-700 tabular-nums">{cjRate}%</span>
+                          {passThroughPct != null && (
+                            <span className="text-xs text-gray-400 tabular-nums">
+                              ({passThroughPct.toFixed(0)}% to user)
+                            </span>
+                          )}
+                        </div>
+                      )}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span
@@ -219,7 +262,8 @@ const AdminOffers = () => {
                       </button>
                     </td>
                   </tr>
-                ))}
+                  );
+                })}
               </tbody>
               </table>
             </div>
