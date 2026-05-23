@@ -1,29 +1,26 @@
 /**
- * CJ link refresh job.
+ * CJ link refresh job — DORMANT.
  *
- * For every merchant that has a cj_advertiser_id, pulls the current CJ Link
- * Search results, picks the best link (automatic > text link > first available)
- * and stores it on the merchant. The raw payload is also persisted as JSON so
- * admins can inspect alternatives.
+ * CJ's GraphQL Link Search service doesn't exist at any of the obvious
+ * hostnames (link-search.api.cj.com, links.api.cj.com all return 404 / are
+ * unreachable). The legacy REST link-search at
+ *   https://link-search.api.cj.com/v2/link-search
+ * still works but uses developer-key auth instead of the Personal Access
+ * Token, which is a separate integration path we haven't built yet.
  *
- * The user-facing `offers.affiliate_link` is **never** modified — this job
- * only populates `merchants.cj_recommended_link`. Admins opt-in per offer by
- * copying the recommended link into the offer's affiliate_link via the admin
- * UI. This keeps user-visible tracking links under human control.
+ * This job is kept registered so the JOB_NAMES.CJ_LINK_REFRESH constant
+ * stays stable, but currently returns a `skipped` result. To revive it,
+ * either:
+ *   1. Implement REST against the legacy endpoint with CJ_DEVELOPER_KEY
+ *   2. Pull click URLs out of the products query on ads.api.cj.com (each
+ *      product result includes a clickUrl), which works with the PAT but
+ *      is wasteful — one product call per advertiser.
  */
-import { dbAll, dbRun } from '../database';
-import {
-  fetchCjLinks,
-  isCjConfigured,
-  pickBestCjLink,
-  type CjLinkRecord,
-} from '../services/cjApi';
+import { cjLinkSearchIsAvailable } from '../services/cjApi';
 import type { JobContext, JobDefinition, JobResult } from './types';
 
 export interface CjLinkRefreshPayload {
-  /** Only refresh this merchant id. Omit to refresh all CJ-linked merchants. */
   merchantId?: number;
-  /** Fetch + diff but don't write. */
   dryRun?: boolean;
 }
 
@@ -37,120 +34,26 @@ export interface CjLinkRefreshResult {
 const cjLinkRefreshJob: JobDefinition<CjLinkRefreshPayload, CjLinkRefreshResult> = {
   name: 'cj-link-refresh',
 
-  async run(payload, _ctx?: JobContext): Promise<JobResult<CjLinkRefreshResult>> {
-    const errors: string[] = [];
-    let merchantsConsidered = 0;
-    let merchantsUpdated = 0;
-    let merchantsWithoutLink = 0;
-
-    if (!isCjConfigured()) {
+  async run(_payload, _ctx?: JobContext): Promise<JobResult<CjLinkRefreshResult>> {
+    if (!cjLinkSearchIsAvailable) {
       return {
         ok: true,
         data: {
           merchantsConsidered: 0,
           merchantsUpdated: 0,
           merchantsWithoutLink: 0,
-          errors: ['CJ not configured — skipping'],
+          errors: ['CJ Link Search GraphQL endpoint not available — job dormant'],
         },
-        meta: { skipped: 1 },
+        meta: { skipped: 1, dormant: 1 },
       };
     }
-
-    try {
-      const { merchantId, dryRun = false } = payload ?? {};
-
-      const merchants = (await dbAll<{ id: number; cj_advertiser_id: string; cj_recommended_link: string | null }>(
-        merchantId != null
-          ? 'SELECT id, cj_advertiser_id, cj_recommended_link FROM merchants WHERE cj_advertiser_id IS NOT NULL AND id = ?'
-          : 'SELECT id, cj_advertiser_id, cj_recommended_link FROM merchants WHERE cj_advertiser_id IS NOT NULL',
-        merchantId != null ? [merchantId] : []
-      ));
-
-      merchantsConsidered = merchants.length;
-      if (merchants.length === 0) {
-        return {
-          ok: true,
-          data: { merchantsConsidered, merchantsUpdated, merchantsWithoutLink, errors },
-          meta: { merchantsConsidered, merchantsUpdated },
-        };
-      }
-
-      const advertiserIds = merchants.map(m => m.cj_advertiser_id);
-      const response = await fetchCjLinks(advertiserIds);
-
-      // Group links by advertiser for per-merchant selection.
-      const linksByAdvertiser = new Map<string, CjLinkRecord[]>();
-      for (const link of response.links) {
-        if (!link.advertiserId) continue;
-        const arr = linksByAdvertiser.get(link.advertiserId) ?? [];
-        arr.push(link);
-        linksByAdvertiser.set(link.advertiserId, arr);
-      }
-
-      for (const merchant of merchants) {
-        try {
-          const links = linksByAdvertiser.get(merchant.cj_advertiser_id) ?? [];
-          if (links.length === 0) {
-            merchantsWithoutLink++;
-            continue;
-          }
-
-          const best = pickBestCjLink(links);
-          if (!best?.clickUrl) {
-            merchantsWithoutLink++;
-            continue;
-          }
-
-          if (best.clickUrl === merchant.cj_recommended_link && !dryRun) {
-            // Already up to date — still bump synced_at so admins can see the
-            // job is running, but no need to count as updated.
-            await dbRun(
-              'UPDATE merchants SET cj_links_synced_at = CURRENT_TIMESTAMP WHERE id = ?',
-              [merchant.id]
-            );
-            continue;
-          }
-
-          if (dryRun) {
-            merchantsUpdated++;
-            continue;
-          }
-
-          await dbRun(
-            `UPDATE merchants SET
-               cj_recommended_link = ?,
-               cj_link_raw = ?,
-               cj_links_synced_at = CURRENT_TIMESTAMP
-             WHERE id = ?`,
-            [best.clickUrl, JSON.stringify(links), merchant.id]
-          );
-          merchantsUpdated++;
-        } catch (err) {
-          errors.push(`merchant ${merchant.id}: ${err instanceof Error ? err.message : String(err)}`);
-        }
-      }
-
-      return {
-        ok: true,
-        data: { merchantsConsidered, merchantsUpdated, merchantsWithoutLink, errors },
-        meta: {
-          merchantsConsidered,
-          merchantsUpdated,
-          merchantsWithoutLink,
-          errorCount: errors.length,
-          dryRun: dryRun ? 1 : 0,
-        },
-      };
-    } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
-      errors.push(message);
-      return {
-        ok: false,
-        error: message,
-        data: { merchantsConsidered, merchantsUpdated, merchantsWithoutLink, errors },
-        meta: { merchantsConsidered, merchantsUpdated, merchantsWithoutLink },
-      };
-    }
+    // Unreachable until link search is wired up. Leaving the no-op so callers
+    // get a predictable result instead of a thrown error.
+    return {
+      ok: true,
+      data: { merchantsConsidered: 0, merchantsUpdated: 0, merchantsWithoutLink: 0, errors: [] },
+      meta: { skipped: 1 },
+    };
   },
 };
 
