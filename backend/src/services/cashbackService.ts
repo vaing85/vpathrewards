@@ -238,12 +238,12 @@ export async function trackCashback(userId: number, offerId: number, purchaseAmo
     ? fixedAmount
     : computeCashbackAmount(purchaseAmount, offer.cashback_rate);
   const share = await getUserCommissionShare(userId); // 0.20 - 0.80
-  const { userAmount, platformAmount } = computePayout(commission, share);
+  const { userAmount, platformAmount, platformFee } = computePayout(commission, share);
 
   const result = await dbRun(
-    `INSERT INTO cashback_transactions (user_id, offer_id, amount, platform_amount, user_amount, status)
-     VALUES (?, ?, ?, ?, ?, ?)`,
-    [userId, offerId, userAmount, platformAmount, userAmount, 'pending']
+    `INSERT INTO cashback_transactions (user_id, offer_id, amount, platform_amount, platform_fee_amount, user_amount, status)
+     VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    [userId, offerId, userAmount, platformAmount, platformFee, userAmount, 'pending']
   );
   const transactionId = (result as { lastID: number }).lastID;
   await dbRun('UPDATE users SET total_earnings = total_earnings + ? WHERE id = ?', [userAmount, userId]);

@@ -169,13 +169,13 @@ router.post('/conversion', async (req, res) => {
     // is the single source of truth — see rewards-core/calculations.ts.
     if (click.user_id && commission > 0) {
       const tierShare = await getUserCommissionShare(click.user_id);
-      const { userAmount, platformAmount } = computePayout(commission, tierShare);
+      const { userAmount, platformAmount, platformFee } = computePayout(commission, tierShare);
 
       const txResult = await dbRun(
         `INSERT INTO cashback_transactions
-           (user_id, offer_id, amount, platform_amount, user_amount, status)
-         VALUES (?, ?, ?, ?, ?, ?)`,
-        [click.user_id, click.offer_id, userAmount, platformAmount, userAmount, 'pending']
+           (user_id, offer_id, amount, platform_amount, platform_fee_amount, user_amount, status)
+         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        [click.user_id, click.offer_id, userAmount, platformAmount, platformFee, userAmount, 'pending']
       );
       const transactionId = (txResult as any).lastID;
 

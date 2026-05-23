@@ -12,6 +12,8 @@ interface ActionQueue {
 
 interface PeriodMetrics {
   commission_earned: number;
+  fee_revenue: number;
+  coffer: number;
   cashback_owed: number;
   paid_out: number;
 }
@@ -21,6 +23,8 @@ interface PlatformMetrics {
   last_month: PeriodMetrics;
   deltas: {
     commission_pct: number | null;
+    fee_pct: number | null;
+    coffer_pct: number | null;
     cashback_pct: number | null;
     paid_out_pct: number | null;
   };
@@ -218,25 +222,36 @@ const AdminDashboard = () => {
               </h2>
               <span className="text-xs text-gray-500">This month vs last month</span>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <MetricCard
-                label="Commission earned"
-                value={fmtMoney(pm.this_month.commission_earned)}
-                deltaPct={pm.deltas.commission_pct}
+                label="Fee revenue"
+                value={fmtMoney(pm.this_month.fee_revenue)}
+                deltaPct={pm.deltas.fee_pct}
                 color="emerald"
                 primary
+                subtitle="$5 service fee × conversions"
+              />
+              <MetricCard
+                label="Coffer"
+                value={fmtMoney(pm.this_month.coffer)}
+                deltaPct={pm.deltas.coffer_pct}
+                color="amber"
+                primary
+                subtitle="Variable margin after tier split"
               />
               <MetricCard
                 label="Cashback owed to users"
                 value={fmtMoney(pm.this_month.cashback_owed)}
                 deltaPct={pm.deltas.cashback_pct}
                 color="blue"
+                subtitle="Liability — paid on withdrawal"
               />
               <MetricCard
                 label="Paid out via withdrawals"
                 value={fmtMoney(pm.this_month.paid_out)}
                 deltaPct={pm.deltas.paid_out_pct}
                 color="violet"
+                subtitle="Confirmed cashouts to users"
               />
             </div>
           </div>
@@ -382,17 +397,19 @@ interface MetricCardProps {
   label: string;
   value: string;
   deltaPct: number | null;
-  color: 'emerald' | 'blue' | 'violet';
+  color: 'emerald' | 'blue' | 'violet' | 'amber';
   primary?: boolean;
+  subtitle?: string;
 }
 
 const COLOR_CLASSES: Record<MetricCardProps['color'], { bg: string; text: string }> = {
   emerald: { bg: 'bg-emerald-50 border-emerald-100', text: 'text-emerald-700' },
   blue: { bg: 'bg-blue-50 border-blue-100', text: 'text-blue-700' },
   violet: { bg: 'bg-violet-50 border-violet-100', text: 'text-violet-700' },
+  amber: { bg: 'bg-amber-50 border-amber-100', text: 'text-amber-700' },
 };
 
-const MetricCard = ({ label, value, deltaPct, color, primary }: MetricCardProps) => {
+const MetricCard = ({ label, value, deltaPct, color, primary, subtitle }: MetricCardProps) => {
   const c = COLOR_CLASSES[color];
   return (
     <div className={`rounded-lg p-4 border ${c.bg}`}>
@@ -400,6 +417,9 @@ const MetricCard = ({ label, value, deltaPct, color, primary }: MetricCardProps)
       <div className={`font-bold tabular-nums ${primary ? 'text-3xl' : 'text-2xl'} ${c.text}`}>
         {value}
       </div>
+      {subtitle && (
+        <div className="text-[11px] text-gray-500 mt-0.5">{subtitle}</div>
+      )}
       {fmtPct(deltaPct) && (
         <div className={`text-xs mt-1 font-medium ${pctColor(deltaPct)}`}>
           {fmtPct(deltaPct)} vs last month

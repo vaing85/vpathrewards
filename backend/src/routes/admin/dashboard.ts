@@ -185,20 +185,27 @@ router.get('/overview', authenticateAdmin, async (_req, res) => {
         ['pending']
       ) as Promise<{ count: number }>,
 
-      // Platform commission = platform_amount on confirmed cashback transactions.
+      // Platform's total keep, split into fee revenue (the flat $5 service
+      // charge per conversion above the waiver threshold) and the coffer
+      // (variable margin). platform_amount already includes the fee, so the
+      // coffer = platform_amount - platform_fee_amount.
       dbGet(
-        `SELECT COALESCE(SUM(platform_amount), 0) as total
+        `SELECT COALESCE(SUM(platform_amount), 0) as total,
+                COALESCE(SUM(platform_fee_amount), 0) as fee,
+                COALESCE(SUM(platform_amount - platform_fee_amount), 0) as coffer
          FROM cashback_transactions
          WHERE status = ? AND transaction_date >= ?`,
         ['confirmed', startOfThisMonth]
-      ) as Promise<{ total: number }>,
+      ) as Promise<{ total: number; fee: number; coffer: number }>,
 
       dbGet(
-        `SELECT COALESCE(SUM(platform_amount), 0) as total
+        `SELECT COALESCE(SUM(platform_amount), 0) as total,
+                COALESCE(SUM(platform_fee_amount), 0) as fee,
+                COALESCE(SUM(platform_amount - platform_fee_amount), 0) as coffer
          FROM cashback_transactions
          WHERE status = ? AND transaction_date >= ? AND transaction_date < ?`,
         ['confirmed', startOfLastMonth, startOfThisMonth]
-      ) as Promise<{ total: number }>,
+      ) as Promise<{ total: number; fee: number; coffer: number }>,
 
       // Cashback owed to users (confirmed user_amount) for this/last month.
       dbGet(
@@ -304,16 +311,22 @@ router.get('/overview', authenticateAdmin, async (_req, res) => {
       platform_metrics: {
         this_month: {
           commission_earned: thisMonthCommission.total,
+          fee_revenue: thisMonthCommission.fee,
+          coffer: thisMonthCommission.coffer,
           cashback_owed: thisMonthCashback.total,
           paid_out: thisMonthPaidOut.total,
         },
         last_month: {
           commission_earned: lastMonthCommission.total,
+          fee_revenue: lastMonthCommission.fee,
+          coffer: lastMonthCommission.coffer,
           cashback_owed: lastMonthCashback.total,
           paid_out: lastMonthPaidOut.total,
         },
         deltas: {
           commission_pct: pctChange(thisMonthCommission.total, lastMonthCommission.total),
+          fee_pct: pctChange(thisMonthCommission.fee, lastMonthCommission.fee),
+          coffer_pct: pctChange(thisMonthCommission.coffer, lastMonthCommission.coffer),
           cashback_pct: pctChange(thisMonthCashback.total, lastMonthCashback.total),
           paid_out_pct: pctChange(thisMonthPaidOut.total, lastMonthPaidOut.total),
         },

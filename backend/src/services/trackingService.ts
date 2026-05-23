@@ -113,12 +113,12 @@ export async function recordConversion(input: RecordConversionInput) {
     // share of the remainder. See computePayout() in rewards-core for the
     // exact rules (including the sub-$5-fee-waived case).
     const share = await getUserCommissionShare(click.user_id); // 0.20 - 0.80
-    const { userAmount, platformAmount } = computePayout(commission, share);
+    const { userAmount, platformAmount, platformFee } = computePayout(commission, share);
 
     const txResult = await dbRun(
-      `INSERT INTO cashback_transactions (user_id, offer_id, amount, platform_amount, user_amount, status)
-       VALUES (?, ?, ?, ?, ?, ?)`,
-      [click.user_id, click.offer_id, userAmount, platformAmount, userAmount, 'pending']
+      `INSERT INTO cashback_transactions (user_id, offer_id, amount, platform_amount, platform_fee_amount, user_amount, status)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      [click.user_id, click.offer_id, userAmount, platformAmount, platformFee, userAmount, 'pending']
     );
     const transactionId = (txResult as { lastID: number }).lastID;
     await dbRun('UPDATE users SET total_earnings = total_earnings + ? WHERE id = ?', [userAmount, click.user_id]);
