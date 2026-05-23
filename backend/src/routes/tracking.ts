@@ -3,6 +3,8 @@ import { randomBytes } from 'crypto';
 import { authenticateToken, AuthRequest } from '../middleware/auth';
 import { dbAll, dbGet, dbRun } from '../database';
 import { createReferralEarning } from './referrals';
+import { computePayout } from '../services/rewards-core';
+import { getUserCommissionShare } from '../services/tierService';
 
 const generateSessionId = (): string => `sess_${Date.now()}_${randomBytes(8).toString('hex')}`;
 
@@ -121,11 +123,21 @@ router.post('/conversion', async (req, res) => {
       });
     }
 
-    // Get offer to calculate commission
-    const offer = await dbGet('SELECT cashback_rate FROM offers WHERE id = ?', [click.offer_id]) as any;
-    
-    // Calculate commission if not provided
-    const commission = commission_amount || (order_amount && offer ? (order_amount * offer.cashback_rate / 100) : 0);
+    // Get offer to calculate commission. Need both rate and flat-amount columns
+    // so flat-bounty offers (Sucuri, GetResponse, etc.) award correctly.
+    const offer = await dbGet(
+      'SELECT cashback_rate, cashback_fixed_usd FROM offers WHERE id = ?',
+      [click.offer_id]
+    ) as { cashback_rate: number; cashback_fixed_usd: number | null } | undefined;
+
+    // Calculate commission. Precedence:
+    //   1. commission_amount in the request body (CJ webhook with exact amount)
+    //   2. offer.cashback_fixed_usd if > 0 (flat-bounty offers)
+    //   3. order_amount × cashback_rate / 100 (percentage offers)
+    const fixedAmount = offer?.cashback_fixed_usd ?? 0;
+    const commission = commission_amount
+      || (fixedAmount > 0 ? fixedAmount
+          : (order_amount && offer ? (order_amount * offer.cashback_rate / 100) : 0));
 
     // Create conversion record
     const result = await dbRun(
@@ -151,21 +163,30 @@ router.post('/conversion', async (req, res) => {
       [conversionId, click.id]
     );
 
-    // If user is logged in, create cashback transaction
+    // If user is logged in, create cashback transaction with the proper
+    // platform/user split: platform takes a flat $5 fee on commissions > $5,
+    // then the user gets their tier share of what's left. computePayout()
+    // is the single source of truth — see rewards-core/calculations.ts.
     if (click.user_id && commission > 0) {
-      const result = await dbRun(
-        'INSERT INTO cashback_transactions (user_id, offer_id, amount, status) VALUES (?, ?, ?, ?)',
-        [click.user_id, click.offer_id, commission, 'pending']
+      const tierShare = await getUserCommissionShare(click.user_id);
+      const { userAmount, platformAmount } = computePayout(commission, tierShare);
+
+      const txResult = await dbRun(
+        `INSERT INTO cashback_transactions
+           (user_id, offer_id, amount, platform_amount, user_amount, status)
+         VALUES (?, ?, ?, ?, ?, ?)`,
+        [click.user_id, click.offer_id, userAmount, platformAmount, userAmount, 'pending']
       );
-      const transactionId = (result as any).lastID;
-      
+      const transactionId = (txResult as any).lastID;
+
       await dbRun(
         'UPDATE users SET total_earnings = total_earnings + ? WHERE id = ?',
-        [commission, click.user_id]
+        [userAmount, click.user_id]
       );
 
-      // Create referral earning if user was referred (async)
-      createReferralEarning(click.user_id, transactionId, commission).catch(err => {
+      // Create referral earning if user was referred (async). Referrer bonus is
+      // computed from the user's cashback, not the full commission.
+      createReferralEarning(click.user_id, transactionId, userAmount).catch(err => {
         console.error('Error creating referral earning:', err);
       });
     }

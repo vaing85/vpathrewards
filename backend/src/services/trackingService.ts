@@ -1,5 +1,5 @@
 import { dbAll, dbGet, dbRun } from '../database';
-import { createReferralEarning, roundToCents } from './rewards-core';
+import { createReferralEarning, computePayout } from './rewards-core';
 import { getUserCommissionShare } from './tierService';
 
 function generateSessionId(): string {
@@ -87,8 +87,14 @@ export async function recordConversion(input: RecordConversionInput) {
   );
   if (existing) return { existing: true, conversion: existing };
 
-  const offer = await dbGet('SELECT cashback_rate FROM offers WHERE id = ?', [click.offer_id]) as { cashback_rate: number } | undefined;
-  const commission = commission_amount ?? (order_amount != null && offer ? (order_amount * offer.cashback_rate / 100) : 0);
+  const offer = await dbGet(
+    'SELECT cashback_rate, cashback_fixed_usd FROM offers WHERE id = ?',
+    [click.offer_id]
+  ) as { cashback_rate: number; cashback_fixed_usd: number | null } | undefined;
+  const fixedAmount = offer?.cashback_fixed_usd ?? 0;
+  const commission = commission_amount
+    ?? (fixedAmount > 0 ? fixedAmount
+        : (order_amount != null && offer ? (order_amount * offer.cashback_rate / 100) : 0));
 
   const result = await dbRun(
     `INSERT INTO conversions (click_id, user_id, offer_id, session_id, order_id, order_amount, commission_amount, status)
@@ -103,12 +109,11 @@ export async function recordConversion(input: RecordConversionInput) {
   );
 
   if (click.user_id && commission > 0) {
-    // Commission-share tier split: the member keeps their tier's share of the
-    // commission; the platform keeps the rest. Both are recorded on the
-    // transaction so payouts and reporting stay accurate.
+    // Platform takes a flat fee off the top, then the user keeps their tier
+    // share of the remainder. See computePayout() in rewards-core for the
+    // exact rules (including the sub-$5-fee-waived case).
     const share = await getUserCommissionShare(click.user_id); // 0.20 - 0.80
-    const userAmount = roundToCents(commission * share);
-    const platformAmount = roundToCents(commission - userAmount);
+    const { userAmount, platformAmount } = computePayout(commission, share);
 
     const txResult = await dbRun(
       `INSERT INTO cashback_transactions (user_id, offer_id, amount, platform_amount, user_amount, status)

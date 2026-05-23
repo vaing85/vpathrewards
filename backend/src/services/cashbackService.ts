@@ -1,5 +1,5 @@
 import { dbAll, dbGet, dbRun } from '../database';
-import { createReferralEarning, computeCashbackAmount, roundToCents } from './rewards-core';
+import { createReferralEarning, computeCashbackAmount, computePayout } from './rewards-core';
 import { getUserCommissionShare } from './tierService';
 
 export interface PaginationOptions {
@@ -222,15 +222,23 @@ export async function deleteGoal(userId: number, goalId: string | number) {
 }
 
 export async function trackCashback(userId: number, offerId: number, purchaseAmount: number) {
-  const offer = await dbGet('SELECT * FROM offers WHERE id = ? AND is_active = 1', [offerId]) as { id: number; cashback_rate: number } | undefined;
+  const offer = await dbGet(
+    'SELECT id, cashback_rate, cashback_fixed_usd FROM offers WHERE id = ? AND is_active = 1',
+    [offerId]
+  ) as { id: number; cashback_rate: number; cashback_fixed_usd: number | null } | undefined;
   if (!offer) return null;
 
-  // Commission-share model: offer.cashback_rate is the commission the platform
-  // earns on the purchase; the member keeps their activity tier's share of it.
-  const commission = computeCashbackAmount(purchaseAmount, offer.cashback_rate);
+  // Commission is the gross amount CJ pays the platform on this conversion:
+  //   - flat-bounty offers (cashback_fixed_usd > 0) → that exact amount
+  //   - percentage offers                           → purchaseAmount × rate / 100
+  // computePayout then takes the flat $5 platform fee off the top and splits
+  // the remainder per the user's tier share. Sub-$5 commissions skip the fee.
+  const fixedAmount = offer.cashback_fixed_usd ?? 0;
+  const commission = fixedAmount > 0
+    ? fixedAmount
+    : computeCashbackAmount(purchaseAmount, offer.cashback_rate);
   const share = await getUserCommissionShare(userId); // 0.20 - 0.80
-  const userAmount = roundToCents(commission * share);
-  const platformAmount = roundToCents(commission - userAmount);
+  const { userAmount, platformAmount } = computePayout(commission, share);
 
   const result = await dbRun(
     `INSERT INTO cashback_transactions (user_id, offer_id, amount, platform_amount, user_amount, status)

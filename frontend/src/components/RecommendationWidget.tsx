@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import apiClient from '../api/client';
-import { formatCashback } from '../utils/cashback';
+import { formatHeadlineCashback } from '../utils/cashback';
 
 interface Recommendation {
   id: number;
@@ -55,7 +55,7 @@ export default function RecommendationWidget() {
             <div className="flex items-center justify-between">
               <span className="text-sm font-medium text-gray-800 truncate">{rec.merchant_name}</span>
               <span className="text-sm font-bold text-green-600 whitespace-nowrap ml-2">
-                {formatCashback(rec)}
+                {formatHeadlineCashback(rec)}
               </span>
             </div>
             <span className="text-xs text-gray-500 truncate">{rec.category}</span>
