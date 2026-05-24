@@ -42,7 +42,35 @@ const createEtherealTransporter = async () => {
   });
 };
 
-const DEFAULT_FROM = 'VPathRewards <noreply@vpathrewards.store>';
+// Default from: a real (non-`noreply`) mailbox on the apex domain. Resend
+// Insights flags `no-reply` addresses because replies disappear and modern
+// providers downrank them. We use the apex (rather than the `send.`
+// subdomain Resend recommends for reputation isolation) because Cloudflare
+// Email Routing is set up on the apex — that's where customer replies are
+// forwarded to a real inbox. Override via EMAIL_FROM if you ever want to
+// switch to `send.vpathrewards.store`.
+const DEFAULT_FROM = 'VPathRewards <hello@vpathrewards.store>';
+
+// Reply-To: separate from the From: header so we can still send from a
+// subdomain in the future without losing inbound routing. Customer replies
+// land at this address, which Cloudflare Email Routing forwards to the
+// real support inbox.
+const DEFAULT_REPLY_TO = 'hello@vpathrewards.store';
+
+// Brand
+const BRAND_COLOR = '#2563eb';      // matches frontend/public/logo.svg
+const BRAND_COLOR_DARK = '#1d4ed8';
+
+// Defensive: if FRONTEND_URL was set in Railway with the literal `FRONTEND_URL=`
+// prefix (a common copy/paste mistake from .env.example), strip it. Also trim
+// stray whitespace and trailing slashes so URL concatenation is predictable.
+const frontendUrl = (): string => {
+  let raw = (process.env.FRONTEND_URL || 'http://localhost:3000').trim();
+  if (raw.toUpperCase().startsWith('FRONTEND_URL=')) {
+    raw = raw.slice('FRONTEND_URL='.length).trim();
+  }
+  return raw.replace(/\/+$/, '');
+};
 
 // Check if user wants to receive email notifications
 const shouldSendEmail = async (userId: number, notificationType: 'email' | 'cashback' | 'withdrawal' | 'newOffers'): Promise<boolean> => {
@@ -76,391 +104,351 @@ const shouldSendEmail = async (userId: number, notificationType: 'email' | 'cash
   }
 };
 
-// Email templates
+// ---------------------------------------------------------------------------
+// Shared layout primitives
+// ---------------------------------------------------------------------------
+
+const esc = (s: string): string =>
+  s.replace(/&/g, '&amp;')
+   .replace(/</g, '&lt;')
+   .replace(/>/g, '&gt;')
+   .replace(/"/g, '&quot;')
+   .replace(/'/g, '&#39;');
+
+// Hidden preheader: the text most inbox clients show next to the subject line.
+// We pad with zero-width characters so the preheader doesn't get filled with
+// the first line of body text in Gmail/Outlook previews.
+const preheaderBlock = (text: string): string => `
+  <div style="display:none;max-height:0;overflow:hidden;mso-hide:all;font-size:1px;line-height:1px;color:#f5f7fa;">
+    ${esc(text)}${'&zwnj;&nbsp;'.repeat(60)}
+  </div>
+`;
+
+const button = (href: string, label: string, color: string = BRAND_COLOR): string => `
+  <table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center" style="margin:24px auto;">
+    <tr>
+      <td style="border-radius:6px;background:${color};">
+        <a href="${href}" target="_blank"
+           style="display:inline-block;padding:14px 32px;font-family:Arial,Helvetica,sans-serif;font-size:16px;font-weight:600;color:#ffffff;text-decoration:none;border-radius:6px;">
+          ${label}
+        </a>
+      </td>
+    </tr>
+  </table>
+`;
+
+const baseLayout = ({
+  preheader,
+  headerTitle,
+  headerColor = BRAND_COLOR,
+  body,
+}: {
+  preheader: string;
+  headerTitle: string;
+  headerColor?: string;
+  body: string;
+}): string => `<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta name="color-scheme" content="light">
+    <title>${esc(headerTitle)}</title>
+  </head>
+  <body style="margin:0;padding:0;background:#f5f7fa;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;color:#1f2937;">
+    ${preheaderBlock(preheader)}
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background:#f5f7fa;">
+      <tr>
+        <td align="center" style="padding:32px 16px;">
+          <table role="presentation" width="600" cellspacing="0" cellpadding="0" border="0" style="max-width:600px;width:100%;background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 1px 3px rgba(15,23,42,0.06);">
+            <tr>
+              <td style="background:${headerColor};padding:28px 32px;">
+                <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
+                  <tr>
+                    <td style="vertical-align:middle;">
+                      <table role="presentation" cellspacing="0" cellpadding="0" border="0">
+                        <tr>
+                          <td style="background:#ffffff;border-radius:8px;width:36px;height:36px;text-align:center;font-family:Arial,Helvetica,sans-serif;font-size:22px;font-weight:700;color:${BRAND_COLOR};line-height:36px;">V</td>
+                          <td style="padding-left:12px;font-family:Arial,Helvetica,sans-serif;font-size:18px;font-weight:700;color:#ffffff;letter-spacing:0.2px;">VPathRewards</td>
+                        </tr>
+                      </table>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td style="padding-top:20px;font-family:Arial,Helvetica,sans-serif;font-size:24px;font-weight:700;color:#ffffff;line-height:1.3;">
+                      ${esc(headerTitle)}
+                    </td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:32px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;font-size:16px;line-height:1.6;color:#1f2937;">
+                ${body}
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:24px 32px;border-top:1px solid #e5e7eb;background:#fafbfc;font-family:Arial,Helvetica,sans-serif;font-size:12px;line-height:1.6;color:#6b7280;text-align:center;">
+                <p style="margin:0 0 6px;">© ${new Date().getFullYear()} VPathRewards. All rights reserved.</p>
+                <p style="margin:0;">
+                  <a href="${frontendUrl()}/profile" style="color:#6b7280;text-decoration:underline;">Manage email preferences</a>
+                </p>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>`;
+
+// ---------------------------------------------------------------------------
+// Templates
+// ---------------------------------------------------------------------------
+
 const emailTemplates = {
-  welcome: (name: string) => ({
-    subject: 'Welcome to VPathRewards! 🎉',
-    html: `
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <meta charset="utf-8">
-          <style>
-            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-            .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-            .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
-            .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }
-            .button { display: inline-block; padding: 12px 30px; background: #667eea; color: white; text-decoration: none; border-radius: 5px; margin: 20px 0; }
-            .footer { text-align: center; margin-top: 30px; color: #666; font-size: 12px; }
-          </style>
-        </head>
-        <body>
-          <div class="container">
-            <div class="header">
-              <h1>Welcome to VPathRewards!</h1>
-            </div>
-            <div class="content">
-              <h2>Hi ${name}! 👋</h2>
-              <p>Thank you for joining VPathRewards! We're excited to help you earn money back on your everyday purchases.</p>
-              <p><strong>Here's what you can do:</strong></p>
-              <ul>
-                <li>Browse hundreds of merchants and exclusive offers</li>
-                <li>Earn cashback on every purchase</li>
-                <li>Track your earnings in real-time</li>
-                <li>Withdraw your cashback when you're ready</li>
-              </ul>
-              <p style="text-align: center;">
-                <a href="${process.env.FRONTEND_URL || 'http://localhost:3000'}" class="button">Start Earning Cashback</a>
-              </p>
-              <p>If you have any questions, feel free to reach out to our support team.</p>
-              <p>Happy shopping! 🛍️</p>
-            </div>
-            <div class="footer">
-              <p>© ${new Date().getFullYear()} VPathRewards. All rights reserved.</p>
-              <p>You're receiving this email because you signed up for VPathRewards.</p>
-            </div>
+  welcome: (name: string) => {
+    const url = frontendUrl();
+    const preheader = 'Your VPathRewards account is ready — start earning cashback today.';
+    return {
+      subject: 'Welcome to VPathRewards',
+      preheader,
+      html: baseLayout({
+        preheader,
+        headerTitle: 'Welcome aboard',
+        body: `
+          <p style="margin:0 0 16px;font-size:18px;">Hi ${esc(name)},</p>
+          <p style="margin:0 0 16px;">Thanks for joining VPathRewards. We're glad to have you. Here's what you can do from your dashboard:</p>
+          <ul style="margin:0 0 16px;padding-left:20px;">
+            <li style="margin-bottom:6px;">Browse hundreds of merchants and exclusive offers</li>
+            <li style="margin-bottom:6px;">Earn cashback on every qualifying purchase</li>
+            <li style="margin-bottom:6px;">Track your earnings in real time</li>
+            <li style="margin-bottom:6px;">Withdraw to your bank when you're ready</li>
+          </ul>
+          ${button(url, 'Start earning cashback')}
+          <p style="margin:24px 0 0;color:#6b7280;font-size:14px;">Questions? Just reply to this email — we read every message.</p>
+        `,
+      }),
+      text:
+`Welcome to VPathRewards
+
+Hi ${name},
+
+Thanks for joining VPathRewards. Here's what you can do:
+- Browse hundreds of merchants and exclusive offers
+- Earn cashback on every qualifying purchase
+- Track your earnings in real time
+- Withdraw to your bank when you're ready
+
+Start earning: ${url}
+
+Questions? Just reply to this email.
+
+© ${new Date().getFullYear()} VPathRewards`,
+    };
+  },
+
+  cashbackConfirmation: (name: string, amount: number, merchantName: string, offerTitle: string) => {
+    const url = frontendUrl();
+    const preheader = `$${amount.toFixed(2)} cashback from ${merchantName} has been confirmed.`;
+    const accent = '#059669';
+    return {
+      subject: `Cashback confirmed: $${amount.toFixed(2)} from ${merchantName}`,
+      preheader,
+      html: baseLayout({
+        preheader,
+        headerTitle: 'Cashback confirmed',
+        headerColor: accent,
+        body: `
+          <p style="margin:0 0 16px;font-size:18px;">Hi ${esc(name)},</p>
+          <p style="margin:0 0 24px;">Your cashback has been confirmed and added to your balance.</p>
+          <div style="text-align:center;font-size:40px;font-weight:700;color:${accent};margin:8px 0 24px;">
+            $${amount.toFixed(2)}
           </div>
-        </body>
-      </html>
-    `,
-    text: `
-      Welcome to VPathRewards!
-      
-      Hi ${name}!
-      
-      Thank you for joining VPathRewards! We're excited to help you earn money back on your everyday purchases.
-      
-      Here's what you can do:
-      - Browse hundreds of merchants and exclusive offers
-      - Earn cashback on every purchase
-      - Track your earnings in real-time
-      - Withdraw your cashback when you're ready
-      
-      Start earning: ${process.env.FRONTEND_URL || 'http://localhost:3000'}
-      
-      If you have any questions, feel free to reach out to our support team.
-      
-      Happy shopping!
-      
-      © ${new Date().getFullYear()} VPathRewards. All rights reserved.
-    `
-  }),
+          <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background:#f9fafb;border-radius:8px;padding:0;">
+            <tr><td style="padding:12px 16px;border-bottom:1px solid #e5e7eb;"><strong>Merchant:</strong> ${esc(merchantName)}</td></tr>
+            <tr><td style="padding:12px 16px;border-bottom:1px solid #e5e7eb;"><strong>Offer:</strong> ${esc(offerTitle)}</td></tr>
+            <tr><td style="padding:12px 16px;"><strong>Status:</strong> <span style="color:${accent};font-weight:600;">Confirmed</span></td></tr>
+          </table>
+          ${button(`${url}/dashboard`, 'View your earnings', accent)}
+          <p style="margin:24px 0 0;color:#6b7280;font-size:14px;">You can withdraw once you reach the minimum withdrawal threshold.</p>
+        `,
+      }),
+      text:
+`Cashback confirmed
 
-  cashbackConfirmation: (name: string, amount: number, merchantName: string, offerTitle: string) => ({
-    subject: `💰 Cashback Confirmed: $${amount.toFixed(2)} from ${merchantName}`,
-    html: `
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <meta charset="utf-8">
-          <style>
-            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-            .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-            .header { background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
-            .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }
-            .amount { font-size: 36px; font-weight: bold; color: #11998e; text-align: center; margin: 20px 0; }
-            .details { background: white; padding: 20px; border-radius: 5px; margin: 20px 0; }
-            .detail-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #eee; }
-            .detail-row:last-child { border-bottom: none; }
-            .button { display: inline-block; padding: 12px 30px; background: #11998e; color: white; text-decoration: none; border-radius: 5px; margin: 20px 0; }
-            .footer { text-align: center; margin-top: 30px; color: #666; font-size: 12px; }
-          </style>
-        </head>
-        <body>
-          <div class="container">
-            <div class="header">
-              <h1>💰 Cashback Confirmed!</h1>
-            </div>
-            <div class="content">
-              <h2>Hi ${name}!</h2>
-              <p>Great news! Your cashback has been confirmed.</p>
-              <div class="amount">$${amount.toFixed(2)}</div>
-              <div class="details">
-                <div class="detail-row">
-                  <strong>Merchant:</strong>
-                  <span>${merchantName}</span>
-                </div>
-                <div class="detail-row">
-                  <strong>Offer:</strong>
-                  <span>${offerTitle}</span>
-                </div>
-                <div class="detail-row">
-                  <strong>Status:</strong>
-                  <span style="color: #11998e; font-weight: bold;">Confirmed</span>
-                </div>
-              </div>
-              <p style="text-align: center;">
-                <a href="${process.env.FRONTEND_URL || 'http://localhost:3000'}/dashboard" class="button">View Your Earnings</a>
-              </p>
-              <p>This cashback has been added to your account balance. You can withdraw it once you reach the minimum withdrawal amount.</p>
-            </div>
-            <div class="footer">
-              <p>© ${new Date().getFullYear()} VPathRewards. All rights reserved.</p>
-            </div>
-          </div>
-        </body>
-      </html>
-    `,
-    text: `
-      Cashback Confirmed!
-      
-      Hi ${name}!
-      
-      Great news! Your cashback has been confirmed.
-      
-      Amount: $${amount.toFixed(2)}
-      Merchant: ${merchantName}
-      Offer: ${offerTitle}
-      Status: Confirmed
-      
-      This cashback has been added to your account balance. You can withdraw it once you reach the minimum withdrawal amount.
-      
-      View your earnings: ${process.env.FRONTEND_URL || 'http://localhost:3000'}/dashboard
-      
-      © ${new Date().getFullYear()} VPathRewards. All rights reserved.
-    `
-  }),
+Hi ${name},
 
-  passwordReset: (name: string, resetLink: string) => ({
-    subject: 'Reset your VPathRewards password',
-    html: `
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <meta charset="utf-8">
-          <style>
-            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-            .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-            .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
-            .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }
-            .button { display: inline-block; padding: 12px 30px; background: #667eea; color: white; text-decoration: none; border-radius: 5px; margin: 20px 0; font-weight: bold; }
-            .link-fallback { word-break: break-all; color: #667eea; font-size: 12px; }
-            .footer { text-align: center; margin-top: 30px; color: #666; font-size: 12px; }
-          </style>
-        </head>
-        <body>
-          <div class="container">
-            <div class="header">
-              <h1>Reset your password</h1>
-            </div>
-            <div class="content">
-              <h2>Hi ${name},</h2>
-              <p>We received a request to reset the password on your VPathRewards account. Click the button below to choose a new password.</p>
-              <p style="text-align: center;">
-                <a href="${resetLink}" class="button">Reset Password</a>
-              </p>
-              <p>This link will expire in <strong>1 hour</strong>. If you didn't request a password reset, you can safely ignore this email — your password won't change.</p>
-              <hr style="border: none; border-top: 1px solid #ddd; margin: 24px 0;">
-              <p style="font-size: 12px; color: #666;">If the button above doesn't work, copy and paste this link into your browser:</p>
-              <p class="link-fallback">${resetLink}</p>
-            </div>
-            <div class="footer">
-              <p>© ${new Date().getFullYear()} VPathRewards. All rights reserved.</p>
-              <p>You're receiving this email because a password reset was requested for your account.</p>
-            </div>
-          </div>
-        </body>
-      </html>
-    `,
-    text: `
-      Reset your VPathRewards password
+Your cashback has been confirmed and added to your balance.
 
-      Hi ${name},
+Amount: $${amount.toFixed(2)}
+Merchant: ${merchantName}
+Offer: ${offerTitle}
+Status: Confirmed
 
-      We received a request to reset the password on your VPathRewards account.
-      Click the link below to choose a new password:
+View your earnings: ${url}/dashboard
 
-      ${resetLink}
+© ${new Date().getFullYear()} VPathRewards`,
+    };
+  },
 
-      This link will expire in 1 hour. If you didn't request a password reset,
-      you can safely ignore this email — your password won't change.
+  passwordReset: (name: string, resetLink: string) => {
+    const preheader = 'Click to choose a new password. Link expires in 1 hour.';
+    return {
+      subject: 'Reset your VPathRewards password',
+      preheader,
+      html: baseLayout({
+        preheader,
+        headerTitle: 'Reset your password',
+        body: `
+          <p style="margin:0 0 16px;font-size:18px;">Hi ${esc(name)},</p>
+          <p style="margin:0 0 16px;">We received a request to reset the password on your VPathRewards account. Click the button below to choose a new one.</p>
+          ${button(resetLink, 'Reset password')}
+          <p style="margin:16px 0;">This link expires in <strong>1 hour</strong>. If you didn't request this, you can safely ignore this email — your password won't change.</p>
+          <hr style="border:none;border-top:1px solid #e5e7eb;margin:24px 0;">
+          <p style="margin:0 0 8px;font-size:13px;color:#6b7280;">If the button doesn't work, copy and paste this link into your browser:</p>
+          <p style="margin:0;word-break:break-all;font-size:13px;"><a href="${resetLink}" style="color:${BRAND_COLOR};">${esc(resetLink)}</a></p>
+        `,
+      }),
+      text:
+`Reset your VPathRewards password
 
-      © ${new Date().getFullYear()} VPathRewards. All rights reserved.
-    `
-  }),
+Hi ${name},
 
-  newOfferAlert: (name: string, offerTitle: string, merchantName: string, cashbackRate: number, offerId: number) => ({
-    subject: `🎉 New Offer: ${cashbackRate}% Cashback at ${merchantName}!`,
-    html: `
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <meta charset="utf-8">
-          <style>
-            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-            .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-            .header { background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
-            .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }
-            .offer-box { background: white; padding: 20px; border-radius: 10px; margin: 20px 0; border-left: 4px solid #f5576c; }
-            .cashback-badge { display: inline-block; background: #f5576c; color: white; padding: 8px 16px; border-radius: 20px; font-weight: bold; font-size: 18px; margin: 10px 0; }
-            .button { display: inline-block; padding: 12px 30px; background: #f5576c; color: white; text-decoration: none; border-radius: 5px; margin: 20px 0; }
-            .footer { text-align: center; margin-top: 30px; color: #666; font-size: 12px; }
-          </style>
-        </head>
-        <body>
-          <div class="container">
-            <div class="header">
-              <h1>🎉 New Offer Available!</h1>
-            </div>
-            <div class="content">
-              <h2>Hi ${name}!</h2>
-              <p>Great news! We just added a new cashback offer that might interest you.</p>
-              
-              <div class="offer-box">
-                <h3 style="margin-top: 0; color: #333;">${merchantName}</h3>
-                <p style="font-size: 16px; color: #666; margin: 10px 0;">${offerTitle}</p>
-                <div class="cashback-badge">${cashbackRate}% Cashback</div>
-              </div>
-              
-              <p style="text-align: center;">
-                <a href="${process.env.FRONTEND_URL || 'http://localhost:3000'}/offers/${offerId}" class="button">View Offer</a>
-              </p>
-              
-              <p>Don't miss out on this great deal! Shop now and earn cashback on your purchase.</p>
-              <p>Happy shopping! 🛍️</p>
-            </div>
-            <div class="footer">
-              <p>© ${new Date().getFullYear()} VPathRewards. All rights reserved.</p>
-              <p><a href="${process.env.FRONTEND_URL || 'http://localhost:3000'}/profile" style="color: #666;">Manage your notification preferences</a></p>
-            </div>
-          </div>
-        </body>
-      </html>
-    `,
-    text: `
-      New Offer Available!
-      
-      Hi ${name}!
-      
-      Great news! We just added a new cashback offer that might interest you.
-      
-      ${merchantName}
-      ${offerTitle}
-      ${cashbackRate}% Cashback
-      
-      View offer: ${process.env.FRONTEND_URL || 'http://localhost:3000'}/offers/${offerId}
-      
-      Don't miss out on this great deal! Shop now and earn cashback on your purchase.
-      
-      Happy shopping!
-      
-      © ${new Date().getFullYear()} VPathRewards. All rights reserved.
-      Manage your notification preferences: ${process.env.FRONTEND_URL || 'http://localhost:3000'}/profile
-    `
-  }),
+We received a request to reset the password on your VPathRewards account. Click the link below to choose a new one:
+
+${resetLink}
+
+This link expires in 1 hour. If you didn't request this, ignore this email — your password won't change.
+
+© ${new Date().getFullYear()} VPathRewards`,
+    };
+  },
+
+  newOfferAlert: (name: string, offerTitle: string, merchantName: string, cashbackRate: number, offerId: number) => {
+    const url = frontendUrl();
+    const accent = '#db2777';
+    const preheader = `${cashbackRate}% cashback at ${merchantName} — just added.`;
+    return {
+      subject: `New offer: ${cashbackRate}% cashback at ${merchantName}`,
+      preheader,
+      html: baseLayout({
+        preheader,
+        headerTitle: 'New offer available',
+        headerColor: accent,
+        body: `
+          <p style="margin:0 0 16px;font-size:18px;">Hi ${esc(name)},</p>
+          <p style="margin:0 0 24px;">We just added a new cashback offer that might interest you.</p>
+          <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background:#fdf2f8;border-left:4px solid ${accent};border-radius:8px;">
+            <tr><td style="padding:20px;">
+              <div style="font-size:18px;font-weight:700;color:#1f2937;margin-bottom:6px;">${esc(merchantName)}</div>
+              <div style="color:#4b5563;margin-bottom:12px;">${esc(offerTitle)}</div>
+              <div style="display:inline-block;background:${accent};color:#ffffff;padding:6px 14px;border-radius:999px;font-weight:700;font-size:14px;">${cashbackRate}% Cashback</div>
+            </td></tr>
+          </table>
+          ${button(`${url}/offers/${offerId}`, 'View offer', accent)}
+        `,
+      }),
+      text:
+`New offer available
+
+Hi ${name},
+
+We just added a new cashback offer.
+
+${merchantName}
+${offerTitle}
+${cashbackRate}% cashback
+
+View offer: ${url}/offers/${offerId}
+
+© ${new Date().getFullYear()} VPathRewards`,
+    };
+  },
 
   withdrawalStatus: (name: string, amount: number, status: string, adminNotes?: string) => {
+    const url = frontendUrl();
     const statusMessages: Record<string, { title: string; message: string; color: string }> = {
       pending: {
-        title: 'Withdrawal Request Received 📧',
+        title: 'Withdrawal received',
         message: 'Your withdrawal request has been received and is under review. We will process it as soon as possible.',
-        color: '#667eea'
+        color: BRAND_COLOR,
       },
       approved: {
-        title: 'Withdrawal Approved ✅',
+        title: 'Withdrawal approved',
         message: 'Your withdrawal request has been approved and is being processed.',
-        color: '#11998e'
+        color: '#059669',
       },
       processing: {
-        title: 'Withdrawal Processing ⏳',
+        title: 'Withdrawal processing',
         message: 'Your withdrawal is currently being processed.',
-        color: '#f39c12'
+        color: '#d97706',
       },
       completed: {
-        title: 'Withdrawal Completed 🎉',
+        title: 'Withdrawal completed',
         message: 'Your withdrawal has been completed and the funds have been sent.',
-        color: '#27ae60'
+        color: '#059669',
       },
       rejected: {
-        title: 'Withdrawal Rejected ❌',
+        title: 'Withdrawal rejected',
         message: 'Your withdrawal request has been rejected.',
-        color: '#e74c3c'
-      }
+        color: '#dc2626',
+      },
     };
 
     const statusInfo = statusMessages[status] || {
-      title: 'Withdrawal Update',
+      title: 'Withdrawal update',
       message: `Your withdrawal status has been updated to: ${status}`,
-      color: '#667eea'
+      color: BRAND_COLOR,
     };
+
+    const preheader = `${statusInfo.title}: $${amount.toFixed(2)}`;
+    const prettyStatus = status.charAt(0).toUpperCase() + status.slice(1);
 
     return {
       subject: `${statusInfo.title}: $${amount.toFixed(2)}`,
-      html: `
-        <!DOCTYPE html>
-        <html>
-          <head>
-            <meta charset="utf-8">
-            <style>
-              body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-              .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-              .header { background: linear-gradient(135deg, ${statusInfo.color} 0%, ${statusInfo.color}dd 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
-              .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }
-              .amount { font-size: 36px; font-weight: bold; color: ${statusInfo.color}; text-align: center; margin: 20px 0; }
-              .details { background: white; padding: 20px; border-radius: 5px; margin: 20px 0; }
-              .detail-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #eee; }
-              .detail-row:last-child { border-bottom: none; }
-              .notes { background: #fff3cd; border-left: 4px solid #ffc107; padding: 15px; margin: 20px 0; border-radius: 5px; }
-              .button { display: inline-block; padding: 12px 30px; background: ${statusInfo.color}; color: white; text-decoration: none; border-radius: 5px; margin: 20px 0; }
-              .footer { text-align: center; margin-top: 30px; color: #666; font-size: 12px; }
-            </style>
-          </head>
-          <body>
-            <div class="container">
-              <div class="header">
-                <h1>${statusInfo.title}</h1>
-              </div>
-              <div class="content">
-                <h2>Hi ${name}!</h2>
-                <p>${statusInfo.message}</p>
-                <div class="amount">$${amount.toFixed(2)}</div>
-                <div class="details">
-                  <div class="detail-row">
-                    <strong>Amount:</strong>
-                    <span>$${amount.toFixed(2)}</span>
-                  </div>
-                  <div class="detail-row">
-                    <strong>Status:</strong>
-                    <span style="color: ${statusInfo.color}; font-weight: bold;">${status.charAt(0).toUpperCase() + status.slice(1)}</span>
-                  </div>
-                </div>
-                ${adminNotes ? `
-                  <div class="notes">
-                    <strong>Admin Notes:</strong>
-                    <p>${adminNotes}</p>
-                  </div>
-                ` : ''}
-                <p style="text-align: center;">
-                  <a href="${process.env.FRONTEND_URL || 'http://localhost:3000'}/withdrawals" class="button">View Withdrawal Details</a>
-                </p>
-                ${status === 'rejected' ? '<p>If you have any questions about this rejection, please contact our support team.</p>' : ''}
-              </div>
-              <div class="footer">
-                <p>© ${new Date().getFullYear()} VPathRewards. All rights reserved.</p>
-              </div>
-            </div>
-          </body>
-        </html>
-      `,
-      text: `
-        ${statusInfo.title}
-        
-        Hi ${name}!
-        
-        ${statusInfo.message}
-        
-        Amount: $${amount.toFixed(2)}
-        Status: ${status.charAt(0).toUpperCase() + status.slice(1)}
-        ${adminNotes ? `\nAdmin Notes: ${adminNotes}` : ''}
-        
-        View withdrawal details: ${process.env.FRONTEND_URL || 'http://localhost:3000'}/withdrawals
-        
-        ${status === 'rejected' ? '\nIf you have any questions about this rejection, please contact our support team.' : ''}
-        
-        © ${new Date().getFullYear()} VPathRewards. All rights reserved.
-      `
+      preheader,
+      html: baseLayout({
+        preheader,
+        headerTitle: statusInfo.title,
+        headerColor: statusInfo.color,
+        body: `
+          <p style="margin:0 0 16px;font-size:18px;">Hi ${esc(name)},</p>
+          <p style="margin:0 0 24px;">${esc(statusInfo.message)}</p>
+          <div style="text-align:center;font-size:40px;font-weight:700;color:${statusInfo.color};margin:8px 0 24px;">
+            $${amount.toFixed(2)}
+          </div>
+          <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background:#f9fafb;border-radius:8px;">
+            <tr><td style="padding:12px 16px;border-bottom:1px solid #e5e7eb;"><strong>Amount:</strong> $${amount.toFixed(2)}</td></tr>
+            <tr><td style="padding:12px 16px;"><strong>Status:</strong> <span style="color:${statusInfo.color};font-weight:600;">${esc(prettyStatus)}</span></td></tr>
+          </table>
+          ${adminNotes ? `
+            <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background:#fffbeb;border-left:4px solid #f59e0b;border-radius:8px;margin-top:20px;">
+              <tr><td style="padding:16px;">
+                <strong style="display:block;margin-bottom:6px;">Admin notes</strong>
+                <span style="color:#1f2937;">${esc(adminNotes)}</span>
+              </td></tr>
+            </table>
+          ` : ''}
+          ${button(`${url}/withdrawals`, 'View withdrawal details', statusInfo.color)}
+          ${status === 'rejected' ? '<p style="margin:16px 0 0;color:#6b7280;font-size:14px;">If you have questions about this rejection, just reply to this email.</p>' : ''}
+        `,
+      }),
+      text:
+`${statusInfo.title}
+
+Hi ${name},
+
+${statusInfo.message}
+
+Amount: $${amount.toFixed(2)}
+Status: ${prettyStatus}
+${adminNotes ? `\nAdmin notes: ${adminNotes}\n` : ''}
+View details: ${url}/withdrawals
+${status === 'rejected' ? '\nIf you have questions, reply to this email.\n' : ''}
+© ${new Date().getFullYear()} VPathRewards`,
     };
-  }
+  },
 };
 
 // Send email function
@@ -509,12 +497,14 @@ export const sendEmail = async (
     }
 
     const fromAddress = process.env.EMAIL_FROM || DEFAULT_FROM;
+    const replyToAddress = process.env.EMAIL_REPLY_TO || DEFAULT_REPLY_TO;
     const resend = getResend();
 
     // --- Production path: Resend HTTP API -----------------------------
     if (resend) {
       const { data: sent, error } = await resend.emails.send({
         from: fromAddress,
+        replyTo: replyToAddress,
         to,
         subject: emailContent.subject,
         text: emailContent.text,
@@ -537,6 +527,7 @@ export const sendEmail = async (
       const transporter = await createEtherealTransporter();
       const info = await transporter.sendMail({
         from: fromAddress,
+        replyTo: replyToAddress,
         to,
         subject: emailContent.subject,
         text: emailContent.text,
@@ -569,7 +560,7 @@ export const sendEmailToUser = async (
 ): Promise<boolean> => {
   // Check user preferences
   const shouldSend = await shouldSendEmail(userId, notificationType);
-  
+
   if (!shouldSend) {
     console.log(`Email not sent to user ${userId}: notification preference disabled`);
     return false;
