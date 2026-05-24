@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAdmin } from '../../context/AdminContext';
 import apiClient from '../../api/client';
@@ -12,18 +12,25 @@ interface Merchant {
   logo_url?: string;
   website_url?: string;
   category?: string;
+  cj_advertiser_id?: string | null;
   offer_count?: number;
+  active_offer_count?: number;
+  avg_cashback_rate?: number | null;
 }
 
 const AdminMerchants = () => {
   const { isAuthenticated } = useAdmin();
   const navigate = useNavigate();
   const [merchants, setMerchants] = useState<Merchant[]>([]);
+  const [categories, setCategories] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [editingMerchant, setEditingMerchant] = useState<Merchant | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [pagination, setPagination] = useState<any>(null);
+  const [search, setSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [categoryFilter, setCategoryFilter] = useState('');
   const [formData, setFormData] = useState({
     name: '',
     description: '',
@@ -32,26 +39,45 @@ const AdminMerchants = () => {
     category: '',
   });
 
+  // Debounce the search input so we don't fire a request per keystroke.
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(search), 300);
+    return () => clearTimeout(t);
+  }, [search]);
+
+  // Reset to page 1 whenever a filter changes — otherwise we'd request a
+  // page that no longer exists in the filtered result set.
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [debouncedSearch, categoryFilter]);
+
   useEffect(() => {
     if (!isAuthenticated) {
       navigate('/admin/login');
       return;
     }
     fetchMerchants();
-  }, [isAuthenticated, navigate, currentPage]);
+  }, [isAuthenticated, navigate, currentPage, debouncedSearch, categoryFilter]);
 
   const fetchMerchants = async () => {
     try {
+      setLoading(true);
       const response = await apiClient.get('/admin/merchants', {
-        params: { page: currentPage, limit: 20 }
+        params: {
+          page: currentPage,
+          limit: 20,
+          search: debouncedSearch || undefined,
+          category: categoryFilter || undefined,
+        },
       });
-      
-      // Handle paginated response
+
       if (response.data?.data) {
         setMerchants(response.data.data);
         setPagination(response.data.pagination);
+        if (Array.isArray(response.data.categories)) {
+          setCategories(response.data.categories);
+        }
       } else {
-        // Fallback for non-paginated response
         setMerchants(response.data || []);
         setPagination(null);
       }
@@ -115,6 +141,16 @@ const AdminMerchants = () => {
     }
   };
 
+  const hasFilters = useMemo(
+    () => Boolean(debouncedSearch || categoryFilter),
+    [debouncedSearch, categoryFilter]
+  );
+
+  const clearFilters = () => {
+    setSearch('');
+    setCategoryFilter('');
+  };
+
   if (!isAuthenticated) return null;
 
   return (
@@ -130,69 +166,153 @@ const AdminMerchants = () => {
           </button>
         </div>
 
+        {/* Filters */}
+        <div className="bg-white rounded-lg shadow p-4 mb-4 flex flex-col sm:flex-row gap-3 sm:items-center">
+          <div className="flex-1">
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search merchants by name…"
+              className="w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
+            />
+          </div>
+          <div className="sm:w-64">
+            <select
+              value={categoryFilter}
+              onChange={(e) => setCategoryFilter(e.target.value)}
+              className="w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
+            >
+              <option value="">All categories</option>
+              {categories.map((c) => (
+                <option key={c} value={c}>
+                  {c}
+                </option>
+              ))}
+            </select>
+          </div>
+          {hasFilters && (
+            <button
+              onClick={clearFilters}
+              className="text-sm text-gray-600 hover:text-gray-900 px-3 py-2"
+            >
+              Clear
+            </button>
+          )}
+        </div>
+
         {loading ? (
           <div className="text-center py-12">Loading...</div>
+        ) : merchants.length === 0 ? (
+          <div className="bg-white rounded-lg shadow p-12 text-center text-gray-500">
+            {hasFilters
+              ? 'No merchants match your filters.'
+              : 'No merchants yet. Click + Add Merchant to create one.'}
+          </div>
         ) : (
           <div className="bg-white rounded-lg shadow overflow-hidden">
             <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Category</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Offers</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {merchants.map((merchant) => (
-                  <tr key={merchant.id}>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center">
-                        {merchant.logo_url && (
-                          <LazyImage
-                            src={merchant.logo_url}
-                            alt={merchant.name}
-                            className="w-10 h-10 object-contain mr-3"
-                            width={40}
-                            height={40}
-                            fallback="https://via.placeholder.com/40"
-                          />
-                        )}
-                        <div>
-                          <div className="text-sm font-medium text-gray-900">{merchant.name}</div>
-                          {merchant.description && (
-                            <div className="text-sm text-gray-500">{merchant.description}</div>
-                          )}
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {merchant.category || '-'}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {merchant.offer_count || 0}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
-                      <button
-                        onClick={() => handleOpenModal(merchant)}
-                        className="text-primary-600 hover:text-primary-900"
-                      >
-                        Edit
-                      </button>
-                      <button
-                        onClick={() => handleDelete(merchant.id)}
-                        className="text-red-600 hover:text-red-900"
-                      >
-                        Delete
-                      </button>
-                    </td>
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Category</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Offers</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Avg Rate</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">CJ Link</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
                   </tr>
-                ))}
-              </tbody>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {merchants.map((merchant) => {
+                    const offerCount = merchant.offer_count ?? 0;
+                    const activeOffers = merchant.active_offer_count ?? 0;
+                    const avgRate = merchant.avg_cashback_rate;
+                    const cjLinked = Boolean(merchant.cj_advertiser_id);
+
+                    return (
+                      <tr key={merchant.id}>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="flex items-center">
+                            {merchant.logo_url && (
+                              <LazyImage
+                                src={merchant.logo_url}
+                                alt={merchant.name}
+                                className="w-10 h-10 object-contain mr-3"
+                                width={40}
+                                height={40}
+                                fallback="https://via.placeholder.com/40"
+                              />
+                            )}
+                            <div>
+                              <div className="text-sm font-medium text-gray-900">{merchant.name}</div>
+                              {merchant.description && (
+                                <div className="text-sm text-gray-500">{merchant.description}</div>
+                              )}
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {merchant.category || '—'}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+                          {offerCount === 0 ? (
+                            <span className="text-gray-400">0</span>
+                          ) : (
+                            <span>
+                              {activeOffers}
+                              {activeOffers !== offerCount && (
+                                <span className="text-gray-400"> / {offerCount}</span>
+                              )}
+                            </span>
+                          )}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+                          {avgRate == null ? (
+                            <span className="text-gray-400">—</span>
+                          ) : (
+                            `${avgRate.toFixed(1)}%`
+                          )}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm">
+                          {cjLinked ? (
+                            <button
+                              onClick={() => navigate('/admin/cj')}
+                              className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 hover:bg-green-200"
+                              title={`CJ advertiser ${merchant.cj_advertiser_id}`}
+                            >
+                              ✓ Linked
+                            </button>
+                          ) : (
+                            <button
+                              onClick={() => navigate('/admin/cj')}
+                              className="text-xs text-gray-500 hover:text-primary-600 underline"
+                            >
+                              Link…
+                            </button>
+                          )}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
+                          <button
+                            onClick={() => handleOpenModal(merchant)}
+                            className="text-primary-600 hover:text-primary-900"
+                          >
+                            Edit
+                          </button>
+                          <button
+                            onClick={() => handleDelete(merchant.id)}
+                            className="text-red-600 hover:text-red-900"
+                          >
+                            Delete
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
               </table>
             </div>
-            
+
             {/* Pagination */}
             {pagination && pagination.totalPages > 1 && (
               <div className="px-6 py-4 border-t border-gray-200">
@@ -256,10 +376,16 @@ const AdminMerchants = () => {
                     <label className="block text-sm font-medium text-gray-700">Category</label>
                     <input
                       type="text"
+                      list="merchant-categories"
                       className="mt-1 block w-full rounded-md border-gray-300 shadow-sm"
                       value={formData.category}
                       onChange={(e) => setFormData({ ...formData, category: e.target.value })}
                     />
+                    <datalist id="merchant-categories">
+                      {categories.map((c) => (
+                        <option key={c} value={c} />
+                      ))}
+                    </datalist>
                   </div>
                 </div>
                 <div className="mt-6 flex space-x-3">
