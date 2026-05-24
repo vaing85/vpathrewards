@@ -315,20 +315,7 @@ const AdminDashboard = () => {
           </div>
         )}
 
-        {/* ─── Zone 4: Quick actions ────────────────────────────────────── */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-          <h2 className="text-sm font-semibold uppercase tracking-wider text-gray-500 mb-4">
-            Quick actions
-          </h2>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            <QuickAction to="/admin/withdrawals" label="Withdrawals" emoji="💸" />
-            <QuickAction to="/admin/merchants" label="Merchants" emoji="🏬" />
-            <QuickAction to="/admin/offers" label="Offers" emoji="🏷️" />
-            <QuickAction to="/admin/users" label="Users" emoji="👥" />
-          </div>
-        </div>
-
-        {/* ─── Zone 5: Recent activity ──────────────────────────────────── */}
+        {/* ─── Zone 4: Recent activity ──────────────────────────────────── */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
           <h2 className="text-sm font-semibold uppercase tracking-wider text-gray-500 mb-4">
             Recent activity
@@ -412,20 +399,5 @@ const MetricCard = ({ label, value, deltaPct, color, primary, subtitle }: Metric
   );
 };
 
-interface QuickActionProps {
-  to: string;
-  label: string;
-  emoji: string;
-}
-
-const QuickAction = ({ to, label, emoji }: QuickActionProps) => (
-  <Link
-    to={to}
-    className="flex flex-col items-center justify-center gap-2 p-4 bg-gray-50 hover:bg-gray-100 border border-gray-200 rounded-lg transition text-center"
-  >
-    <span className="text-2xl" aria-hidden>{emoji}</span>
-    <span className="text-sm font-medium text-gray-700">{label}</span>
-  </Link>
-);
 
 export default AdminDashboard;
