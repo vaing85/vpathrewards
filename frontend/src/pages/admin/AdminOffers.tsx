@@ -243,7 +243,18 @@ const AdminOffers = () => {
                   return (
                   <tr key={offer.id}>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                      {offer.merchant_name}
+                      <div className="flex items-center gap-2">
+                        <span>{offer.merchant_name}</span>
+                        {cjLinked && (
+                          <button
+                            onClick={() => navigate('/admin/cj')}
+                            className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-blue-100 text-blue-700 hover:bg-blue-200"
+                            title={`Linked to CJ advertiser ${offer.merchant_cj_advertiser_id} — click to manage`}
+                          >
+                            CJ
+                          </button>
+                        )}
+                      </div>
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-500">{offer.title}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm">

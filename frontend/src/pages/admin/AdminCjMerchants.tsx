@@ -292,8 +292,18 @@ const AdminCjMerchants = () => {
                       <td className="px-4 py-3 text-right font-bold text-gray-800 tabular-nums">
                         {fmtUsd(m.cj_max_fixed_usd)}
                       </td>
-                      <td className="px-4 py-3 text-right text-gray-600 tabular-nums">
-                        {m.offer_count}
+                      <td className="px-4 py-3 text-right tabular-nums">
+                        {m.offer_count > 0 ? (
+                          <Link
+                            to="/admin/offers"
+                            className="text-primary-600 hover:text-primary-800 hover:underline"
+                            title="Open Offers page"
+                          >
+                            {m.offer_count}
+                          </Link>
+                        ) : (
+                          <span className="text-gray-400">0</span>
+                        )}
                       </td>
                       <td className="px-4 py-3 text-xs text-gray-500">
                         {fmtRel(m.cj_synced_at)}
