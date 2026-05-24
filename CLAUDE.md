@@ -24,14 +24,28 @@
 
 Everything else — refactors, docs, copy changes, env example edits, follow-up cleanups — waits for the daily batch.
 
+## PR Lifecycle
+
+**All PRs open as drafts.** GitHub disables the merge button on draft PRs, so this prevents premature merges while more commits are still on the way.
+
+- **Open:** `gh pr create --draft ...` — every PR, no exceptions. Never `gh pr create` without `--draft`.
+- **Push commits freely** while the PR is a draft — that's the whole point.
+- **Mark Ready:** `gh pr ready <number>` — only when done pushing for the session. The owner only merges Ready PRs, never drafts.
+- **If pushing more after marking Ready:** either explicitly tell the owner "one more commit — re-check before merging", or `gh pr ready --undo <number>` to put it back into draft and re-mark Ready when truly done.
+
+**Follow-up work after a PR has already merged:**
+- If today's daily PR is merged and the owner then asks for more work, open a new branch named `chore/daily-YYYY-MM-DD-part2` (then `-part3`, etc.) and a new PR from it.
+- **Never push to a branch whose PR is merged/closed.** Those commits dangle on the branch but don't reach master until rescued into a new PR — easy to lose.
+
 ## Branch Strategy
 
 ```
-master                       ← production-ready, protected
-├── chore/daily-YYYY-MM-DD   ← default: daily batch of mixed changes (PR → master)
-├── feat/xxx                 ← single-feature branches when a feature dominates
-├── fix/xxx                  ← urgent prod-down / security fix branches
-└── chore/xxx                ← (legacy single-purpose branches — prefer daily batch)
+master                              ← production-ready, protected
+├── chore/daily-YYYY-MM-DD          ← default: daily batch of mixed changes (PR → master, opens as draft)
+├── chore/daily-YYYY-MM-DD-partN    ← follow-up after today's daily PR was already merged
+├── feat/xxx                        ← single-feature branches when a feature dominates
+├── fix/xxx                         ← urgent prod-down / security fix branches
+└── chore/xxx                       ← (legacy single-purpose branches — prefer daily batch)
 ```
 
 ## PR Checklist
@@ -41,6 +55,11 @@ Before opening a PR:
 - [ ] No secrets or API keys committed
 - [ ] `.env` files are not committed (only `.env.example`)
 - [ ] PR description explains what changed and why
+- [ ] PR opened with `--draft` flag
+
+Before marking the PR Ready (`gh pr ready <num>`):
+- [ ] All planned commits for this session have been pushed
+- [ ] No "one more thing" you know is coming in the next 30 minutes
 
 ## Tech Stack
 
