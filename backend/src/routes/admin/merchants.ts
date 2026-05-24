@@ -6,34 +6,76 @@ import { validateMerchant, validateId } from '../../middleware/validation';
 const router = express.Router();
 
 // Get all merchants (admin view)
+//
+// Query params:
+//   page, limit  — standard pagination
+//   search       — case-insensitive substring match on merchant name
+//   category     — exact category match (or empty string for "uncategorised")
+//
+// Response includes per-merchant aggregates so AdminMerchants can show
+// offers count, average cashback rate, and CJ-link status without N+1
+// follow-up requests. Also returns the distinct categories list so the
+// frontend can populate its filter dropdown.
 router.get('/', authenticateAdmin, async (req, res) => {
   try {
-    const { page = '1', limit = '20' } = req.query;
+    const { page = '1', limit = '20', search = '', category = '' } = req.query;
     const pageNum = Math.max(1, parseInt(page as string) || 1);
     const limitNum = Math.min(100, Math.max(1, parseInt(limit as string) || 20));
     const offset = (pageNum - 1) * limitNum;
-    
-    // Get total count
-    const totalResult = await dbGet(`
-      SELECT COUNT(DISTINCT m.id) as total
-      FROM merchants m
-    `) as { total: number };
+
+    const searchTerm = (search as string).trim();
+    const categoryTerm = (category as string).trim();
+
+    // Build WHERE clauses + params consistently across both queries.
+    // LOWER(...) LIKE LOWER(?) is portable between SQLite and Postgres
+    // (ILIKE doesn't exist in SQLite).
+    const whereParts: string[] = [];
+    const whereParams: any[] = [];
+    if (searchTerm) {
+      whereParts.push('LOWER(m.name) LIKE LOWER(?)');
+      whereParams.push(`%${searchTerm}%`);
+    }
+    if (categoryTerm) {
+      whereParts.push('m.category = ?');
+      whereParams.push(categoryTerm);
+    }
+    const whereSql = whereParts.length ? `WHERE ${whereParts.join(' AND ')}` : '';
+
+    // Get filtered total count
+    const totalResult = await dbGet(
+      `SELECT COUNT(DISTINCT m.id) as total FROM merchants m ${whereSql}`,
+      whereParams
+    ) as { total: number };
     const total = totalResult?.total || 0;
     const totalPages = Math.ceil(total / limitNum);
-    
-    const merchants = await dbAll(`
-      SELECT 
-        m.*,
-        COUNT(o.id) as offer_count
-      FROM merchants m
-      LEFT JOIN offers o ON m.id = o.merchant_id
-      GROUP BY m.id
-      ORDER BY m.created_at DESC
-      LIMIT ? OFFSET ?
-    `, [limitNum, offset]);
-    
+
+    const merchants = await dbAll(
+      `SELECT
+         m.*,
+         COUNT(o.id) AS offer_count,
+         COUNT(CASE WHEN o.is_active = 1 THEN 1 END) AS active_offer_count,
+         AVG(CASE WHEN o.is_active = 1
+                       AND (o.cashback_fixed_usd IS NULL OR o.cashback_fixed_usd = 0)
+                  THEN o.cashback_rate END) AS avg_cashback_rate
+       FROM merchants m
+       LEFT JOIN offers o ON m.id = o.merchant_id
+       ${whereSql}
+       GROUP BY m.id
+       ORDER BY m.created_at DESC
+       LIMIT ? OFFSET ?`,
+      [...whereParams, limitNum, offset]
+    );
+
+    // Distinct categories for the filter dropdown — unfiltered, since the
+    // dropdown should always show every option regardless of the current
+    // search. Empty/null categories are excluded.
+    const categoriesRows = await dbAll(
+      `SELECT DISTINCT category FROM merchants WHERE category IS NOT NULL AND category != '' ORDER BY category`
+    ) as Array<{ category: string }>;
+
     res.json({
       data: merchants,
+      categories: categoriesRows.map((r) => r.category),
       pagination: {
         page: pageNum,
         limit: limitNum,
