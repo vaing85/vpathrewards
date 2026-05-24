@@ -16,6 +16,8 @@
     "recharts": "^2.15.4"
   },
   "devDependencies": {
+    "@realfavicongenerator/generate-favicon": "^0.8.3",
+    "@realfavicongenerator/image-adapter-node": "^0.8.3",
     "@types/react": "^18.2.43",
     "@types/react-dom": "^18.2.17",
     "@vitejs/plugin-react": "^4.3.4",
