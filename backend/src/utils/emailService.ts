@@ -73,7 +73,7 @@ const shouldSendEmail = async (userId: number, notificationType: 'email' | 'cash
 // Email templates
 const emailTemplates = {
   welcome: (name: string) => ({
-    subject: 'Welcome to CashBack Rewards! 🎉',
+    subject: 'Welcome to VPathRewards! 🎉',
     html: `
       <!DOCTYPE html>
       <html>
@@ -91,11 +91,11 @@ const emailTemplates = {
         <body>
           <div class="container">
             <div class="header">
-              <h1>Welcome to CashBack Rewards!</h1>
+              <h1>Welcome to VPathRewards!</h1>
             </div>
             <div class="content">
               <h2>Hi ${name}! 👋</h2>
-              <p>Thank you for joining CashBack Rewards! We're excited to help you earn money back on your everyday purchases.</p>
+              <p>Thank you for joining VPathRewards! We're excited to help you earn money back on your everyday purchases.</p>
               <p><strong>Here's what you can do:</strong></p>
               <ul>
                 <li>Browse hundreds of merchants and exclusive offers</li>
@@ -110,19 +110,19 @@ const emailTemplates = {
               <p>Happy shopping! 🛍️</p>
             </div>
             <div class="footer">
-              <p>© ${new Date().getFullYear()} CashBack Rewards. All rights reserved.</p>
-              <p>You're receiving this email because you signed up for CashBack Rewards.</p>
+              <p>© ${new Date().getFullYear()} VPathRewards. All rights reserved.</p>
+              <p>You're receiving this email because you signed up for VPathRewards.</p>
             </div>
           </div>
         </body>
       </html>
     `,
     text: `
-      Welcome to CashBack Rewards!
+      Welcome to VPathRewards!
       
       Hi ${name}!
       
-      Thank you for joining CashBack Rewards! We're excited to help you earn money back on your everyday purchases.
+      Thank you for joining VPathRewards! We're excited to help you earn money back on your everyday purchases.
       
       Here's what you can do:
       - Browse hundreds of merchants and exclusive offers
@@ -136,7 +136,7 @@ const emailTemplates = {
       
       Happy shopping!
       
-      © ${new Date().getFullYear()} CashBack Rewards. All rights reserved.
+      © ${new Date().getFullYear()} VPathRewards. All rights reserved.
     `
   }),
 
@@ -189,7 +189,7 @@ const emailTemplates = {
               <p>This cashback has been added to your account balance. You can withdraw it once you reach the minimum withdrawal amount.</p>
             </div>
             <div class="footer">
-              <p>© ${new Date().getFullYear()} CashBack Rewards. All rights reserved.</p>
+              <p>© ${new Date().getFullYear()} VPathRewards. All rights reserved.</p>
             </div>
           </div>
         </body>
@@ -211,7 +211,7 @@ const emailTemplates = {
       
       View your earnings: ${process.env.FRONTEND_URL || 'http://localhost:3000'}/dashboard
       
-      © ${new Date().getFullYear()} CashBack Rewards. All rights reserved.
+      © ${new Date().getFullYear()} VPathRewards. All rights reserved.
     `
   }),
 
@@ -314,7 +314,7 @@ const emailTemplates = {
               <p>Happy shopping! 🛍️</p>
             </div>
             <div class="footer">
-              <p>© ${new Date().getFullYear()} CashBack Rewards. All rights reserved.</p>
+              <p>© ${new Date().getFullYear()} VPathRewards. All rights reserved.</p>
               <p><a href="${process.env.FRONTEND_URL || 'http://localhost:3000'}/profile" style="color: #666;">Manage your notification preferences</a></p>
             </div>
           </div>
@@ -338,7 +338,7 @@ const emailTemplates = {
       
       Happy shopping!
       
-      © ${new Date().getFullYear()} CashBack Rewards. All rights reserved.
+      © ${new Date().getFullYear()} VPathRewards. All rights reserved.
       Manage your notification preferences: ${process.env.FRONTEND_URL || 'http://localhost:3000'}/profile
     `
   }),
@@ -430,7 +430,7 @@ const emailTemplates = {
                 ${status === 'rejected' ? '<p>If you have any questions about this rejection, please contact our support team.</p>' : ''}
               </div>
               <div class="footer">
-                <p>© ${new Date().getFullYear()} CashBack Rewards. All rights reserved.</p>
+                <p>© ${new Date().getFullYear()} VPathRewards. All rights reserved.</p>
               </div>
             </div>
           </body>
@@ -451,7 +451,7 @@ const emailTemplates = {
         
         ${status === 'rejected' ? '\nIf you have any questions about this rejection, please contact our support team.' : ''}
         
-        © ${new Date().getFullYear()} CashBack Rewards. All rights reserved.
+        © ${new Date().getFullYear()} VPathRewards. All rights reserved.
       `
     };
   }
@@ -510,7 +510,7 @@ export const sendEmail = async (
     }
 
     const mailOptions = {
-      from: process.env.SMTP_FROM || `"CashBack Rewards" <${process.env.SMTP_USER}>`,
+      from: process.env.SMTP_FROM || `"VPathRewards" <${process.env.SMTP_USER}>`,
       to,
       subject: emailContent.subject,
       text: emailContent.text,
