@@ -58,7 +58,10 @@ const DEFAULT_FROM = 'VPathRewards <hello@vpathrewards.store>';
 const DEFAULT_REPLY_TO = 'hello@vpathrewards.store';
 
 // Brand
-const BRAND_COLOR = '#2563eb';      // matches frontend/public/logo.svg
+// Note: this is the email accent (button + headers for password reset/welcome).
+// The real VPathRewards mark is navy + gold (frontend/public/vpathlogo.png);
+// the full email re-skin to that palette is a future task.
+const BRAND_COLOR = '#2563eb';
 const BRAND_COLOR_DARK = '#1d4ed8';
 
 // Defensive: if FRONTEND_URL was set in Railway with the literal `FRONTEND_URL=`
@@ -168,7 +171,9 @@ const baseLayout = ({
                     <td style="vertical-align:middle;">
                       <table role="presentation" cellspacing="0" cellpadding="0" border="0">
                         <tr>
-                          <td style="background:#ffffff;border-radius:8px;width:36px;height:36px;text-align:center;font-family:Arial,Helvetica,sans-serif;font-size:22px;font-weight:700;color:${BRAND_COLOR};line-height:36px;">V</td>
+                          <td style="background:#ffffff;border-radius:8px;padding:4px;">
+                            <img src="${frontendUrl()}/vpathlogo.png" alt="VPathRewards" width="36" height="36" style="display:block;width:36px;height:36px;object-fit:contain;">
+                          </td>
                           <td style="padding-left:12px;font-family:Arial,Helvetica,sans-serif;font-size:18px;font-weight:700;color:#ffffff;letter-spacing:0.2px;">VPathRewards</td>
                         </tr>
                       </table>
