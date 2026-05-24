@@ -1,42 +1,48 @@
 import nodemailer from 'nodemailer';
+import { Resend } from 'resend';
 import { dbGet, dbAll } from '../database';
 
-// Cache for Ethereal test account
+// ---------------------------------------------------------------------------
+// Email transport
+// ---------------------------------------------------------------------------
+// Production path: Resend HTTP API on port 443. Picked over SMTP because
+// Railway (and most modern PaaS hosts) block outbound SMTP, which was the
+// root cause of the long-standing ETIMEDOUT on CONN errors in the logs.
+//
+// Dev fallback: Ethereal — a fake SMTP service that captures sends and
+// returns a preview URL. Used only when NODE_ENV=development AND no
+// RESEND_API_KEY is set, so contributors don't need a Resend account to
+// run the app locally.
+// ---------------------------------------------------------------------------
+
+// Lazy-init Resend client so missing env vars don't crash boot
+let resendClient: Resend | null = null;
+const getResend = (): Resend | null => {
+  if (resendClient) return resendClient;
+  const apiKey = process.env.RESEND_API_KEY;
+  if (!apiKey) return null;
+  resendClient = new Resend(apiKey);
+  return resendClient;
+};
+
+// Cache for Ethereal test account (dev fallback only)
 let etherealAccount: nodemailer.TestAccount | null = null;
 
-// Email configuration
-const createTransporter = async () => {
-  // For development, use Ethereal Email (fake SMTP for testing)
-  // In production, configure with real SMTP settings
-  if (process.env.NODE_ENV === 'development' && !process.env.SMTP_HOST) {
-    // Create or reuse Ethereal test account
-    if (!etherealAccount) {
-      etherealAccount = await nodemailer.createTestAccount();
-      console.log('📧 Ethereal Email configured for development');
-      console.log('   Test account created:', etherealAccount.user);
-    }
-    
-    return nodemailer.createTransport({
-      host: 'smtp.ethereal.email',
-      port: 587,
-      secure: false,
-      auth: {
-        user: etherealAccount.user,
-        pass: etherealAccount.pass
-      }
-    });
+const createEtherealTransporter = async () => {
+  if (!etherealAccount) {
+    etherealAccount = await nodemailer.createTestAccount();
+    console.log('📧 Ethereal Email configured for development');
+    console.log('   Test account created:', etherealAccount.user);
   }
-
   return nodemailer.createTransport({
-    host: process.env.SMTP_HOST || 'smtp.gmail.com',
-    port: parseInt(process.env.SMTP_PORT || '587'),
-    secure: process.env.SMTP_SECURE === 'true',
-    auth: {
-      user: process.env.SMTP_USER,
-      pass: process.env.SMTP_PASS
-    }
+    host: 'smtp.ethereal.email',
+    port: 587,
+    secure: false,
+    auth: { user: etherealAccount.user, pass: etherealAccount.pass },
   });
 };
+
+const DEFAULT_FROM = 'VPathRewards <noreply@vpathrewards.store>';
 
 // Check if user wants to receive email notifications
 const shouldSendEmail = async (userId: number, notificationType: 'email' | 'cashback' | 'withdrawal' | 'newOffers'): Promise<boolean> => {
@@ -464,13 +470,6 @@ export const sendEmail = async (
   data: any
 ): Promise<boolean> => {
   try {
-    // Skip email sending if SMTP is not configured (production mode only)
-    if (!process.env.SMTP_HOST && process.env.NODE_ENV === 'production') {
-      console.warn('SMTP not configured. Email not sent.');
-      return false;
-    }
-
-    const transporter = await createTransporter();
     let emailContent;
 
     switch (template) {
@@ -509,30 +508,51 @@ export const sendEmail = async (
         throw new Error('Invalid email template');
     }
 
-    const mailOptions = {
-      from: process.env.SMTP_FROM || `"VPathRewards" <${process.env.SMTP_USER}>`,
-      to,
-      subject: emailContent.subject,
-      text: emailContent.text,
-      html: emailContent.html
-    };
+    const fromAddress = process.env.EMAIL_FROM || DEFAULT_FROM;
+    const resend = getResend();
 
-    const info = await transporter.sendMail(mailOptions);
-    
-    if (process.env.NODE_ENV === 'development' && !process.env.SMTP_HOST) {
-      // Ethereal Email - show preview URL
+    // --- Production path: Resend HTTP API -----------------------------
+    if (resend) {
+      const { data: sent, error } = await resend.emails.send({
+        from: fromAddress,
+        to,
+        subject: emailContent.subject,
+        text: emailContent.text,
+        html: emailContent.html,
+      });
+
+      if (error) {
+        console.error('Resend send error:', error);
+        return false;
+      }
+
+      console.log('📧 Email sent successfully:', sent?.id);
+      console.log('   To:', to);
+      console.log('   Subject:', emailContent.subject);
+      return true;
+    }
+
+    // --- Dev fallback: Ethereal (only when RESEND_API_KEY is unset) ----
+    if (process.env.NODE_ENV !== 'production') {
+      const transporter = await createEtherealTransporter();
+      const info = await transporter.sendMail({
+        from: fromAddress,
+        to,
+        subject: emailContent.subject,
+        text: emailContent.text,
+        html: emailContent.html,
+      });
       const previewUrl = nodemailer.getTestMessageUrl(info);
       console.log('📧 Email sent via Ethereal Email');
       console.log('   Preview URL:', previewUrl);
       console.log('   To:', to);
       console.log('   Subject:', emailContent.subject);
-    } else {
-      console.log('📧 Email sent successfully:', info.messageId);
-      console.log('   To:', to);
-      console.log('   Subject:', emailContent.subject);
+      return true;
     }
 
-    return true;
+    // --- Production without RESEND_API_KEY: warn and skip --------------
+    console.warn('RESEND_API_KEY not configured. Email not sent.');
+    return false;
   } catch (error) {
     console.error('Error sending email:', error);
     return false;
