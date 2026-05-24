@@ -61,6 +61,12 @@ const AdminNavbar = () => {
               >
                 CJ
               </Link>
+              <Link
+                to="/admin/jobs"
+                className="px-3 py-2 rounded-md text-sm font-medium hover:bg-gray-700"
+              >
+                Jobs
+              </Link>
             </div>
           </div>
           

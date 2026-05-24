@@ -37,6 +37,7 @@ const AdminUsers       = lazy(() => import('./pages/admin/AdminUsers'));
 const AdminWithdrawals = lazy(() => import('./pages/admin/AdminWithdrawals'));
 const AdminAnalytics   = lazy(() => import('./pages/admin/AdminAnalytics'));
 const AdminCjMerchants = lazy(() => import('./pages/admin/AdminCjMerchants'));
+const AdminJobs        = lazy(() => import('./pages/admin/AdminJobs'));
 
 const PageShell = ({ children }: { children: React.ReactNode }) => (
   <div className="min-h-screen bg-gray-50">
@@ -87,6 +88,7 @@ function App() {
                 <Route path="/admin/withdrawals" element={<AdminLayout><AdminWithdrawals /></AdminLayout>} />
                 <Route path="/admin/analytics" element={<AdminLayout><AdminAnalytics /></AdminLayout>} />
                 <Route path="/admin/cj" element={<AdminLayout><AdminCjMerchants /></AdminLayout>} />
+                <Route path="/admin/jobs" element={<AdminLayout><AdminJobs /></AdminLayout>} />
               </Routes>
             </Suspense>
           </Router>
