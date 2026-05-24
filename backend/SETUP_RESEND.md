@@ -12,10 +12,18 @@ logs. HTTPS on port 443 is never blocked.
 
 ### 1. Verify your sending domain in Resend
 
-Resend dashboard → **Domains** → add `vpathrewards.store` (or whichever
-domain you'll send from). Add the four DNS records Resend shows you to
-your DNS provider (Cloudflare in our case). Wait for status to flip to
-**Verified** — usually a few minutes.
+Resend dashboard → **Domains** → add `vpathrewards.store` (apex).
+
+We send from the **apex domain** so customer replies can be caught by
+**Cloudflare Email Routing** on the apex and forwarded to a real inbox
+(see step 4). Resend Insights also lists `send.vpathrewards.store`
+(subdomain) as a "Possible Improvement" for reputation isolation — the
+tradeoff is that Cloudflare Email Routing is easier to wire up on the
+apex than on a subdomain. We've chosen apex for simplicity; revisit if
+deliverability ever becomes an issue.
+
+Add the DNS records Resend shows you (SPF TXT, DKIM CNAME, DMARC TXT)
+to Cloudflare. Wait for status to flip to **Verified** — usually a few minutes.
 
 Without a verified domain, Resend will either refuse sends or force them
 to come from `onboarding@resend.dev`.
@@ -36,13 +44,57 @@ Railway dashboard → backend service → **Variables**:
 | Variable | Value |
 |---|---|
 | `RESEND_API_KEY` | `re_...` (from step 2) |
-| `EMAIL_FROM` | `VPathRewards <noreply@vpathrewards.store>` |
+| `EMAIL_FROM` | `VPathRewards <hello@vpathrewards.store>` |
+| `EMAIL_REPLY_TO` | `hello@vpathrewards.store` |
+
+Note the mailbox is `hello@`, not `no-reply@`. Resend Insights flags
+`no-reply` addresses ("Needs Attention → Don't use no-reply") because
+replies disappear silently and modern providers downrank them for
+deliverability. `EMAIL_REPLY_TO` is set explicitly so that even if we
+later switch `EMAIL_FROM` to a `send.` subdomain, customer replies still
+land at the apex address Cloudflare routes (next step).
 
 Railway redeploys automatically after a variable change.
 
 If you previously had `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_USER`,
 `SMTP_PASS`, or `SMTP_FROM` set, **delete them** — they are no longer read
 by the code.
+
+### 4. Route inbound replies via Cloudflare Email Routing
+
+Now that the `from:` is a real mailbox (`hello@vpathrewards.store`),
+customers can reply — but a reply will bounce unless something is
+listening on that address. Cloudflare Email Routing is the free fix.
+
+1. Cloudflare dashboard → `vpathrewards.store` → **Email** → **Email Routing** → Enable.
+   Cloudflare adds the MX records and a Routing SPF TXT record automatically.
+2. **Destination addresses** → add your real inbox (e.g. `vpathingenterprise@gmail.com`)
+   and confirm the verification email Cloudflare sends.
+3. **Routing rules** → add:
+   - `hello@vpathrewards.store` → your real inbox
+   - (optional) `support@vpathrewards.store` → same inbox
+   - (optional) catch-all → same inbox
+
+**SPF gotcha.** Cloudflare's auto-added SPF (`v=spf1 include:_spf.mx.cloudflare.net ~all`)
+covers inbound only. Resend will have added its own SPF or asked you to
+include it. If you end up with two SPF TXT records on the apex, merge
+them into one (`v=spf1 include:_spf.mx.cloudflare.net include:amazonses.com ~all`
+or similar — check what Resend gave you). Two separate SPF records is an
+RFC violation and will fail validation.
+
+**Don't add MX records to `send.` subdomains.** If you ever switch
+`EMAIL_FROM` to a `send.` subdomain, leave the subdomain MX-less. That
+signals to spam filters that it's send-only.
+
+### 5. Sanity-check `FRONTEND_URL`
+
+Email templates build links like `${FRONTEND_URL}/reset-password?token=...`.
+In Railway's Variables UI the **value** field must be just the URL
+(`https://vpathrewards.store`), not `FRONTEND_URL=https://vpathrewards.store`.
+If you ever see a link in a sent email that starts with the literal text
+`FRONTEND_URL=`, the value got the variable name prefixed — fix it in
+Railway. The code strips this prefix defensively, but the right
+fix is to set the value correctly.
 
 ## Local development
 
