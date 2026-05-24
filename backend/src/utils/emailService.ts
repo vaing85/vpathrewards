@@ -449,12 +449,94 @@ ${status === 'rejected' ? '\nIf you have questions, reply to this email.\n' : ''
 © ${new Date().getFullYear()} VPathRewards`,
     };
   },
+
+  adminLinkAlert: (data: {
+    note: string;
+    brokenCount: number;
+    expiredCount: number;
+    totalChecked: number;
+    brokenOffers?: Array<{ id: number; title: string; url: string; reason: string }>;
+  }) => {
+    const url = frontendUrl();
+    const accent = '#d97706';
+    const total = data.brokenCount + data.expiredCount;
+    const preheader = `${data.brokenCount} broken, ${data.expiredCount} expired out of ${data.totalChecked} checked.`;
+
+    // Show at most the first 10 offers inline so the email doesn't balloon.
+    const offers = (data.brokenOffers || []).slice(0, 10);
+    const offerRows = offers.map((o) => `
+      <tr>
+        <td style="padding:10px 16px;border-bottom:1px solid #e5e7eb;vertical-align:top;">
+          <div style="font-weight:600;color:#1f2937;">#${o.id} ${esc(o.title)}</div>
+          <div style="color:#6b7280;font-size:13px;margin-top:2px;">${esc(o.reason)}</div>
+        </td>
+      </tr>
+    `).join('');
+    const moreCount = (data.brokenOffers?.length || 0) - offers.length;
+
+    return {
+      subject: `[VPathRewards] ${total} offer link${total === 1 ? '' : 's'} need attention`,
+      preheader,
+      html: baseLayout({
+        preheader,
+        headerTitle: 'Broken offer links',
+        headerColor: accent,
+        body: `
+          <p style="margin:0 0 16px;font-size:18px;">Hi Admin,</p>
+          <p style="margin:0 0 20px;">${esc(data.note)}</p>
+          <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background:#fffbeb;border-radius:8px;margin-bottom:20px;">
+            <tr>
+              <td align="center" style="padding:16px;">
+                <table role="presentation" cellspacing="0" cellpadding="0" border="0">
+                  <tr>
+                    <td style="padding:0 16px;text-align:center;">
+                      <div style="font-size:28px;font-weight:700;color:${accent};">${data.brokenCount}</div>
+                      <div style="font-size:12px;color:#6b7280;text-transform:uppercase;letter-spacing:0.5px;">Broken</div>
+                    </td>
+                    <td style="padding:0 16px;text-align:center;">
+                      <div style="font-size:28px;font-weight:700;color:${accent};">${data.expiredCount}</div>
+                      <div style="font-size:12px;color:#6b7280;text-transform:uppercase;letter-spacing:0.5px;">Expired</div>
+                    </td>
+                    <td style="padding:0 16px;text-align:center;">
+                      <div style="font-size:28px;font-weight:700;color:#1f2937;">${data.totalChecked}</div>
+                      <div style="font-size:12px;color:#6b7280;text-transform:uppercase;letter-spacing:0.5px;">Checked</div>
+                    </td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+          </table>
+          ${offers.length > 0 ? `
+            <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background:#f9fafb;border-radius:8px;overflow:hidden;">
+              ${offerRows}
+            </table>
+            ${moreCount > 0 ? `<p style="margin:12px 0 0;color:#6b7280;font-size:13px;text-align:center;">…and ${moreCount} more</p>` : ''}
+          ` : ''}
+          ${button(`${url}/admin/offers`, 'Review offers', accent)}
+        `,
+      }),
+      text:
+`Broken offer links
+
+Hi Admin,
+
+${data.note}
+
+Broken: ${data.brokenCount}
+Expired: ${data.expiredCount}
+Checked: ${data.totalChecked}
+${offers.length > 0 ? '\nFirst ' + offers.length + ':\n' + offers.map(o => `- #${o.id} ${o.title} — ${o.reason}`).join('\n') + (moreCount > 0 ? `\n…and ${moreCount} more` : '') + '\n' : ''}
+Review offers: ${url}/admin/offers
+
+© ${new Date().getFullYear()} VPathRewards`,
+    };
+  },
 };
 
 // Send email function
 export const sendEmail = async (
   to: string,
-  template: 'welcome' | 'cashbackConfirmation' | 'withdrawalStatus' | 'newOfferAlert' | 'passwordReset',
+  template: 'welcome' | 'cashbackConfirmation' | 'withdrawalStatus' | 'newOfferAlert' | 'passwordReset' | 'adminLinkAlert',
   data: any
 ): Promise<boolean> => {
   try {
@@ -491,6 +573,9 @@ export const sendEmail = async (
         break;
       case 'passwordReset':
         emailContent = emailTemplates.passwordReset(data.name, data.resetLink);
+        break;
+      case 'adminLinkAlert':
+        emailContent = emailTemplates.adminLinkAlert(data);
         break;
       default:
         throw new Error('Invalid email template');

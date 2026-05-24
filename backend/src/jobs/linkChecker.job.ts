@@ -204,9 +204,12 @@ const linkCheckerJob: JobDefinition<LinkCheckerPayload, LinkCheckerResult> = {
     if (!dryRun && result.brokenOffers.length > 0) {
       const adminEmail = process.env.ADMIN_EMAIL;
       if (adminEmail) {
-        await sendEmail(adminEmail, 'welcome', {
-          name: 'Admin',
-          note: `Link checker found ${result.broken + result.expired} broken/expired offer(s) at ${new Date().toLocaleString()}. Check admin panel for details.`,
+        await sendEmail(adminEmail, 'adminLinkAlert', {
+          note: `Link checker run at ${new Date().toLocaleString()} found ${result.broken + result.expired} offer(s) needing attention.`,
+          brokenCount: result.broken,
+          expiredCount: result.expired,
+          totalChecked: result.total,
+          brokenOffers: result.brokenOffers,
         }).catch((err: unknown) => console.error('Failed to send admin notification:', err));
       }
     }
