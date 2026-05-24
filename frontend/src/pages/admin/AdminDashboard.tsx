@@ -292,60 +292,30 @@ const AdminDashboard = () => {
           </div>
         )}
 
-        {/* ─── Zone 3b: CJ integration ──────────────────────────────────── */}
+        {/* ─── Zone 3b: CJ integration (one-liner — detail lives on /admin/jobs) ── */}
         {cj && (
-          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-            <div className="flex items-baseline justify-between mb-4">
-              <h2 className="text-sm font-semibold uppercase tracking-wider text-gray-500">
-                CJ integration
-              </h2>
-              <Link to="/admin/cj" className="text-xs text-blue-600 hover:underline font-medium">
-                Manage →
+          <div className="bg-white rounded-xl shadow-sm border border-gray-100 px-6 py-4">
+            <div className="flex items-center justify-between gap-4 flex-wrap">
+              <div className="text-sm text-gray-700">
+                <span className="font-semibold">CJ:</span>{' '}
+                {cj.commissions_imported.toLocaleString()} commissions imported
+                {cj.merchants_unenriched > 0 && (
+                  <span className="text-amber-700">
+                    {' '}· {cj.merchants_unenriched.toLocaleString()} merchant{cj.merchants_unenriched === 1 ? '' : 's'} awaiting enrichment
+                  </span>
+                )}
+                <span className="text-gray-500">
+                  {' '}· synced {fmtRelativeTime(cj.last_synced.commissions)}
+                </span>
+              </div>
+              <Link to="/admin/jobs" className="text-xs text-blue-600 hover:underline font-medium">
+                View jobs →
               </Link>
             </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <CjStat
-                label="Commissions imported"
-                value={cj.commissions_imported.toLocaleString()}
-                relTime={cj.last_synced.commissions}
-              />
-              <CjStat
-                label="Merchants linked to CJ"
-                value={cj.merchants_linked.toLocaleString()}
-                relTime={cj.last_synced.advertisers}
-              />
-              <CjStat
-                label="Linked but not enriched"
-                value={cj.merchants_unenriched.toLocaleString()}
-                relTime={cj.last_synced.advertisers}
-                highlighted={cj.merchants_unenriched > 0}
-              />
-            </div>
-
-            {cj.merchants_linked === 0 && (
-              <div className="mt-4 text-xs text-gray-500">
-                Set <code className="px-1 py-0.5 bg-gray-100 rounded">merchants.cj_advertiser_id</code> on a merchant to enable CJ enrichment.
-                Find the ID in the CJ Member portal.
-              </div>
-            )}
           </div>
         )}
 
-        {/* ─── Zone 4: Quick actions ────────────────────────────────────── */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-          <h2 className="text-sm font-semibold uppercase tracking-wider text-gray-500 mb-4">
-            Quick actions
-          </h2>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            <QuickAction to="/admin/withdrawals" label="Withdrawals" emoji="💸" />
-            <QuickAction to="/admin/merchants" label="Merchants" emoji="🏬" />
-            <QuickAction to="/admin/offers" label="Offers" emoji="🏷️" />
-            <QuickAction to="/admin/users" label="Users" emoji="👥" />
-          </div>
-        </div>
-
-        {/* ─── Zone 5: Recent activity ──────────────────────────────────── */}
+        {/* ─── Zone 4: Recent activity ──────────────────────────────────── */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
           <h2 className="text-sm font-semibold uppercase tracking-wider text-gray-500 mb-4">
             Recent activity
@@ -429,37 +399,5 @@ const MetricCard = ({ label, value, deltaPct, color, primary, subtitle }: Metric
   );
 };
 
-interface CjStatProps {
-  label: string;
-  value: string;
-  relTime: string | null;
-  highlighted?: boolean;
-}
-
-const CjStat = ({ label, value, relTime, highlighted }: CjStatProps) => (
-  <div>
-    <div className="text-xs text-gray-500 mb-1">{label}</div>
-    <div className={`text-2xl font-bold ${highlighted ? 'text-amber-700' : 'text-gray-800'}`}>
-      {value}
-    </div>
-    <div className="text-xs text-gray-400 mt-1">synced {fmtRelativeTime(relTime)}</div>
-  </div>
-);
-
-interface QuickActionProps {
-  to: string;
-  label: string;
-  emoji: string;
-}
-
-const QuickAction = ({ to, label, emoji }: QuickActionProps) => (
-  <Link
-    to={to}
-    className="flex flex-col items-center justify-center gap-2 p-4 bg-gray-50 hover:bg-gray-100 border border-gray-200 rounded-lg transition text-center"
-  >
-    <span className="text-2xl" aria-hidden>{emoji}</span>
-    <span className="text-sm font-medium text-gray-700">{label}</span>
-  </Link>
-);
 
 export default AdminDashboard;
