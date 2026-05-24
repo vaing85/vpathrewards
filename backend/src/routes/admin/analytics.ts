@@ -25,8 +25,12 @@ router.get('/overview', authenticateAdmin, async (req, res) => {
         FROM conversions
         WHERE status = 'pending' OR status = 'confirmed'
       `) as Promise<any>,
+      // Postgres requires every non-aggregated SELECT column to be in GROUP BY
+      // (SQLite tolerated grouping only by the primary key). Adding o.title and
+      // m.name to the GROUP BY here is safe — both are functionally dependent
+      // on their primary keys, so the grouping cardinality is unchanged.
       dbAll(`
-        SELECT 
+        SELECT
           o.id,
           o.title,
           m.name as merchant_name,
@@ -37,12 +41,12 @@ router.get('/overview', authenticateAdmin, async (req, res) => {
         JOIN merchants m ON o.merchant_id = m.id
         LEFT JOIN affiliate_clicks ac ON o.id = ac.offer_id
         LEFT JOIN conversions c ON ac.id = c.click_id
-        GROUP BY o.id
+        GROUP BY o.id, o.title, m.name
         ORDER BY click_count DESC
         LIMIT 10
       `) as Promise<any[]>,
       dbAll(`
-        SELECT 
+        SELECT
           m.id,
           m.name,
           COUNT(DISTINCT ac.id) as click_count,
@@ -52,7 +56,7 @@ router.get('/overview', authenticateAdmin, async (req, res) => {
         LEFT JOIN offers o ON m.id = o.merchant_id
         LEFT JOIN affiliate_clicks ac ON o.id = ac.offer_id
         LEFT JOIN conversions c ON ac.id = c.click_id
-        GROUP BY m.id
+        GROUP BY m.id, m.name
         ORDER BY click_count DESC
         LIMIT 10
       `) as Promise<any[]>
