@@ -170,7 +170,10 @@ router.get('/', authenticateAdmin, async (req, res) => {
   try {
     const { page = '1', limit = '20' } = req.query;
     const pageNum = Math.max(1, parseInt(page as string) || 1);
-    const limitNum = Math.min(100, Math.max(1, parseInt(limit as string) || 20));
+    // Cap raised to 2000 so the admin Offers page can group offers by merchant
+    // in a single fetch (current scale: ~50 merchants × ~1–10 offers each).
+    // Revisit if the catalog grows past that.
+    const limitNum = Math.min(2000, Math.max(1, parseInt(limit as string) || 20));
     const offset = (pageNum - 1) * limitNum;
     
     // Get total count
