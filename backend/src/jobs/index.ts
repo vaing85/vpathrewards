@@ -105,3 +105,8 @@ export async function runJob(
   }
   return job.run(payload ?? {}, ctx);
 }
+
+/** Whether a job name is registered and can be run. */
+export function isKnownJob(jobName: string): boolean {
+  return jobName in JOB_REGISTRY;
+}
