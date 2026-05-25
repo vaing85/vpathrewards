@@ -67,11 +67,20 @@ const JOBS: JobMeta[] = [
 const FAST_POLL_MS = 3000;
 const SLOW_POLL_MS = 20000;
 
+interface LastRun {
+  ok: boolean;
+  error?: string;
+  startedAt: string;
+  finishedAt: string;
+}
+
 interface ProgressResponse {
   jobName?: string;
   total: number;
   processed: number;
   running: boolean;
+  activeJob?: string | null;
+  lastRuns?: Record<string, LastRun>;
 }
 
 interface CjSyncStatus {
@@ -134,7 +143,8 @@ const AdminJobs = () => {
   }, []);
 
   const activeRef = useRef(false);
-  activeRef.current = (progress?.running ?? false) || runningJob != null;
+  activeRef.current =
+    (progress?.running ?? false) || progress?.activeJob != null || runningJob != null;
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -156,20 +166,14 @@ const AdminJobs = () => {
   }, [isAuthenticated, navigate, loadStatuses]);
 
   const handleRunNow = async (jobKey: string, label: string) => {
-    if (runningJob) return;
+    if (runningJob || progress?.activeJob || progress?.running) return;
     setRunningJob(jobKey);
-    setLastRunResult((prev) => ({ ...prev, [jobKey]: '' }));
+    setLastRunResult((prev) => ({ ...prev, [jobKey]: `▶ ${label} started…` }));
     try {
-      const res = await apiClient.post<{ ok: boolean; data?: unknown; error?: string }>(
-        '/admin/jobs/run',
-        { jobName: jobKey }
-      );
-      if (res.data.ok) {
-        setLastRunResult((prev) => ({ ...prev, [jobKey]: `✓ ${label} completed` }));
-        void loadStatuses();
-      } else {
-        setLastRunResult((prev) => ({ ...prev, [jobKey]: `✗ ${res.data.error ?? 'failed'}` }));
-      }
+      // Fire-and-forget: the server starts the job and responds immediately.
+      // Outcome and progress are picked up by the /progress poll below.
+      await apiClient.post('/admin/jobs/run', { jobName: jobKey });
+      await loadStatuses();
     } catch (err: any) {
       setLastRunResult((prev) => ({
         ...prev,
@@ -253,8 +257,23 @@ const AdminJobs = () => {
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
             {JOBS.map((job) => {
-              const isThisRunning = runningJob === job.key;
-              const result = lastRunResult[job.key];
+              const busy = !!runningJob || !!progress?.activeJob || !!progress?.running;
+              const isThisRunning =
+                progress?.activeJob === job.key ||
+                (progress?.running && progress?.jobName === job.key) ||
+                runningJob === job.key;
+              const lastRun = progress?.lastRuns?.[job.key];
+              let result: string | null = null;
+              if (isThisRunning) {
+                result = '⏳ running…';
+              } else if (lastRun) {
+                result = lastRun.ok
+                  ? `✓ completed ${fmtRel(lastRun.finishedAt)}`
+                  : `✗ ${lastRun.error ?? 'failed'}`;
+              } else if (lastRunResult[job.key]) {
+                result = lastRunResult[job.key];
+              }
+              const resultIsError = !!result && result.startsWith('✗');
               return (
                 <tr key={job.key}>
                   <td className="px-6 py-4 whitespace-nowrap">
@@ -269,13 +288,13 @@ const AdminJobs = () => {
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm">
                     <button
                       onClick={() => void handleRunNow(job.key, job.label)}
-                      disabled={!!runningJob}
+                      disabled={busy}
                       className="px-3 py-1.5 text-xs font-medium rounded-md bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       {isThisRunning ? 'Running…' : 'Run now'}
                     </button>
                     {result && (
-                      <div className={`text-xs mt-1 ${result.startsWith('✓') ? 'text-green-600' : 'text-red-600'}`}>
+                      <div className={`text-xs mt-1 ${resultIsError ? 'text-red-600' : 'text-green-600'}`}>
                         {result}
                       </div>
                     )}

@@ -6,44 +6,38 @@
 import express from 'express';
 import { authenticateAdmin, AdminRequest } from '../../middleware/adminAuth';
 import { dbGet, dbAll } from '../../database';
-import { runJob, JOB_NAMES } from '../../jobs';
+import { runJob, JOB_NAMES, isKnownJob } from '../../jobs';
 import { getProgress } from '../../jobs/progress';
+import { startJobAsync, getActiveJob, getLastRuns } from '../../jobs/jobRunner';
 
 const router = express.Router();
 
-router.post('/run', authenticateAdmin, async (req: AdminRequest, res: express.Response) => {
-  try {
-    const { jobName, payload } = req.body as { jobName?: string; payload?: unknown };
+// Kick a job off in the background and return immediately. Awaiting long jobs
+// (link-checker runs ~1.8h) holds the HTTP connection open until the proxy
+// resets it; the UI polls /progress for status and the recorded outcome.
+router.post('/run', authenticateAdmin, (req: AdminRequest, res: express.Response) => {
+  const { jobName, payload } = req.body as { jobName?: string; payload?: unknown };
 
-    if (!jobName || typeof jobName !== 'string') {
-      return res.status(400).json({ error: 'jobName (string) is required' });
-    }
-
-    const result = await runJob(jobName, payload ?? {}, { jobId: undefined, attempt: 0 });
-
-    if (!result.ok) {
-      return res.status(500).json({
-        ok: false,
-        error: result.error,
-        data: result.data,
-        meta: result.meta
-      });
-    }
-
-    res.json({
-      ok: true,
-      data: result.data,
-      meta: result.meta
-    });
-  } catch (error) {
-    console.error('Admin job run error:', error);
-    res.status(500).json({ error: 'Internal server error' });
+  if (!jobName || typeof jobName !== 'string') {
+    return res.status(400).json({ error: 'jobName (string) is required' });
   }
+  if (!isKnownJob(jobName)) {
+    return res.status(400).json({ error: `Unknown job: ${jobName}` });
+  }
+  if (!startJobAsync(jobName, payload ?? {})) {
+    return res.status(409).json({ error: 'A job is already running' });
+  }
+
+  res.status(202).json({ ok: true, started: true, jobName });
 });
 
 router.get('/progress', authenticateAdmin, (_req: AdminRequest, res: express.Response) => {
   const progress = getProgress();
-  res.json(progress ?? { running: false, total: 0, processed: 0 });
+  res.json({
+    ...(progress ?? { running: false, total: 0, processed: 0 }),
+    activeJob: getActiveJob(),
+    lastRuns: getLastRuns(),
+  });
 });
 
 router.get('/names', authenticateAdmin, (_req: AdminRequest, res: express.Response) => {
