@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import { API_BASE_URL } from '../api/baseUrl';
 
 type SSEHandler = (data: Record<string, unknown>) => void;
 
@@ -8,7 +9,7 @@ export function useSSE(token: string | null, onMessage: SSEHandler) {
   useEffect(() => {
     if (!token) return;
 
-    const baseUrl = (import.meta.env.VITE_API_URL || 'http://localhost:3001/api').replace(/\/api$/, '');
+    const baseUrl = API_BASE_URL.replace(/\/api$/, '');
     const url = `${baseUrl}/api/sse?token=${token}`;
     const es = new EventSource(url);
     esRef.current = es;
