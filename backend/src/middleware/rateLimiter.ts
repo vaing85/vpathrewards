@@ -9,7 +9,11 @@ export const apiLimiter = rateLimit({
   message: 'Too many requests from this IP, please try again later.',
   standardHeaders: true,
   legacyHeaders: false,
-  skip: (req) => req.path === '/api/health',
+  // Health checks and authenticated admin routes are exempt from the global
+  // public limiter; admin routes are governed by the higher adminLimiter.
+  // Use originalUrl since the mount path is stripped from req.path here.
+  skip: (req) =>
+    req.originalUrl === '/api/health' || req.originalUrl.startsWith('/api/admin'),
 });
 
 export const authLimiter = rateLimit({

@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAdmin } from '../../context/AdminContext';
 import apiClient from '../../api/client';
@@ -62,7 +62,10 @@ const JOBS: JobMeta[] = [
   },
 ];
 
-const POLL_MS = 3000;
+// Poll quickly while a job is actively running so the progress bar feels
+// live, but back off when idle to stay well under the admin rate limit.
+const FAST_POLL_MS = 3000;
+const SLOW_POLL_MS = 20000;
 
 interface ProgressResponse {
   jobName?: string;
@@ -130,14 +133,26 @@ const AdminJobs = () => {
     }
   }, []);
 
+  const activeRef = useRef(false);
+  activeRef.current = (progress?.running ?? false) || runningJob != null;
+
   useEffect(() => {
     if (!isAuthenticated) {
       navigate('/admin/login');
       return;
     }
-    void loadStatuses();
-    const interval = setInterval(() => void loadStatuses(), POLL_MS);
-    return () => clearInterval(interval);
+    let timer: ReturnType<typeof setTimeout>;
+    let cancelled = false;
+    const tick = async () => {
+      await loadStatuses();
+      if (cancelled) return;
+      timer = setTimeout(tick, activeRef.current ? FAST_POLL_MS : SLOW_POLL_MS);
+    };
+    void tick();
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
   }, [isAuthenticated, navigate, loadStatuses]);
 
   const handleRunNow = async (jobKey: string, label: string) => {
@@ -179,7 +194,7 @@ const AdminJobs = () => {
         <h1 className="text-3xl font-bold text-gray-900">Background jobs</h1>
         <p className="text-gray-600 mt-1">
           Schedules, manual triggers, and sync status for the in-process cron jobs.
-          Updates every {POLL_MS / 1000}s.
+          Updates every {FAST_POLL_MS / 1000}s while a job runs, {SLOW_POLL_MS / 1000}s otherwise.
         </p>
       </div>
 
