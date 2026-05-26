@@ -1,7 +1,10 @@
 import { Router, Request, Response } from 'express';
 import Anthropic from '@anthropic-ai/sdk';
+import { sendContactMessage } from '../utils/emailService';
 
 const router = Router();
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 // Initialize lazily so dotenv has time to load
 let client: Anthropic | null = null;
@@ -112,6 +115,58 @@ router.post('/chat', async (req: Request, res: Response) => {
     res.status(500).json({
       error: 'Sorry, I\'m having trouble right now. Please email support@vpathrewards.store',
     });
+  }
+});
+
+// Contact form — emails the submission to the support inbox.
+router.post('/contact', async (req: Request, res: Response) => {
+  try {
+    const { name, email, subject, message, website } = (req.body ?? {}) as {
+      name?: string;
+      email?: string;
+      subject?: string;
+      message?: string;
+      website?: string; // honeypot — bots fill it, humans don't
+    };
+
+    // Silently accept (and drop) honeypot hits so bots don't retry.
+    if (website) return res.json({ ok: true });
+
+    if (!name || typeof name !== 'string' || name.trim().length < 2) {
+      return res.status(400).json({ error: 'Please enter your name.' });
+    }
+    if (!email || typeof email !== 'string' || !EMAIL_RE.test(email.trim())) {
+      return res.status(400).json({ error: 'Please enter a valid email address.' });
+    }
+    if (!message || typeof message !== 'string' || message.trim().length < 10) {
+      return res.status(400).json({ error: 'Please enter a message (at least 10 characters).' });
+    }
+    if (message.length > 5000) {
+      return res.status(400).json({ error: 'Message is too long (max 5000 characters).' });
+    }
+
+    const subj =
+      typeof subject === 'string' && subject.trim()
+        ? subject.trim().slice(0, 150)
+        : 'Support request';
+
+    const ok = await sendContactMessage({
+      name: name.trim().slice(0, 100),
+      email: email.trim(),
+      subject: subj,
+      message: message.trim(),
+    });
+
+    if (!ok) {
+      return res.status(502).json({
+        error: 'Could not send your message right now. Please email support@vpathrewards.store directly.',
+      });
+    }
+
+    res.json({ ok: true });
+  } catch (error) {
+    console.error('Contact form error:', error);
+    res.status(500).json({ error: 'Internal server error' });
   }
 });
 

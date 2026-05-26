@@ -50,11 +50,7 @@ const Footer = () => {
               <li><Link to="/privacy" className="hover:text-white transition">Privacy Policy</Link></li>
               <li><Link to="/affiliate-disclosure" className="hover:text-white transition">Affiliate Disclosure</Link></li>
               <li><Link to="/temu-terms" className="hover:text-white transition">Temu Advertiser Terms</Link></li>
-              <li>
-                <a href="mailto:support@vpathrewards.store" className="hover:text-white transition">
-                  Contact Support
-                </a>
-              </li>
+              <li><Link to="/contact" className="hover:text-white transition">Contact Us</Link></li>
             </ul>
           </div>
 

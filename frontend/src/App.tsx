@@ -29,6 +29,7 @@ const PrivacyPolicy    = lazy(() => import('./pages/PrivacyPolicy'));
 const TermsOfService   = lazy(() => import('./pages/TermsOfService'));
 const TemuTerms        = lazy(() => import('./pages/TemuTerms'));
 const AffiliateDisclosure = lazy(() => import('./pages/AffiliateDisclosure'));
+const Contact          = lazy(() => import('./pages/Contact'));
 const NotFound         = lazy(() => import('./pages/NotFound'));
 const ReferralDashboard = lazy(() => import('./pages/ReferralDashboard'));
 const Favorites        = lazy(() => import('./pages/Favorites'));
@@ -91,6 +92,7 @@ function App() {
                 <Route path="/terms" element={<PageShell><TermsOfService /></PageShell>} />
                 <Route path="/temu-terms" element={<PageShell><TemuTerms /></PageShell>} />
                 <Route path="/affiliate-disclosure" element={<PageShell><AffiliateDisclosure /></PageShell>} />
+                <Route path="/contact" element={<PageShell><Contact /></PageShell>} />
 
                 {/* Admin Routes */}
                 <Route path="/admin/login" element={<AdminLogin />} />
