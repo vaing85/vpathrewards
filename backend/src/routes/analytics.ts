@@ -1,7 +1,8 @@
 import express from 'express';
 import { authenticateToken, AuthRequest } from '../middleware/auth';
+import { authenticateAdmin } from '../middleware/adminAuth';
 import { dbAll, dbGet } from '../database';
-import { getEngagementMetrics, getRevenueAnalytics } from '../services/analyticsQueries';
+import { getEngagementMetrics } from '../services/analyticsQueries';
 
 const router = express.Router();
 
@@ -194,20 +195,10 @@ router.get('/conversion-rates', authenticateToken, async (req: AuthRequest, res)
   }
 });
 
-// Get revenue analytics
-router.get('/revenue', authenticateToken, async (req: AuthRequest, res) => {
-  try {
-    const { days = 30, group_by = 'day' } = req.query;
-    const daysNum = parseInt(days as string) || 30;
-    res.json(await getRevenueAnalytics(daysNum, group_by as string));
-  } catch (error) {
-    console.error('Error fetching revenue analytics:', error);
-    res.status(500).json({ error: 'Internal server error' });
-  }
-});
+// Revenue analytics moved to admin-only: see /api/admin/analytics/revenue.
 
-// Get user activity tracking
-router.get('/user-activity', authenticateToken, async (req: AuthRequest, res) => {
+// Get user activity tracking — admin-only (platform-wide signups/retention).
+router.get('/user-activity', authenticateAdmin, async (req: AuthRequest, res) => {
   try {
     const { days = 7 } = req.query;
     const daysNum = parseInt(days as string) || 7;

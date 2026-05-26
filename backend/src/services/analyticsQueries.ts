@@ -10,7 +10,12 @@ function dateThresholdStr(daysNum: number): string {
   return d.toISOString();
 }
 
-export async function getEngagementMetrics(daysNum: number) {
+/**
+ * @param includeTopUsers when true, also returns the most-engaged users
+ *   (includes names/emails) — admin-only. Defaults to false so the
+ *   user-facing route never leaks other users' PII.
+ */
+export async function getEngagementMetrics(daysNum: number, includeTopUsers = false) {
   const threshold = dateThresholdStr(daysNum);
 
   const activeUsers = (await dbGet(
@@ -30,6 +35,14 @@ export async function getEngagementMetrics(daysNum: number) {
       ORDER BY date DESC`,
     [threshold]
   );
+
+  const base = {
+    period_days: daysNum,
+    active_users: activeUsers.count || 0,
+    activity_breakdown: activityBreakdown,
+  };
+
+  if (!includeTopUsers) return base;
 
   // Most engaged users — subquery avoids an expensive JOIN over all clicks.
   const topUsers = await dbAll(
@@ -59,12 +72,7 @@ export async function getEngagementMetrics(daysNum: number) {
     [threshold, threshold]
   );
 
-  return {
-    period_days: daysNum,
-    active_users: activeUsers.count || 0,
-    activity_breakdown: activityBreakdown,
-    top_users: topUsers,
-  };
+  return { ...base, top_users: topUsers };
 }
 
 export async function getRevenueAnalytics(daysNum: number, groupBy: string = 'day') {
