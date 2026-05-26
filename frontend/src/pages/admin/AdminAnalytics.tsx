@@ -40,8 +40,8 @@ const AdminAnalytics = () => {
     try {
       const [overviewRes, revenueRes, engagementRes] = await Promise.all([
         apiClient.get('/admin/analytics/overview'),
-        apiClient.get('/analytics/revenue', { params: { days: daysFilter } }),
-        apiClient.get('/analytics/engagement', { params: { days: daysFilter } }),
+        apiClient.get('/admin/analytics/revenue', { params: { days: daysFilter } }),
+        apiClient.get('/admin/analytics/engagement', { params: { days: daysFilter } }),
       ]);
       setOverview(overviewRes.data);
       setRevenue(revenueRes.data);
