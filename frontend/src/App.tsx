@@ -23,6 +23,7 @@ const Withdrawals      = lazy(() => import('./pages/Withdrawals'));
 const Analytics        = lazy(() => import('./pages/Analytics'));
 const Profile          = lazy(() => import('./pages/Profile'));
 const Category         = lazy(() => import('./pages/Category'));
+const Categories       = lazy(() => import('./pages/Categories'));
 const ReferralDashboard = lazy(() => import('./pages/ReferralDashboard'));
 const Favorites        = lazy(() => import('./pages/Favorites'));
 const CashbackHistory  = lazy(() => import('./pages/CashbackHistory'));
@@ -70,6 +71,7 @@ function App() {
                 <Route path="/merchants/:id" element={<PageShell><MerchantDetail /></PageShell>} />
                 <Route path="/offers/:id" element={<PageShell><OfferDetail /></PageShell>} />
                 <Route path="/search" element={<PageShell><SearchResults /></PageShell>} />
+                <Route path="/categories" element={<PageShell><Categories /></PageShell>} />
                 <Route path="/category/:category" element={<PageShell><Category /></PageShell>} />
                 <Route path="/withdrawals" element={<PageShell><Withdrawals /></PageShell>} />
                 <Route path="/analytics" element={<PageShell><Analytics /></PageShell>} />
