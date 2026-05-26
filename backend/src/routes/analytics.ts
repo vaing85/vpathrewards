@@ -1,6 +1,7 @@
 import express from 'express';
 import { authenticateToken, AuthRequest } from '../middleware/auth';
 import { dbAll, dbGet } from '../database';
+import { getEngagementMetrics, getRevenueAnalytics } from '../services/analyticsQueries';
 
 const router = express.Router();
 
@@ -9,70 +10,7 @@ router.get('/engagement', authenticateToken, async (req: AuthRequest, res) => {
   try {
     const { days = 30 } = req.query;
     const daysNum = parseInt(days as string) || 30;
-    
-    // Calculate date threshold
-    const dateThreshold = new Date();
-    dateThreshold.setDate(dateThreshold.getDate() - daysNum);
-    const dateThresholdStr = dateThreshold.toISOString();
-
-    // Active users (users who clicked offers in the period)
-    const activeUsers = await dbGet(`
-      SELECT COUNT(DISTINCT user_id) as count
-      FROM affiliate_clicks
-      WHERE clicked_at >= ? AND user_id IS NOT NULL
-    `, [dateThresholdStr]) as { count: number };
-
-    // User activity breakdown
-    const activityBreakdown = await dbAll(`
-      SELECT 
-        DATE(clicked_at) as date,
-        COUNT(*) as clicks,
-        COUNT(DISTINCT user_id) as active_users
-      FROM affiliate_clicks
-      WHERE clicked_at >= ?
-      GROUP BY DATE(clicked_at)
-      ORDER BY date DESC
-    `, [dateThresholdStr]);
-
-    // Most engaged users - OPTIMIZED: Use subquery to avoid expensive JOIN
-    const topUsers = await dbAll(`
-      SELECT 
-        u.id,
-        u.name,
-        u.email,
-        COALESCE(click_stats.click_count, 0) as click_count,
-        COALESCE(conversion_stats.conversion_count, 0) as conversion_count,
-        COALESCE(conversion_stats.total_earned, 0) as total_earned
-      FROM users u
-      INNER JOIN (
-        SELECT 
-          user_id,
-          COUNT(*) as click_count
-        FROM affiliate_clicks
-        WHERE clicked_at >= ? AND user_id IS NOT NULL
-        GROUP BY user_id
-        ORDER BY click_count DESC
-        LIMIT 10
-      ) click_stats ON u.id = click_stats.user_id
-      LEFT JOIN (
-        SELECT 
-          ac.user_id,
-          COUNT(DISTINCT c.id) as conversion_count,
-          SUM(c.commission_amount) as total_earned
-        FROM conversions c
-        JOIN affiliate_clicks ac ON c.click_id = ac.id
-        WHERE ac.clicked_at >= ? AND ac.user_id IS NOT NULL
-        GROUP BY ac.user_id
-      ) conversion_stats ON u.id = conversion_stats.user_id
-      ORDER BY click_stats.click_count DESC
-    `, [dateThresholdStr, dateThresholdStr]);
-
-    res.json({
-      period_days: daysNum,
-      active_users: activeUsers.count || 0,
-      activity_breakdown: activityBreakdown,
-      top_users: topUsers
-    });
+    res.json(await getEngagementMetrics(daysNum));
   } catch (error) {
     console.error('Error fetching engagement metrics:', error);
     res.status(500).json({ error: 'Internal server error' });
@@ -261,73 +199,7 @@ router.get('/revenue', authenticateToken, async (req: AuthRequest, res) => {
   try {
     const { days = 30, group_by = 'day' } = req.query;
     const daysNum = parseInt(days as string) || 30;
-    
-    // Calculate date threshold
-    const dateThreshold = new Date();
-    dateThreshold.setDate(dateThreshold.getDate() - daysNum);
-    const dateThresholdStr = dateThreshold.toISOString();
-
-    let dateFormat = "DATE(c.conversion_date)";
-    if (group_by === 'week') {
-      dateFormat = "strftime('%Y-W%W', c.conversion_date)";
-    } else if (group_by === 'month') {
-      dateFormat = "strftime('%Y-%m', c.conversion_date)";
-    }
-
-    // Revenue breakdown by period
-    const revenueBreakdown = await dbAll(`
-      SELECT 
-        ${dateFormat} as period,
-        COUNT(*) as conversion_count,
-        SUM(order_amount) as total_revenue,
-        SUM(commission_amount) as total_commission,
-        AVG(order_amount) as avg_order_value,
-        AVG(commission_amount) as avg_commission
-      FROM conversions c
-      WHERE c.conversion_date >= ? AND c.status IN ('pending', 'confirmed')
-      GROUP BY ${dateFormat}
-      ORDER BY period DESC
-    `, [dateThresholdStr]);
-
-    // Overall revenue stats
-    const overall = await dbGet(`
-      SELECT 
-        COUNT(*) as total_conversions,
-        SUM(order_amount) as total_revenue,
-        SUM(commission_amount) as total_commission,
-        AVG(order_amount) as avg_order_value,
-        AVG(commission_amount) as avg_commission,
-        MIN(order_amount) as min_order,
-        MAX(order_amount) as max_order
-      FROM conversions
-      WHERE conversion_date >= ? AND status IN ('pending', 'confirmed')
-    `, [dateThresholdStr]) as any;
-
-    // Revenue by merchant
-    const revenueByMerchant = await dbAll(`
-      SELECT 
-        m.id,
-        m.name,
-        m.category,
-        COUNT(c.id) as conversion_count,
-        SUM(c.order_amount) as total_revenue,
-        SUM(c.commission_amount) as total_commission
-      FROM conversions c
-      JOIN offers o ON c.offer_id = o.id
-      JOIN merchants m ON o.merchant_id = m.id
-      WHERE c.conversion_date >= ? AND c.status IN ('pending', 'confirmed')
-      GROUP BY m.id, m.name, m.category
-      ORDER BY total_commission DESC
-      LIMIT 10
-    `, [dateThresholdStr]);
-
-    res.json({
-      period_days: daysNum,
-      group_by: group_by,
-      overall: overall || {},
-      breakdown: revenueBreakdown,
-      by_merchant: revenueByMerchant
-    });
+    res.json(await getRevenueAnalytics(daysNum, group_by as string));
   } catch (error) {
     console.error('Error fetching revenue analytics:', error);
     res.status(500).json({ error: 'Internal server error' });

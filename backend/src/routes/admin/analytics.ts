@@ -1,6 +1,7 @@
 import express from 'express';
 import { authenticateAdmin } from '../../middleware/adminAuth';
 import { dbAll, dbGet } from '../../database';
+import { getEngagementMetrics, getRevenueAnalytics } from '../../services/analyticsQueries';
 
 const router = express.Router();
 
@@ -164,6 +165,30 @@ router.get('/conversions', authenticateAdmin, async (req, res) => {
     res.json(conversions);
   } catch (error) {
     console.error('Error fetching conversion analytics:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Revenue analytics (admin-authenticated; mirrors /api/analytics/revenue).
+router.get('/revenue', authenticateAdmin, async (req, res) => {
+  try {
+    const { days = 30, group_by = 'day' } = req.query;
+    const daysNum = parseInt(days as string) || 30;
+    res.json(await getRevenueAnalytics(daysNum, group_by as string));
+  } catch (error) {
+    console.error('Error fetching admin revenue analytics:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Engagement metrics (admin-authenticated; mirrors /api/analytics/engagement).
+router.get('/engagement', authenticateAdmin, async (req, res) => {
+  try {
+    const { days = 30 } = req.query;
+    const daysNum = parseInt(days as string) || 30;
+    res.json(await getEngagementMetrics(daysNum));
+  } catch (error) {
+    console.error('Error fetching admin engagement metrics:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
