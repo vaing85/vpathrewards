@@ -10,12 +10,12 @@ const TermsOfService = () => {
 
             <section>
               <h2 className="text-xl font-semibold text-gray-900 mb-3">1. Agreement to Terms</h2>
-              <p>By accessing or using V PATHing Rewards ("the Platform"), operated by V PATHing Enterprise LLC, you agree to be bound by these Terms of Service. If you do not agree, please do not use our Platform.</p>
+              <p>By accessing or using VPath Rewards ("the Platform"), operated by V PATHing Enterprise LLC, you agree to be bound by these Terms of Service. If you do not agree, please do not use our Platform.</p>
             </section>
 
             <section>
               <h2 className="text-xl font-semibold text-gray-900 mb-3">2. Description of Service</h2>
-              <p>V PATHing Rewards is a cashback and loyalty rewards platform that allows members to earn cashback on qualifying purchases made through our affiliate partner links. We connect consumers with merchants and earn affiliate commissions, a portion of which is shared with our members as cashback.</p>
+              <p>VPath Rewards is a cashback and loyalty rewards platform that allows members to earn cashback on qualifying purchases made through our affiliate partner links. We connect consumers with merchants and earn affiliate commissions, a portion of which is shared with our members as cashback.</p>
             </section>
 
             <section>
@@ -52,7 +52,7 @@ const TermsOfService = () => {
             <section>
               <h2 className="text-xl font-semibold text-gray-900 mb-3">7. Membership Tiers</h2>
               <ul className="list-disc pl-6 space-y-2">
-                <li>V PATHing Rewards is free for everyone — there are no paid membership plans.</li>
+                <li>VPath Rewards is free for everyone — there are no paid membership plans.</li>
                 <li>Your tier (Bronze, Silver, Gold, Platinum, Diamond) sets the share of the affiliate commission you keep on each confirmed purchase.</li>
                 <li>Tiers are earned by accumulating lifetime confirmed spend; the higher your tier, the larger your share of every commission.</li>
                 <li>We may adjust tier thresholds or commission shares from time to time; changes will be communicated in advance.</li>

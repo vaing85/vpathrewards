@@ -60,7 +60,7 @@ router.get('/status', authenticateToken, async (req: AuthRequest, res) => {
 router.post('/checkout', authenticateToken, async (_req: AuthRequest, res) => {
   return res.status(410).json({
     error:
-      'Paid subscriptions are no longer available. V PATHing Rewards is free for everyone — your tier, and the share of commission you keep, rises automatically as you shop.',
+      'Paid subscriptions are no longer available. VPath Rewards is free for everyone — your tier, and the share of commission you keep, rises automatically as you shop.',
   });
 });
 

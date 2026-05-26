@@ -11,7 +11,7 @@ const ChatWidget = () => {
   const [messages, setMessages] = useState<Message[]>([
     {
       role: 'assistant',
-      content: 'Hi! 👋 I\'m the V PATHing Rewards support assistant. How can I help you today?',
+      content: 'Hi! 👋 I\'m the VPath Rewards support assistant. How can I help you today?',
     },
   ]);
   const [input, setInput] = useState('');
@@ -77,7 +77,7 @@ const ChatWidget = () => {
                 🤖
               </div>
               <div>
-                <p className="font-semibold text-sm">V PATHing Support</p>
+                <p className="font-semibold text-sm">VPath Support</p>
                 <p className="text-xs text-primary-200">AI Assistant • Online</p>
               </div>
             </div>

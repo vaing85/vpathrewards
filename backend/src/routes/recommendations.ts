@@ -59,7 +59,7 @@ router.get('/', authenticateToken, async (req: AuthRequest, res) => {
       recentMerchants: recentTx.map((t) => t.merchant_name),
     };
 
-    const prompt = `You are a cashback recommendation engine for V PATHing Rewards.
+    const prompt = `You are a cashback recommendation engine for VPath Rewards.
 
 User profile:
 - Total earnings: $${userContext.totalEarnings.toFixed(2)}

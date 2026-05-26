@@ -1,7 +1,7 @@
 /**
  * Commission-share tier service.
  *
- * V PATHing Rewards is free for everyone. A member's tier sets the SHARE of the
+ * VPath Rewards is free for everyone. A member's tier sets the SHARE of the
  * affiliate commission they keep on each confirmed purchase. Members climb tiers
  * by accumulating lifetime confirmed spend — the sum of conversions.order_amount
  * for conversions with status = 'confirmed'.

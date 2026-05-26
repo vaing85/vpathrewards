@@ -59,7 +59,7 @@ router.get('/', authenticateAdmin, async (req: AdminRequest, res) => {
       ),
     ]);
 
-    const prompt = `You are an analytics assistant for V PATHing Rewards, a cashback platform.
+    const prompt = `You are an analytics assistant for VPath Rewards, a cashback platform.
 Generate a concise executive summary (3-4 paragraphs, plain text, no markdown, no bullet points).
 Highlight notable trends, flag any concerns, and suggest one actionable improvement.
 

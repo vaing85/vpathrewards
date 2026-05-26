@@ -10,7 +10,7 @@ const PrivacyPolicy = () => {
 
             <section>
               <h2 className="text-xl font-semibold text-gray-900 mb-3">1. Introduction</h2>
-              <p>V PATHing Enterprise LLC ("we," "us," or "our") operates V PATHing Rewards (vpathrewards.store). This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you use our platform. Please read this policy carefully. If you disagree with its terms, please discontinue use of the Platform.</p>
+              <p>V PATHing Enterprise LLC ("we," "us," or "our") operates VPath Rewards (vpathrewards.store). This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you use our platform. Please read this policy carefully. If you disagree with its terms, please discontinue use of the Platform.</p>
             </section>
 
             <section>

@@ -99,9 +99,9 @@ const Navbar = () => {
         <div className="flex justify-between items-center h-16">
           {/* Logo */}
           <div className="flex items-center space-x-4">
-            <Link to="/" className="flex items-center space-x-2" onClick={() => setMobileMenuOpen(false)}>
-              <img src="/vpathlogo.png" alt="V PATHing Rewards" className="h-8 w-auto" />
-              <span className="text-lg sm:text-xl font-bold text-gray-800">V PATHing Rewards</span>
+            <Link to={isAuthenticated ? '/dashboard' : '/'} className="flex items-center space-x-2" onClick={() => setMobileMenuOpen(false)}>
+              <img src="/vpathlogo.png" alt="VPath Rewards" className="h-8 w-auto" />
+              <span className="text-lg sm:text-xl font-bold text-gray-800">VPath Rewards</span>
             </Link>
 
             {/* Categories - Desktop only */}
