@@ -186,7 +186,7 @@ router.get('/engagement', authenticateAdmin, async (req, res) => {
   try {
     const { days = 30 } = req.query;
     const daysNum = parseInt(days as string) || 30;
-    res.json(await getEngagementMetrics(daysNum));
+    res.json(await getEngagementMetrics(daysNum, true));
   } catch (error) {
     console.error('Error fetching admin engagement metrics:', error);
     res.status(500).json({ error: 'Internal server error' });
