@@ -57,6 +57,11 @@ const DEFAULT_FROM = 'VPathRewards <hello@vpathrewards.store>';
 // real support inbox.
 const DEFAULT_REPLY_TO = 'hello@vpathrewards.store';
 
+// Withdrawal emails are sent from a dedicated, recognizable address on the
+// same (Resend-verified) apex domain. Override via WITHDRAWAL_EMAIL_FROM.
+const WITHDRAWAL_FROM =
+  process.env.WITHDRAWAL_EMAIL_FROM || 'VPath Rewards <withdrawal@vpathrewards.store>';
+
 // Brand
 // Note: this is the email accent (button + headers for password reset/welcome).
 // The real VPathRewards mark is navy + gold (frontend/public/vpathlogo.png);
@@ -586,7 +591,10 @@ export const sendEmail = async (
         throw new Error('Invalid email template');
     }
 
-    const fromAddress = process.env.EMAIL_FROM || DEFAULT_FROM;
+    const fromAddress =
+      template === 'withdrawalStatus'
+        ? WITHDRAWAL_FROM
+        : process.env.EMAIL_FROM || DEFAULT_FROM;
     const replyToAddress = process.env.EMAIL_REPLY_TO || DEFAULT_REPLY_TO;
     const resend = getResend();
 
