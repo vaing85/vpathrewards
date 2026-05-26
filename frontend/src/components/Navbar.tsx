@@ -5,11 +5,6 @@ import apiClient from '../api/client';
 import SearchBar from './SearchBar';
 import { useSSE } from '../hooks/useSSE';
 
-interface Category {
-  category: string;
-  count: number;
-}
-
 interface Notification {
   id: number;
   type: string;
@@ -31,8 +26,6 @@ const POLL_INTERVAL = 60_000; // refresh every 60 s
 const Navbar = () => {
   const { isAuthenticated, user, logout, token } = useAuth();
   const navigate = useNavigate();
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [showCategories, setShowCategories] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   // Notifications
@@ -40,8 +33,6 @@ const Navbar = () => {
   const [unreadCount, setUnreadCount] = useState(0);
   const [showNotifs, setShowNotifs] = useState(false);
   const notifRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => { fetchCategories(); }, []);
 
   // Initial fetch (no more polling — SSE handles live updates)
   useEffect(() => {
@@ -74,15 +65,6 @@ const Navbar = () => {
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
   }, []);
-
-  const fetchCategories = async () => {
-    try {
-      const response = await apiClient.get('/search/categories');
-      setCategories(Array.isArray(response.data) ? response.data : []);
-    } catch (error) {
-      console.error('Error fetching categories:', error);
-    }
-  };
 
   const fetchNotifications = async () => {
     try {
@@ -117,42 +99,18 @@ const Navbar = () => {
         <div className="flex justify-between items-center h-16">
           {/* Logo */}
           <div className="flex items-center space-x-4">
-            <Link to="/" className="flex items-center space-x-2" onClick={() => setMobileMenuOpen(false)}>
-              <img src="/vpathlogo.png" alt="V PATHing Rewards" className="h-8 w-auto" />
-              <span className="text-lg sm:text-xl font-bold text-gray-800">V PATHing Rewards</span>
+            <Link to={isAuthenticated ? '/dashboard' : '/'} className="flex items-center space-x-2" onClick={() => setMobileMenuOpen(false)}>
+              <img src="/vpathlogo.png" alt="VPath Rewards" className="h-8 w-auto" />
+              <span className="text-lg sm:text-xl font-bold text-gray-800">VPath Rewards</span>
             </Link>
 
-            {/* Categories Dropdown - Desktop only */}
-            <div className="hidden md:block relative">
-              <button
-                onMouseEnter={() => setShowCategories(true)}
-                onMouseLeave={() => setShowCategories(false)}
-                className="text-gray-700 hover:text-primary-600 px-3 py-2 rounded-lg hover:bg-gray-50 transition"
-              >
-                Categories
-              </button>
-              {showCategories && categories.length > 0 && (
-                <div
-                  onMouseEnter={() => setShowCategories(true)}
-                  onMouseLeave={() => setShowCategories(false)}
-                  className="absolute top-full left-0 mt-1 w-64 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-50"
-                >
-                  {categories.map((cat) => (
-                    <Link
-                      key={cat.category}
-                      to={`/category/${encodeURIComponent(cat.category)}`}
-                      className="block px-4 py-2 text-gray-700 hover:bg-primary-50 hover:text-primary-600 transition"
-                      onClick={() => setShowCategories(false)}
-                    >
-                      <div className="flex justify-between items-center">
-                        <span>{cat.category}</span>
-                        <span className="text-xs text-gray-500">({cat.count})</span>
-                      </div>
-                    </Link>
-                  ))}
-                </div>
-              )}
-            </div>
+            {/* Categories - Desktop only */}
+            <Link
+              to="/categories"
+              className="hidden md:block text-gray-700 hover:text-primary-600 px-3 py-2 rounded-lg hover:bg-gray-50 transition"
+            >
+              Categories
+            </Link>
           </div>
 
           {/* Search Bar - Hidden on mobile, shown on larger screens */}
@@ -294,23 +252,15 @@ const Navbar = () => {
             </div>
 
             {/* Mobile Categories */}
-            {categories.length > 0 && (
-              <div className="mb-4 px-2">
-                <div className="text-sm font-semibold text-gray-500 uppercase mb-2 px-2">Categories</div>
-                <div className="grid grid-cols-2 gap-2">
-                  {categories.slice(0, 6).map((cat) => (
-                    <Link
-                      key={cat.category}
-                      to={`/category/${encodeURIComponent(cat.category)}`}
-                      className="block px-3 py-2 text-sm text-gray-700 hover:bg-primary-50 hover:text-primary-600 rounded-lg transition"
-                      onClick={() => setMobileMenuOpen(false)}
-                    >
-                      {cat.category}
-                    </Link>
-                  ))}
-                </div>
-              </div>
-            )}
+            <div className="mb-4 px-2">
+              <Link
+                to="/categories"
+                className="block px-3 py-2 text-gray-700 hover:bg-gray-50 rounded-lg font-medium"
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                Categories
+              </Link>
+            </div>
 
             {/* Mobile Navigation Links */}
             <div className="space-y-1 px-2">

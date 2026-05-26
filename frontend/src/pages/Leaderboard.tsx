@@ -37,7 +37,7 @@ export default function Leaderboard() {
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Leaderboard</h1>
-          <p className="text-sm text-gray-500 mt-1">Top earners on V PATHing Rewards</p>
+          <p className="text-sm text-gray-500 mt-1">Top earners on VPath Rewards</p>
         </div>
         {isAuthenticated && me && (
           <div className="text-right">

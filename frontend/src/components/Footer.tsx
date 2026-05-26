@@ -10,7 +10,7 @@ const Footer = () => {
 
           {/* Brand */}
           <div className="md:col-span-1">
-            <h3 className="text-white text-lg font-bold mb-3">V PATHing Rewards</h3>
+            <h3 className="text-white text-lg font-bold mb-3">VPath Rewards</h3>
             <p className="text-sm text-gray-400 leading-relaxed">
               Earn real cash back on every purchase at hundreds of top brands. Free to join, withdraw anytime.
             </p>
@@ -48,12 +48,9 @@ const Footer = () => {
             <ul className="space-y-2 text-sm">
               <li><Link to="/terms" className="hover:text-white transition">Terms of Service</Link></li>
               <li><Link to="/privacy" className="hover:text-white transition">Privacy Policy</Link></li>
+              <li><Link to="/affiliate-disclosure" className="hover:text-white transition">Affiliate Disclosure</Link></li>
               <li><Link to="/temu-terms" className="hover:text-white transition">Temu Advertiser Terms</Link></li>
-              <li>
-                <a href="mailto:support@vpathrewards.store" className="hover:text-white transition">
-                  Contact Support
-                </a>
-              </li>
+              <li><Link to="/contact" className="hover:text-white transition">Contact Us</Link></li>
             </ul>
           </div>
 

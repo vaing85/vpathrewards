@@ -57,6 +57,11 @@ const DEFAULT_FROM = 'VPathRewards <hello@vpathrewards.store>';
 // real support inbox.
 const DEFAULT_REPLY_TO = 'hello@vpathrewards.store';
 
+// Withdrawal emails are sent from a dedicated, recognizable address on the
+// same (Resend-verified) apex domain. Override via WITHDRAWAL_EMAIL_FROM.
+const WITHDRAWAL_FROM =
+  process.env.WITHDRAWAL_EMAIL_FROM || 'VPath Rewards <withdrawal@vpathrewards.store>';
+
 // Brand
 // Note: this is the email accent (button + headers for password reset/welcome).
 // The real VPathRewards mark is navy + gold (frontend/public/vpathlogo.png);
@@ -586,7 +591,10 @@ export const sendEmail = async (
         throw new Error('Invalid email template');
     }
 
-    const fromAddress = process.env.EMAIL_FROM || DEFAULT_FROM;
+    const fromAddress =
+      template === 'withdrawalStatus'
+        ? WITHDRAWAL_FROM
+        : process.env.EMAIL_FROM || DEFAULT_FROM;
     const replyToAddress = process.env.EMAIL_REPLY_TO || DEFAULT_REPLY_TO;
     const resend = getResend();
 
@@ -636,6 +644,77 @@ export const sendEmail = async (
     return false;
   } catch (error) {
     console.error('Error sending email:', error);
+    return false;
+  }
+};
+
+const escapeHtml = (s: string): string =>
+  s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+
+// Deliver a contact-form submission to the support inbox. The submitter's
+// address is set as Reply-To so the team can reply to them directly.
+// Recipient is SUPPORT_EMAIL, falling back to ADMIN_EMAIL, then the public
+// support address.
+export const sendContactMessage = async (params: {
+  name: string;
+  email: string;
+  subject: string;
+  message: string;
+}): Promise<boolean> => {
+  try {
+    const to =
+      process.env.SUPPORT_EMAIL || process.env.ADMIN_EMAIL || 'support@vpathrewards.store';
+    const fromAddress = process.env.EMAIL_FROM || DEFAULT_FROM;
+    const subject = `[Contact] ${params.subject}`;
+    const text =
+      `New contact form submission\n\n` +
+      `From: ${params.name} <${params.email}>\n` +
+      `Subject: ${params.subject}\n\n` +
+      `${params.message}`;
+    const html =
+      `<h2>New contact form submission</h2>` +
+      `<p><strong>From:</strong> ${escapeHtml(params.name)} &lt;${escapeHtml(params.email)}&gt;</p>` +
+      `<p><strong>Subject:</strong> ${escapeHtml(params.subject)}</p>` +
+      `<hr/>` +
+      `<p>${escapeHtml(params.message).replace(/\n/g, '<br/>')}</p>`;
+
+    const resend = getResend();
+    if (resend) {
+      const { data: sent, error } = await resend.emails.send({
+        from: fromAddress,
+        replyTo: params.email,
+        to,
+        subject,
+        text,
+        html,
+      });
+      if (error) {
+        console.error('Resend contact send error:', error);
+        return false;
+      }
+      console.log('📧 Contact message sent:', sent?.id, '→', to);
+      return true;
+    }
+
+    if (process.env.NODE_ENV !== 'production') {
+      const transporter = await createEtherealTransporter();
+      const info = await transporter.sendMail({
+        from: fromAddress,
+        replyTo: params.email,
+        to,
+        subject,
+        text,
+        html,
+      });
+      console.log('📧 Contact message (Ethereal):', nodemailer.getTestMessageUrl(info));
+      return true;
+    }
+
+    console.warn('RESEND_API_KEY not configured. Contact message not sent.');
+    return false;
+  } catch (error) {
+    console.error('Error sending contact message:', error);
     return false;
   }
 };

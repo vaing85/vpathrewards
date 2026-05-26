@@ -4,6 +4,7 @@ import { AuthProvider } from './context/AuthContext';
 import { AdminProvider } from './context/AdminContext';
 import ErrorBoundary from './components/ErrorBoundary';
 import Navbar from './components/Navbar';
+import Footer from './components/Footer';
 import AdminLayout from './components/admin/AdminLayout';
 import LoadingSpinner from './components/LoadingSpinner';
 
@@ -23,6 +24,13 @@ const Withdrawals      = lazy(() => import('./pages/Withdrawals'));
 const Analytics        = lazy(() => import('./pages/Analytics'));
 const Profile          = lazy(() => import('./pages/Profile'));
 const Category         = lazy(() => import('./pages/Category'));
+const Categories       = lazy(() => import('./pages/Categories'));
+const PrivacyPolicy    = lazy(() => import('./pages/PrivacyPolicy'));
+const TermsOfService   = lazy(() => import('./pages/TermsOfService'));
+const TemuTerms        = lazy(() => import('./pages/TemuTerms'));
+const AffiliateDisclosure = lazy(() => import('./pages/AffiliateDisclosure'));
+const Contact          = lazy(() => import('./pages/Contact'));
+const NotFound         = lazy(() => import('./pages/NotFound'));
 const ReferralDashboard = lazy(() => import('./pages/ReferralDashboard'));
 const Favorites        = lazy(() => import('./pages/Favorites'));
 const CashbackHistory  = lazy(() => import('./pages/CashbackHistory'));
@@ -40,9 +48,10 @@ const AdminCjMerchants = lazy(() => import('./pages/admin/AdminCjMerchants'));
 const AdminJobs        = lazy(() => import('./pages/admin/AdminJobs'));
 
 const PageShell = ({ children }: { children: React.ReactNode }) => (
-  <div className="min-h-screen bg-gray-50">
+  <div className="min-h-screen bg-gray-50 flex flex-col">
     <Navbar />
-    {children}
+    <div className="flex-1">{children}</div>
+    <Footer />
   </div>
 );
 
@@ -70,6 +79,7 @@ function App() {
                 <Route path="/merchants/:id" element={<PageShell><MerchantDetail /></PageShell>} />
                 <Route path="/offers/:id" element={<PageShell><OfferDetail /></PageShell>} />
                 <Route path="/search" element={<PageShell><SearchResults /></PageShell>} />
+                <Route path="/categories" element={<PageShell><Categories /></PageShell>} />
                 <Route path="/category/:category" element={<PageShell><Category /></PageShell>} />
                 <Route path="/withdrawals" element={<PageShell><Withdrawals /></PageShell>} />
                 <Route path="/analytics" element={<PageShell><Analytics /></PageShell>} />
@@ -78,6 +88,11 @@ function App() {
                 <Route path="/favorites" element={<PageShell><Favorites /></PageShell>} />
                 <Route path="/cashback-history" element={<PageShell><CashbackHistory /></PageShell>} />
                 <Route path="/leaderboard" element={<PageShell><Leaderboard /></PageShell>} />
+                <Route path="/privacy" element={<PageShell><PrivacyPolicy /></PageShell>} />
+                <Route path="/terms" element={<PageShell><TermsOfService /></PageShell>} />
+                <Route path="/temu-terms" element={<PageShell><TemuTerms /></PageShell>} />
+                <Route path="/affiliate-disclosure" element={<PageShell><AffiliateDisclosure /></PageShell>} />
+                <Route path="/contact" element={<PageShell><Contact /></PageShell>} />
 
                 {/* Admin Routes */}
                 <Route path="/admin/login" element={<AdminLogin />} />
@@ -89,6 +104,9 @@ function App() {
                 <Route path="/admin/analytics" element={<AdminLayout><AdminAnalytics /></AdminLayout>} />
                 <Route path="/admin/cj" element={<AdminLayout><AdminCjMerchants /></AdminLayout>} />
                 <Route path="/admin/jobs" element={<AdminLayout><AdminJobs /></AdminLayout>} />
+
+                {/* Catch-all */}
+                <Route path="*" element={<PageShell><NotFound /></PageShell>} />
               </Routes>
             </Suspense>
           </Router>
