@@ -28,6 +28,8 @@ const Categories       = lazy(() => import('./pages/Categories'));
 const PrivacyPolicy    = lazy(() => import('./pages/PrivacyPolicy'));
 const TermsOfService   = lazy(() => import('./pages/TermsOfService'));
 const TemuTerms        = lazy(() => import('./pages/TemuTerms'));
+const AffiliateDisclosure = lazy(() => import('./pages/AffiliateDisclosure'));
+const NotFound         = lazy(() => import('./pages/NotFound'));
 const ReferralDashboard = lazy(() => import('./pages/ReferralDashboard'));
 const Favorites        = lazy(() => import('./pages/Favorites'));
 const CashbackHistory  = lazy(() => import('./pages/CashbackHistory'));
@@ -88,6 +90,7 @@ function App() {
                 <Route path="/privacy" element={<PageShell><PrivacyPolicy /></PageShell>} />
                 <Route path="/terms" element={<PageShell><TermsOfService /></PageShell>} />
                 <Route path="/temu-terms" element={<PageShell><TemuTerms /></PageShell>} />
+                <Route path="/affiliate-disclosure" element={<PageShell><AffiliateDisclosure /></PageShell>} />
 
                 {/* Admin Routes */}
                 <Route path="/admin/login" element={<AdminLogin />} />
@@ -99,6 +102,9 @@ function App() {
                 <Route path="/admin/analytics" element={<AdminLayout><AdminAnalytics /></AdminLayout>} />
                 <Route path="/admin/cj" element={<AdminLayout><AdminCjMerchants /></AdminLayout>} />
                 <Route path="/admin/jobs" element={<AdminLayout><AdminJobs /></AdminLayout>} />
+
+                {/* Catch-all */}
+                <Route path="*" element={<PageShell><NotFound /></PageShell>} />
               </Routes>
             </Suspense>
           </Router>
