@@ -16,6 +16,13 @@ router.get('/', async (req, res) => {
   if (cached) return res.json(cached);
 
   try {
+    // Compute the month boundary in JS and bind it — SQLite's
+    // date('now', 'start of month') doesn't exist on Postgres (production).
+    const now = new Date();
+    const startOfMonth = new Date(
+      Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1)
+    ).toISOString();
+
     const [monthly, allTime] = await Promise.all([
       dbAll(
         `SELECT u.name, u.total_earnings,
@@ -24,11 +31,12 @@ router.get('/', async (req, res) => {
          LEFT JOIN cashback_transactions ct
            ON ct.user_id = u.id
            AND ct.status = 'confirmed'
-           AND ct.transaction_date >= date('now', 'start of month')
+           AND ct.transaction_date >= ?
          WHERE u.is_admin = 0 AND u.leaderboard_opt_in = 1
-         GROUP BY u.id
+         GROUP BY u.id, u.name, u.total_earnings
          ORDER BY monthly_earnings DESC
-         LIMIT 20`
+         LIMIT 20`,
+        [startOfMonth]
       ),
       dbAll(
         `SELECT u.name, u.total_earnings
