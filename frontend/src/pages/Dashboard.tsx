@@ -6,6 +6,7 @@ import ReferralCode from '../components/ReferralCode';
 import LazyImage from '../components/LazyImage';
 import RecommendationWidget from '../components/RecommendationWidget';
 import TierProgress from '../components/TierProgress';
+import TierTable from '../components/TierTable';
 import CashbackAlerts from '../components/CashbackAlerts';
 
 interface Transaction {
@@ -166,6 +167,9 @@ const Dashboard = () => {
 
         {/* ─── Tier progress ────────────────────────────────────────────── */}
         <TierProgress />
+
+        {/* ─── All tiers comparison ─────────────────────────────────────── */}
+        <TierTable />
 
         {/* ─── Earn more (AI recommendations) ───────────────────────────── */}
         <RecommendationWidget />

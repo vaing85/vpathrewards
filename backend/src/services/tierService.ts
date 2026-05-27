@@ -8,10 +8,10 @@
  *
  * Tiers (member's share of the commission the platform earns):
  *   bronze    20%   all new members           (>= $0 lifetime spend)
- *   silver    35%   >= $250 lifetime spend
- *   gold      50%   >= $750 lifetime spend
- *   platinum  65%   >= $1,500 lifetime spend
- *   diamond   80%   >= $3,000 lifetime spend
+ *   silver    35%   >= $500 lifetime spend
+ *   gold      50%   >= $1,500 lifetime spend
+ *   platinum  65%   >= $3,000 lifetime spend
+ *   diamond   80%   >= $6,000 lifetime spend
  *
  * Member cashback on a purchase = commission_earned * commissionSharePct / 100.
  * The remaining (100 - commissionSharePct)% is the platform's cut.
@@ -28,25 +28,25 @@ export const COMMISSION_TIERS = {
   },
   silver: {
     name: 'Silver',
-    spendThreshold: 250,
+    spendThreshold: 500,
     commissionSharePct: 35,
     description: 'Keep 35% of the commission on every purchase',
   },
   gold: {
     name: 'Gold',
-    spendThreshold: 750,
+    spendThreshold: 1500,
     commissionSharePct: 50,
     description: 'Keep 50% of the commission on every purchase',
   },
   platinum: {
     name: 'Platinum',
-    spendThreshold: 1500,
+    spendThreshold: 3000,
     commissionSharePct: 65,
     description: 'Keep 65% of the commission on every purchase',
   },
   diamond: {
     name: 'Diamond',
-    spendThreshold: 3000,
+    spendThreshold: 6000,
     commissionSharePct: 80,
     description: 'Keep 80% of the commission on every purchase',
   },

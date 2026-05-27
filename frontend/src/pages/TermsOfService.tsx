@@ -35,7 +35,7 @@ const TermsOfService = () => {
                 <li>Cashback rates are set by our merchant partners and are subject to change.</li>
                 <li>Cashback may be reversed if a purchase is returned, cancelled, or flagged as fraudulent.</li>
                 <li>We are not responsible for merchant errors or tracking failures beyond our control.</li>
-                <li>Cashback bonuses vary by membership tier (Free, Silver, Gold, Platinum).</li>
+                <li>Cashback bonuses vary by membership tier (Bronze, Silver, Gold, Platinum, Diamond).</li>
               </ul>
             </section>
 

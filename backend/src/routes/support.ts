@@ -27,10 +27,10 @@ VPath Rewards lets members earn real cash back on purchases made through our aff
 == MEMBERSHIP TIERS ==
 VPath Rewards is free for everyone — there are no paid plans. A member's tier sets the SHARE of the affiliate commission they keep on each confirmed purchase, and members climb tiers automatically as their lifetime confirmed spend grows.
 - Bronze (default): keep 20% of the commission on every purchase
-- Silver: keep 35% — unlocks at $250 lifetime confirmed spend
-- Gold: keep 50% — unlocks at $750 lifetime confirmed spend
-- Platinum: keep 65% — unlocks at $1,500 lifetime confirmed spend
-- Diamond: keep 80% — unlocks at $3,000 lifetime confirmed spend
+- Silver: keep 35% — unlocks at $500 lifetime confirmed spend
+- Gold: keep 50% — unlocks at $1,500 lifetime confirmed spend
+- Platinum: keep 65% — unlocks at $3,000 lifetime confirmed spend
+- Diamond: keep 80% — unlocks at $6,000 lifetime confirmed spend
 
 == HOW CASHBACK WORKS ==
 1. Sign up for a free account at vpathrewards.store
