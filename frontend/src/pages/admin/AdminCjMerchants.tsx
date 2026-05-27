@@ -46,6 +46,18 @@ const fmtPct = (n: number | null): string =>
 const fmtUsd = (n: number | null): string =>
   n == null ? '—' : `$${Number.isInteger(n) ? n : n.toFixed(2)}`;
 
+// Classify how CJ pays out for a merchant: a percentage of the sale
+// (commission), a flat cash amount per conversion (bounty), both, or nothing
+// yet (linked but not enriched by the advertiser sync).
+const payoutBadge = (m: CjMerchant): { label: string; cls: string } => {
+  const hasPct = m.cj_max_commission_rate != null;
+  const hasFixed = m.cj_max_fixed_usd != null;
+  if (hasPct && hasFixed) return { label: 'Commission % + cash', cls: 'bg-purple-100 text-purple-700' };
+  if (hasPct) return { label: 'Commission %', cls: 'bg-blue-100 text-blue-700' };
+  if (hasFixed) return { label: 'One-time cash', cls: 'bg-green-100 text-green-700' };
+  return { label: 'Not synced', cls: 'bg-gray-100 text-gray-500' };
+};
+
 const AdminCjMerchants = () => {
   const { isAuthenticated } = useAdmin();
   const navigate = useNavigate();
@@ -241,6 +253,7 @@ const AdminCjMerchants = () => {
                 <th className="text-left px-4 py-3">CJ Advertiser ID</th>
                 <th className="text-right px-4 py-3">Max CJ %</th>
                 <th className="text-right px-4 py-3" title="Max flat bounty CJ pays per conversion">Max CJ $</th>
+                <th className="text-left px-4 py-3" title="How CJ pays out: a % commission, a one-time cash bounty, or both">Payout</th>
                 <th className="text-right px-4 py-3">Offers</th>
                 <th className="text-left px-4 py-3">Last synced</th>
                 <th className="text-right px-4 py-3 w-32">Actions</th>
@@ -249,7 +262,7 @@ const AdminCjMerchants = () => {
             <tbody className="divide-y divide-gray-100">
               {merchants.length === 0 && (
                 <tr>
-                  <td colSpan={7} className="text-center text-gray-500 py-8">
+                  <td colSpan={8} className="text-center text-gray-500 py-8">
                     No CJ-linked merchants yet. Use the form above to link one.
                   </td>
                 </tr>
@@ -291,6 +304,16 @@ const AdminCjMerchants = () => {
                       </td>
                       <td className="px-4 py-3 text-right font-bold text-gray-800 tabular-nums">
                         {fmtUsd(m.cj_max_fixed_usd)}
+                      </td>
+                      <td className="px-4 py-3">
+                        {(() => {
+                          const b = payoutBadge(m);
+                          return (
+                            <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium ${b.cls}`}>
+                              {b.label}
+                            </span>
+                          );
+                        })()}
                       </td>
                       <td className="px-4 py-3 text-right tabular-nums">
                         {m.offer_count > 0 ? (
@@ -344,7 +367,7 @@ const AdminCjMerchants = () => {
                     </tr>
                     {isExpanded && (
                       <tr key={`details-${m.id}`} className="bg-gray-50">
-                        <td colSpan={7} className="px-8 py-4">
+                        <td colSpan={8} className="px-8 py-4">
                           {m.term_name && (
                             <div className="text-xs text-gray-600 mb-2">
                               <span className="font-semibold">Term:</span> {m.term_name}
