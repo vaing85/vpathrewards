@@ -3,8 +3,14 @@
  *
  * VPath Rewards is free for everyone. A member's tier sets the SHARE of the
  * affiliate commission they keep on each confirmed purchase. Members climb tiers
- * by accumulating lifetime confirmed spend — the sum of conversions.order_amount
+ * by accumulating lifetime confirmed spend — the sum of conversions.tier_spend_usd
+ * (purchase amount for percentage offers, full gross bounty for flat-rate offers)
  * for conversions with status = 'confirmed'.
+ *
+ * Note: the tier SHARE only applies to percentage-commission offers. Flat-rate
+ * bounty offers skip the share entirely — the user keeps the whole bounty after
+ * the flat platform fee (see computePayout) — but the full bounty still counts
+ * toward tier progress here.
  *
  * Tiers (member's share of the commission the platform earns):
  *   bronze    20%   all new members           (>= $0 lifetime spend)
@@ -132,12 +138,14 @@ export async function recomputeUserTier(userId: number): Promise<{
   commissionSharePct: number;
   lifetimeSpend: number;
 }> {
+  // Count tier_spend_usd when set (percentage offers store the purchase
+  // amount; flat-rate bounties store the full gross bounty), falling back to
+  // order_amount for legacy rows recorded before that column existed.
   const row = await dbGet<{ spend: number }>(
-    `SELECT COALESCE(SUM(order_amount), 0) AS spend
+    `SELECT COALESCE(SUM(COALESCE(tier_spend_usd, order_amount, 0)), 0) AS spend
        FROM conversions
       WHERE user_id = ?
-        AND status = ?
-        AND order_amount IS NOT NULL`,
+        AND status = ?`,
     [userId, SPEND_STATUS]
   );
   const lifetimeSpend = Number(row?.spend ?? 0);

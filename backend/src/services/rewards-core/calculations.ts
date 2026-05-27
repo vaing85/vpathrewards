@@ -66,13 +66,22 @@ export interface PayoutSplit {
  *                                     tier share (e.g. Bronze 0.20, Gold
  *                                     0.50, Diamond 0.80).
  *
+ * Flat-rate (one-time cash bounty) offers are special: the tier share does
+ * NOT apply. The platform only takes the flat fee and the user keeps the
+ * entire remainder. Pass { flatRate: true } for those — it forces the
+ * effective share to 1 (the sub-fee waiver still applies for bounties ≤ fee).
+ *
  * Pure function — no DB, no env reads, no side effects. Defensive: clamps
  * tierShare to [0, 1] and treats negative commissions as zero. All money is
  * rounded to cents via roundToCents.
  */
-export function computePayout(commission: number, tierShare: number): PayoutSplit {
+export function computePayout(
+  commission: number,
+  tierShare: number,
+  opts?: { flatRate?: boolean }
+): PayoutSplit {
   const c = commission > 0 ? commission : 0;
-  const share = Math.max(0, Math.min(1, tierShare));
+  const share = opts?.flatRate ? 1 : Math.max(0, Math.min(1, tierShare));
 
   if (c <= PLATFORM_FEE_USD) {
     return {

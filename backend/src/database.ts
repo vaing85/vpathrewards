@@ -355,6 +355,12 @@ export const initDatabase = async () => {
     // one or the other.
     await addCol('offers', 'cashback_fixed_usd', 'REAL');
 
+    // Amount of this conversion that counts toward the user's loyalty tier.
+    // For percentage offers this is the purchase order_amount; for flat-rate
+    // bounty offers it's the full gross bounty (which has no order_amount).
+    // NULL on legacy rows — tier recompute falls back to order_amount then.
+    await addCol('conversions', 'tier_spend_usd', 'REAL');
+
     // Raw CJ commission records, fetched by the cjSync job. Kept in its own
     // table (rather than written straight to cashback_transactions) because
     // CJ tells us the advertiser, not which user or offer drove the click —

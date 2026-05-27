@@ -92,14 +92,19 @@ export async function recordConversion(input: RecordConversionInput) {
     [click.offer_id]
   ) as { cashback_rate: number; cashback_fixed_usd: number | null } | undefined;
   const fixedAmount = offer?.cashback_fixed_usd ?? 0;
+  const isFlatRate = fixedAmount > 0;
   const commission = commission_amount
-    ?? (fixedAmount > 0 ? fixedAmount
+    ?? (isFlatRate ? fixedAmount
         : (order_amount != null && offer ? (order_amount * offer.cashback_rate / 100) : 0));
 
+  // Tier credit: percentage offers count their purchase amount; flat-rate
+  // bounties (no order_amount) count the full gross bounty.
+  const tierSpend = isFlatRate ? commission : (order_amount ?? null);
+
   const result = await dbRun(
-    `INSERT INTO conversions (click_id, user_id, offer_id, session_id, order_id, order_amount, commission_amount, status)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-    [click.id, click.user_id, click.offer_id, session_id, order_id ?? null, order_amount ?? null, commission, 'pending']
+    `INSERT INTO conversions (click_id, user_id, offer_id, session_id, order_id, order_amount, commission_amount, tier_spend_usd, status)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [click.id, click.user_id, click.offer_id, session_id, order_id ?? null, order_amount ?? null, commission, tierSpend, 'pending']
   );
   const conversionId = (result as { lastID: number }).lastID;
 
@@ -110,10 +115,11 @@ export async function recordConversion(input: RecordConversionInput) {
 
   if (click.user_id && commission > 0) {
     // Platform takes a flat fee off the top, then the user keeps their tier
-    // share of the remainder. See computePayout() in rewards-core for the
-    // exact rules (including the sub-$5-fee-waived case).
+    // share of the remainder. Flat-rate bounties skip the tier share — the
+    // user keeps the whole remainder after the fee. See computePayout() in
+    // rewards-core for the exact rules (including the sub-$5-fee-waived case).
     const share = await getUserCommissionShare(click.user_id); // 0.20 - 0.80
-    const { userAmount, platformAmount, platformFee } = computePayout(commission, share);
+    const { userAmount, platformAmount, platformFee } = computePayout(commission, share, { flatRate: isFlatRate });
 
     const txResult = await dbRun(
       `INSERT INTO cashback_transactions (user_id, offer_id, amount, platform_amount, platform_fee_amount, user_amount, status)
