@@ -63,9 +63,11 @@ const JOBS: JobMeta[] = [
 ];
 
 // Poll quickly while a job is actively running so the progress bar feels
-// live, but back off when idle to stay well under the admin rate limit.
-const FAST_POLL_MS = 3000;
-const SLOW_POLL_MS = 20000;
+// live, but back off when idle to stay well under the admin rate limit
+// (1000 req / 15 min). At 5s with 3 requests per cycle that's ~360/15min,
+// leaving headroom for other admin activity during the ~1.8h link-checker.
+const FAST_POLL_MS = 5000;
+const SLOW_POLL_MS = 30000;
 
 interface LastRun {
   ok: boolean;
@@ -132,16 +134,14 @@ const AdminJobs = () => {
 
   const loadStatuses = useCallback(async () => {
     try {
-      const [progressRes, cjSyncRes, cjAdvRes, cjConfigRes] = await Promise.all([
+      const [progressRes, cjSyncRes, cjAdvRes] = await Promise.all([
         apiClient.get<ProgressResponse>('/admin/jobs/progress'),
         apiClient.get<CjSyncStatus>('/admin/jobs/cj-sync/status'),
         apiClient.get<CjAdvertiserStatus>('/admin/jobs/cj-advertisers/status'),
-        apiClient.get<CjConfig>('/admin/jobs/cj-config'),
       ]);
       setProgress(progressRes.data);
       setCjSync(cjSyncRes.data);
       setCjAdvertisers(cjAdvRes.data);
-      setCjConfig(cjConfigRes.data);
       setError(null);
     } catch (err: any) {
       console.error('Failed to load job statuses:', err);
@@ -150,6 +150,16 @@ const AdminJobs = () => {
       setLoading(false);
     }
   }, []);
+
+  // CJ credential state only changes on a redeploy, so fetch it once on mount
+  // rather than on every poll cycle — keeps it out of the rate-limited hot loop.
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    apiClient
+      .get<CjConfig>('/admin/jobs/cj-config')
+      .then((r) => setCjConfig(r.data))
+      .catch((err) => console.error('Failed to load CJ config:', err));
+  }, [isAuthenticated]);
 
   const activeRef = useRef(false);
   activeRef.current =
