@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>V PATHing Rewards — Publisher Media Kit · v4 · 2026</title>
+<style>
+  :root {
+    --navy: #1e3a5f;
+    --navy-dark: #14283f;
+    --ink: #1f2937;
+    --muted: #6b7280;
+    --line: #e5e7eb;
+    --blue-bg: #eff6ff;
+    --blue-border: #bfdbfe;
+  }
+
+  * { box-sizing: border-box; }
+
+  html { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    color: var(--ink);
+    line-height: 1.5;
+    margin: 0;
+    background: #f3f4f6;
+  }
+
+  .page {
+    background: #fff;
+    max-width: 850px;
+    margin: 24px auto;
+    padding: 48px 56px 64px;
+    box-shadow: 0 1px 4px rgba(0,0,0,.08);
+  }
+
+  .running-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 12px;
+    border-bottom: 2px solid var(--line);
+    padding-bottom: 10px;
+    margin-bottom: 28px;
+  }
+  .running-header .brand { font-weight: 700; color: var(--navy); font-style: italic; }
+  .running-header .meta { color: var(--muted); }
+
+  h1.title {
+    font-size: 44px;
+    line-height: 1.08;
+    color: var(--navy);
+    margin: 8px 0 10px;
+    letter-spacing: -.5px;
+  }
+  .subtitle { color: var(--muted); font-size: 17px; margin: 0 0 26px; }
+
+  h2 {
+    color: var(--navy);
+    font-size: 22px;
+    margin: 34px 0 12px;
+  }
+
+  p { margin: 0 0 14px; }
+
+  /* Top fact strip */
+  .facts {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    overflow: hidden;
+    margin: 22px 0;
+  }
+  .facts .cell { padding: 14px 16px; border-right: 1px solid var(--line); }
+  .facts .cell:last-child { border-right: 0; }
+  .facts .label { font-size: 11px; color: var(--muted); margin-bottom: 4px; }
+  .facts .value { font-weight: 700; color: var(--navy); font-size: 15px; }
+
+  /* Merchant highlight box */
+  .highlight {
+    background: var(--blue-bg);
+    border: 1px solid var(--blue-border);
+    border-radius: 8px;
+    padding: 16px 18px;
+    font-size: 13.5px;
+    color: #334155;
+    margin: 4px 0 8px;
+  }
+  .highlight .hl-title { font-weight: 700; color: var(--navy); margin-bottom: 6px; }
+
+  /* Three value columns */
+  .cols3 {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    overflow: hidden;
+  }
+  .cols3 .col { padding: 16px 18px; border-right: 1px solid var(--line); }
+  .cols3 .col:last-child { border-right: 0; }
+  .cols3 h3 { color: var(--navy); font-size: 15px; margin: 0 0 10px; }
+  .cols3 p { font-size: 13px; color: #374151; margin: 0; }
+
+  /* Tier cards */
+  .tiers {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 10px;
+    margin: 8px 0 16px;
+  }
+  .tier {
+    border-radius: 10px;
+    padding: 14px 10px;
+    text-align: center;
+  }
+  .tier .name { font-weight: 700; font-size: 13px; letter-spacing: .5px; }
+  .tier .pct { font-size: 34px; font-weight: 800; line-height: 1.1; margin: 2px 0 0; }
+  .tier .of { font-size: 10.5px; color: #4b5563; }
+  .tier .req { font-size: 11px; font-style: italic; color: #4b5563; margin-top: 6px; }
+
+  .t-bronze   { background: #fdf3da; } .t-bronze .name, .t-bronze .pct     { color: #b45309; }
+  .t-silver   { background: #eef2f6; } .t-silver .name, .t-silver .pct     { color: #475569; }
+  .t-gold     { background: #fef6c8; } .t-gold .name, .t-gold .pct         { color: #a16207; }
+  .t-platinum { background: #e3eefb; } .t-platinum .name, .t-platinum .pct { color: #0369a1; }
+  .t-diamond  { background: #f1ebfd; } .t-diamond .name, .t-diamond .pct   { color: #7c3aed; }
+  .t-emerald  { background: #e7f9f1; } .t-emerald .name, .t-emerald .pct   { color: #047857; }
+  .t-sapphire { background: #e4edfd; } .t-sapphire .name, .t-sapphire .pct { color: #1d4ed8; }
+  .t-ruby     { background: #fde7eb; } .t-ruby .name, .t-ruby .pct         { color: #be123c; }
+  .t-obsidian { background: #e9eaee; } .t-obsidian .name, .t-obsidian .pct { color: #111827; }
+
+  .note { font-size: 12.5px; font-style: italic; color: var(--muted); margin-top: 8px; }
+
+  /* Tables */
+  table { width: 100%; border-collapse: collapse; margin: 10px 0 8px; font-size: 13px; }
+  table.head-navy thead th {
+    background: var(--navy);
+    color: #fff;
+    text-align: left;
+    padding: 10px 12px;
+    font-size: 12px;
+  }
+  table.head-navy td {
+    padding: 11px 12px;
+    border-bottom: 1px solid var(--line);
+    vertical-align: top;
+  }
+  table.head-navy tbody tr:nth-child(even) { background: #f9fafb; }
+  table.head-navy td:first-child { font-weight: 700; color: var(--navy); }
+
+  table.kv td { padding: 11px 14px; border: 1px solid var(--line); vertical-align: top; }
+  table.kv td:first-child {
+    font-weight: 700;
+    color: var(--navy);
+    width: 210px;
+    background: #f9fafb;
+  }
+
+  .lead { font-weight: 700; }
+
+  /* Contact box */
+  .contact {
+    border: 1px solid var(--navy);
+    border-radius: 8px;
+    padding: 20px 24px;
+    margin-top: 18px;
+    max-width: 520px;
+  }
+  .contact .h { font-weight: 700; color: var(--navy); margin-bottom: 8px; }
+  .contact a { color: #1d4ed8; text-decoration: none; }
+
+  @media print {
+    body { background: #fff; }
+    .page { box-shadow: none; margin: 0 auto; max-width: none; padding: 0 0 24px; }
+    .page-break { page-break-before: always; }
+    @page { margin: 16mm 14mm; }
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <div class="running-header">
+    <span class="brand">V PATHing Rewards</span>
+    <span class="meta">Publisher Media Kit · v4 · 2026</span>
+  </div>
+
+  <h1 class="title">Cashback Platform Built for Repeat Behavior</h1>
+  <p class="subtitle">An activity-based 9-tier ladder that turns one-time shoppers into loyal, returning customers.</p>
+
+  <div class="facts">
+    <div class="cell"><div class="label">Publisher ID</div><div class="value">7903700</div></div>
+    <div class="cell"><div class="label">Operator</div><div class="value">V PATHing Enterprise LLC</div></div>
+    <div class="cell"><div class="label">Geo Focus</div><div class="value">100% United States</div></div>
+    <div class="cell"><div class="label">Status</div><div class="value">Live</div></div>
+  </div>
+
+  <div class="highlight">
+    <div class="hl-title">Live Merchant Partnerships · 47 CJ programs · 2,540+ active offers</div>
+    Expedia · Hotels.com · Vrbo · Temu · TP-Link USA · GetResponse · CuriosityStream · Sucuri · Corel · Intego
+    Antivirus · WiTopia · HealthLabs.com · STDCheck.com · FlowerDelivery.com · JustFlowers.com · Russell Stover
+    Chocolates · Rexing · Tenergy · Daily Steals · and 28 more
+  </div>
+
+  <h2>Why VPathRewards Drives the Behavior Advertisers Pay For</h2>
+  <p>Most cashback publishers compete for the same one-time bargain hunters. VPathRewards is engineered differently:
+  every transaction increases a member's lifetime platform spend, which unlocks higher commission shares (Bronze
+  20% → Silver 35% → Gold 50% → Platinum 65% → Diamond 80% → Emerald 85% → Sapphire 90% → Ruby 95% →
+  Obsidian 100%). The result is a structural incentive for members to return through our links rather than direct,
+  search, or competing publishers. For advertisers, this translates into higher repeat purchase rates, longer
+  customer lifecycles, and improved blended ROAS over time — without paywalls, subscriptions, or aggressive
+  coupon stacking.</p>
+
+  <div class="cols3">
+    <div class="col">
+      <h3>Repeat-Purchase Engine</h3>
+      <p>Members earn more by spending more on the platform. The 9-tier ladder (Bronze → Obsidian) converts
+      one-time shoppers into habitual returners — the LTV behavior advertisers prize most.</p>
+    </div>
+    <div class="col">
+      <h3>Quality Traffic Filter</h3>
+      <p>No paywall, no incentivized clicks, no cookie stuffing. Users arrive with confirmed purchase intent.
+      Conversion rates favor cashback-first traffic over coupon-aggregator traffic.</p>
+    </div>
+    <div class="col">
+      <h3>Clean Attribution</h3>
+      <p>CJ deep-link compatible with encoded SID/sub-ID per member and placement. First-party tracking layered
+      with CJ pixel/postback. Cashback locks only after CJ validation.</p>
+    </div>
+  </div>
+
+  <h2>Member Tier Structure</h2>
+  <p>All tiers are free. Members advance through verified lifetime spend on the platform. Percentages shown are the
+  member's share of the merchant commission earned per qualifying transaction, <span class="lead">after a flat $5
+  platform service fee is deducted</span>. Conversions where the merchant commission is $5 or less are exempt from
+  the fee — the member receives the full commission.</p>
+
+  <div class="tiers page-break">
+    <div class="tier t-bronze"><div class="name">BRONZE</div><div class="pct">20%</div><div class="of">of post-fee commission</div><div class="req">Default tier — all new members</div></div>
+    <div class="tier t-silver"><div class="name">SILVER</div><div class="pct">35%</div><div class="of">of post-fee commission</div><div class="req">Unlocked at $500 lifetime spend</div></div>
+    <div class="tier t-gold"><div class="name">GOLD</div><div class="pct">50%</div><div class="of">of post-fee commission</div><div class="req">Unlocked at $1,500 lifetime spend</div></div>
+    <div class="tier t-platinum"><div class="name">PLATINUM</div><div class="pct">65%</div><div class="of">of post-fee commission</div><div class="req">Unlocked at $3,000 lifetime spend</div></div>
+    <div class="tier t-diamond"><div class="name">DIAMOND</div><div class="pct">80%</div><div class="of">of post-fee commission</div><div class="req">Unlocked at $6,000 lifetime spend</div></div>
+    <div class="tier t-emerald"><div class="name">EMERALD</div><div class="pct">85%</div><div class="of">of post-fee commission</div><div class="req">Unlocked at $12,000 lifetime spend</div></div>
+    <div class="tier t-sapphire"><div class="name">SAPPHIRE</div><div class="pct">90%</div><div class="of">of post-fee commission</div><div class="req">Unlocked at $24,000 lifetime spend</div></div>
+    <div class="tier t-ruby"><div class="name">RUBY</div><div class="pct">95%</div><div class="of">of post-fee commission</div><div class="req">Unlocked at $48,000 lifetime spend</div></div>
+    <div class="tier t-obsidian"><div class="name">OBSIDIAN</div><div class="pct">100%</div><div class="of">of post-fee commission</div><div class="req">Unlocked at $96,000 lifetime spend</div></div>
+  </div>
+
+  <p class="note">Tier advancement is automatic and irreversible once unlocked. Verification is based on confirmed,
+  non-reversed commissions to prevent gaming. The upper tiers are reached only by the platform's most loyal,
+  highest-LTV repeat buyers, and the flat $5 platform service fee still applies to every qualifying conversion — so
+  even the top post-fee share stays economically sustainable. In practice these are exactly the returning,
+  high-intent customers advertisers most want coming back through our links.</p>
+
+  <h2 class="page-break">Founder &amp; Operating Context</h2>
+  <p>VPathRewards is operated by Villa Aing through V PATHing Enterprise LLC, a Houston, Texas-based technology
+  company building a seven-platform consumer software portfolio. The founder personally leads engineering,
+  partnerships, and compliance — ensuring direct accountability for every advertiser relationship. CJ remains the
+  primary affiliate network across all current and planned platforms in the portfolio.</p>
+
+  <h2>V PATHing Enterprise Platform Portfolio</h2>
+  <table class="head-navy">
+    <thead><tr><th>Platform</th><th>Vertical</th><th>Status</th><th>Relevance to CJ Advertisers</th></tr></thead>
+    <tbody>
+      <tr><td>VPathRewards</td><td>Cashback / Loyalty</td><td>Live</td><td>Primary publisher property</td></tr>
+      <tr><td>U-Mechanic</td><td>Auto Diagnostics (OBD)</td><td>Active development Q4 2026</td><td>Auto parts, tires, insurance, fluids</td></tr>
+      <tr><td>ZapRoute</td><td>Logistics / Routing</td><td>In development</td><td>Fleet, fuel, logistics services</td></tr>
+      <tr><td>OBD Security</td><td>Vehicle Security</td><td>In development</td><td>Auto accessories, insurance</td></tr>
+      <tr><td>VoxArena</td><td>Audio / Voice</td><td>In development</td><td>Consumer electronics, headphones</td></tr>
+      <tr><td>Civic SaaS</td><td>Civic Tools</td><td>In development</td><td>Subscription services</td></tr>
+      <tr><td>Tower Defense</td><td>Gaming</td><td>In development</td><td>Gaming peripherals, digital goods</td></tr>
+    </tbody>
+  </table>
+  <p class="note">Advertisers approving VPathRewards today benefit from priority placement consideration across the
+  broader V PATHing platform portfolio as additional verticals launch.</p>
+
+  <h2>Technical Capabilities</h2>
+  <table class="kv">
+    <tr><td>Frontend</td><td>React + Vite (TypeScript), Tailwind CSS</td></tr>
+    <tr><td>Backend</td><td>Node.js / Express (TypeScript)</td></tr>
+    <tr><td>Database</td><td>PostgreSQL via Supabase (SQLite for local dev)</td></tr>
+    <tr><td>Hosting</td><td>Railway (backend) · Cloudflare (frontend) · Supabase (managed Postgres)</td></tr>
+    <tr><td>CJ Integration</td><td>Full Programs API (publisher.contracts) and Commission Detail API integration.
+      Daily 3:30am UTC commission sync, 3:45am UTC advertiser enrichment. Deep-link compatible with encoded
+      SID/sub-ID per member and placement.</td></tr>
+    <tr><td>Tracking</td><td>First-party affiliate_clicks event log layered with CJ pixel and postback validation</td></tr>
+    <tr><td>Offer Ingestion</td><td>Automated CJ Programs API ingestion (47 merchants linked, 2,540+ active offers).
+      Manual CSV import retained as fallback.</td></tr>
+    <tr><td>Attribution</td><td>Per-click validation before cashback issuance; reversal handling via pending →
+      confirmed → rejected state machine</td></tr>
+    <tr><td>Payout Engine</td><td>computePayout() with flat $5 platform service fee + tier-share split. Pure function,
+      single source of truth, 100% test coverage on math.</td></tr>
+  </table>
+
+  <h2 class="page-break">Audience Profile</h2>
+  <table class="kv">
+    <tr><td>Stage</td><td>Live — infrastructure complete, building user base</td></tr>
+    <tr><td>Geographic Focus</td><td>100% United States, English-speaking</td></tr>
+    <tr><td>Acquisition Channels</td><td>Organic SEO (merchant cashback pages), email newsletter, partner referrals, referral loop</td></tr>
+    <tr><td>Primary Segments</td><td>Value-driven retail shoppers, cashback-loyal repeat buyers, travel deal-seekers, health/wellness subscribers, software buyers</td></tr>
+    <tr><td>Device Mix (projected)</td><td>60% mobile, 35% desktop, 5% tablet — based on category benchmarks</td></tr>
+    <tr><td>Demographic Skew (projected)</td><td>Ages 25–54, household income $40K–$120K</td></tr>
+  </table>
+
+  <h2>Placement Opportunities for Advertisers</h2>
+  <table class="head-navy">
+    <thead><tr><th>Placement</th><th>Format</th><th>Best For</th></tr></thead>
+    <tbody>
+      <tr><td>Homepage Featured</td><td>Top-fold card carousel</td><td>Retail, Travel, Software launches</td></tr>
+      <tr><td>Category Pages</td><td>Vertical-specific grid</td><td>All verticals, evergreen exposure</td></tr>
+      <tr><td>Tier-Reward Email</td><td>Weekly cashback digest to verified members</td><td>Retail, Health, Subscription, Travel</td></tr>
+      <tr><td>Merchant Detail Pages</td><td>Brand page with deals + cashback rate (SEO indexed)</td><td>All verticals — long-tail intent traffic</td></tr>
+      <tr><td>Vertical Spotlight</td><td>Editorial feature with deeper brand storytelling</td><td>Premium retail, travel, software partners</td></tr>
+      <tr><td>Cross-Portfolio (Q4 2026+)</td><td>Placement across V PATHing platform portfolio (e.g., U-Mechanic for auto)</td><td>Vertical-specific high-intent traffic</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Compliance, Trust &amp; Payout Operations</h2>
+  <table class="kv">
+    <tr><td>FTC Disclosure</td><td>Affiliate disclosure visible above the fold on every cashback page</td></tr>
+    <tr><td>Privacy</td><td>Published Privacy Policy and Terms of Service; CCPA-aligned data handling</td></tr>
+    <tr><td>Anti-Fraud</td><td>No cookie stuffing, no forced clicks, no incentivized fake conversions</td></tr>
+    <tr><td>Transparency</td><td>Tier rates, the $5 platform fee, and payout schedule published publicly for member transparency</td></tr>
+    <tr><td>Member Payout</td><td>Stripe Connect (USD), $10 minimum withdrawal threshold, hourly payout processor job</td></tr>
+    <tr><td>Ledger</td><td>Append-only cashback_transactions log with state machine: pending → confirmed → rejected;
+      platform_amount, platform_fee_amount, and user_amount recorded separately on every row</td></tr>
+    <tr><td>CJ Lock Period</td><td>Member payouts processed only after CJ commission lock period clears</td></tr>
+  </table>
+
+  <h2 class="page-break">Vertical Coverage &amp; 2026–2027 Roadmap</h2>
+  <p><span class="lead">Live verticals (47 CJ merchants, 2,540+ offers):</span> Retail · Travel · Software ·
+  Health &amp; Wellness · Floral &amp; Gifts · Subscription · Tech Accessories · Marketing Tools · Beauty · Outdoors</p>
+  <p><span class="lead">Q4 2026 expansion:</span> Automotive (via U-Mechanic OBD platform launch — opens auto parts,
+  tires, insurance verticals). Food &amp; Delivery and Finance &amp; Fintech merchant partnerships actively being sought.</p>
+  <p><span class="lead">2027 roadmap:</span> Additional verticals added as the V PATHing platform portfolio launches
+  (logistics, gaming, audio, civic tools). The full nine-tier reward ladder is already live; the top post-fee shares
+  are earned only by the platform's most committed repeat buyers, keeping incentives aligned with advertiser growth.</p>
+
+  <div class="contact">
+    <div class="h">Partnership Inquiries</div>
+    <div><strong>Villa Aing</strong></div>
+    <div>Founder, V PATHing Enterprise LLC</div>
+    <div><a href="mailto:vpathingenterprise@gmail.com">vpathingenterprise@gmail.com</a></div>
+    <div style="margin-top:10px;"><strong>CJ Publisher ID:</strong> 7903700</div>
+    <div><strong>Website:</strong> vpathrewards.store</div>
+  </div>
+
+</div>
+</body>
+</html>
