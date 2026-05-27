@@ -96,6 +96,12 @@ interface CjAdvertiserStatus {
   last_synced_at: string | null;
 }
 
+interface CjConfig {
+  configured: boolean;
+  hasToken: boolean;
+  hasPublisherId: boolean;
+}
+
 const fmtRel = (iso: string | null): string => {
   if (!iso) return 'never';
   const ms = Date.now() - new Date(iso).getTime();
@@ -118,6 +124,7 @@ const AdminJobs = () => {
   const [progress, setProgress] = useState<ProgressResponse | null>(null);
   const [cjSync, setCjSync] = useState<CjSyncStatus | null>(null);
   const [cjAdvertisers, setCjAdvertisers] = useState<CjAdvertiserStatus | null>(null);
+  const [cjConfig, setCjConfig] = useState<CjConfig | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [runningJob, setRunningJob] = useState<string | null>(null);
@@ -125,14 +132,16 @@ const AdminJobs = () => {
 
   const loadStatuses = useCallback(async () => {
     try {
-      const [progressRes, cjSyncRes, cjAdvRes] = await Promise.all([
+      const [progressRes, cjSyncRes, cjAdvRes, cjConfigRes] = await Promise.all([
         apiClient.get<ProgressResponse>('/admin/jobs/progress'),
         apiClient.get<CjSyncStatus>('/admin/jobs/cj-sync/status'),
         apiClient.get<CjAdvertiserStatus>('/admin/jobs/cj-advertisers/status'),
+        apiClient.get<CjConfig>('/admin/jobs/cj-config'),
       ]);
       setProgress(progressRes.data);
       setCjSync(cjSyncRes.data);
       setCjAdvertisers(cjAdvRes.data);
+      setCjConfig(cjConfigRes.data);
       setError(null);
     } catch (err: any) {
       console.error('Failed to load job statuses:', err);
@@ -206,6 +215,36 @@ const AdminJobs = () => {
         <div className="bg-red-50 border border-red-200 text-red-800 rounded-lg p-4">
           {error}
         </div>
+      )}
+
+      {/* CJ credential status — the two CJ jobs skip silently when these env
+          vars are missing, so make the configured/not-configured state obvious. */}
+      {cjConfig && (
+        cjConfig.configured ? (
+          <div className="bg-green-50 border border-green-200 text-green-800 rounded-lg p-4 flex items-start gap-2">
+            <span aria-hidden>✓</span>
+            <div>
+              <div className="font-semibold">CJ Affiliate connected</div>
+              <div className="text-sm text-green-700">
+                Credentials are configured. The CJ commissions and advertiser sync jobs will run against your CJ account.
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="bg-amber-50 border border-amber-200 text-amber-900 rounded-lg p-4 flex items-start gap-2">
+            <span aria-hidden>⚠</span>
+            <div>
+              <div className="font-semibold">CJ Affiliate not configured — sync jobs will skip</div>
+              <div className="text-sm text-amber-800 mt-1">
+                Set the following in your backend environment (Railway → Variables), then redeploy:
+              </div>
+              <ul className="text-sm font-mono mt-2 space-y-1">
+                <li>{cjConfig.hasToken ? '✓' : '✗'} CJ_PERSONAL_ACCESS_TOKEN</li>
+                <li>{cjConfig.hasPublisherId ? '✓' : '✗'} CJ_PUBLISHER_ID</li>
+              </ul>
+            </div>
+          </div>
+        )
       )}
 
       {/* In-flight progress */}

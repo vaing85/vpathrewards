@@ -9,6 +9,7 @@ import { dbGet, dbAll } from '../../database';
 import { runJob, JOB_NAMES, isKnownJob } from '../../jobs';
 import { getProgress } from '../../jobs/progress';
 import { startJobAsync, getActiveJob, getLastRuns } from '../../jobs/jobRunner';
+import { isCjConfigured } from '../../services/cjApi';
 
 const router = express.Router();
 
@@ -42,6 +43,19 @@ router.get('/progress', authenticateAdmin, (_req: AdminRequest, res: express.Res
 
 router.get('/names', authenticateAdmin, (_req: AdminRequest, res: express.Response) => {
   res.json({ jobs: JOB_NAMES });
+});
+
+// Whether the CJ credentials are present in the environment. The CJ sync jobs
+// skip cleanly when these are missing, so the admin UI surfaces this to avoid
+// silently-skipping syncs looking like a broken integration. Reports which of
+// the two vars is missing (admin-only) to make a typo easy to spot — never the
+// values themselves.
+router.get('/cj-config', authenticateAdmin, (_req: AdminRequest, res: express.Response) => {
+  res.json({
+    configured: isCjConfigured(),
+    hasToken: Boolean(process.env.CJ_PERSONAL_ACCESS_TOKEN),
+    hasPublisherId: Boolean(process.env.CJ_PUBLISHER_ID),
+  });
 });
 
 // Convenience shortcut for the CJ sync job. Equivalent to POST /run with
