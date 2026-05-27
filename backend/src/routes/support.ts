@@ -31,6 +31,10 @@ VPath Rewards is free for everyone — there are no paid plans. A member's tier 
 - Gold: keep 50% — unlocks at $1,500 lifetime confirmed spend
 - Platinum: keep 65% — unlocks at $3,000 lifetime confirmed spend
 - Diamond: keep 80% — unlocks at $6,000 lifetime confirmed spend
+- Emerald: keep 85% — unlocks at $12,000 lifetime confirmed spend
+- Sapphire: keep 90% — unlocks at $24,000 lifetime confirmed spend
+- Ruby: keep 95% — unlocks at $48,000 lifetime confirmed spend
+- Obsidian: keep 100% — unlocks at $96,000 lifetime confirmed spend
 
 == HOW CASHBACK WORKS ==
 1. Sign up for a free account at vpathrewards.store

@@ -40,6 +40,10 @@ const TIER_GRADIENTS: Record<string, string> = {
   gold: 'from-yellow-500 via-amber-500 to-orange-500',
   platinum: 'from-slate-700 via-slate-800 to-slate-900',
   diamond: 'from-violet-500 via-fuchsia-500 to-pink-500',
+  emerald: 'from-emerald-400 via-emerald-500 to-emerald-700',
+  sapphire: 'from-blue-500 via-blue-600 to-indigo-700',
+  ruby: 'from-rose-500 via-red-500 to-red-700',
+  obsidian: 'from-gray-700 via-gray-900 to-black',
 };
 
 const Dashboard = () => {

@@ -21,6 +21,10 @@ const TIER_DOT: Record<string, string> = {
   gold: 'bg-yellow-400',
   platinum: 'bg-slate-800',
   diamond: 'bg-violet-500',
+  emerald: 'bg-emerald-500',
+  sapphire: 'bg-blue-600',
+  ruby: 'bg-rose-600',
+  obsidian: 'bg-gray-900',
 };
 
 export default function TierTable() {

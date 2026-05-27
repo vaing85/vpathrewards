@@ -17,9 +17,23 @@ const TIER_COLORS: Record<string, string> = {
   gold: 'from-yellow-400 to-yellow-500',
   platinum: 'from-slate-700 to-slate-900',
   diamond: 'from-violet-500 to-violet-700',
+  emerald: 'from-emerald-400 to-emerald-600',
+  sapphire: 'from-blue-500 to-blue-700',
+  ruby: 'from-rose-500 to-red-700',
+  obsidian: 'from-gray-800 to-black',
 };
 
-const TIER_ORDER = ['bronze', 'silver', 'gold', 'platinum', 'diamond'];
+const TIER_ORDER = [
+  'bronze',
+  'silver',
+  'gold',
+  'platinum',
+  'diamond',
+  'emerald',
+  'sapphire',
+  'ruby',
+  'obsidian',
+];
 
 export default function TierProgress() {
   const [sub, setSub] = useState<TierStatus | null>(null);
@@ -101,7 +115,8 @@ export default function TierProgress() {
       {!sub.next_plan && (
         <div className="mt-3 bg-emerald-50 border border-emerald-100 rounded-xl px-4 py-3">
           <p className="text-sm font-medium text-emerald-800">
-            You've reached the top tier — you keep the maximum 80% share on every purchase.
+            You've reached the top tier — you keep the maximum {sub.commission_share}% share on
+            every purchase.
           </p>
         </div>
       )}
