@@ -8,10 +8,14 @@
  *
  * Tiers (member's share of the commission the platform earns):
  *   bronze    20%   all new members           (>= $0 lifetime spend)
- *   silver    35%   >= $250 lifetime spend
- *   gold      50%   >= $750 lifetime spend
- *   platinum  65%   >= $1,500 lifetime spend
- *   diamond   80%   >= $3,000 lifetime spend
+ *   silver    35%   >= $500 lifetime spend
+ *   gold      50%   >= $1,500 lifetime spend
+ *   platinum  65%   >= $3,000 lifetime spend
+ *   diamond   80%   >= $6,000 lifetime spend
+ *   emerald   85%   >= $12,000 lifetime spend
+ *   sapphire  90%   >= $24,000 lifetime spend
+ *   ruby      95%   >= $48,000 lifetime spend
+ *   obsidian  100%  >= $96,000 lifetime spend
  *
  * Member cashback on a purchase = commission_earned * commissionSharePct / 100.
  * The remaining (100 - commissionSharePct)% is the platform's cut.
@@ -28,27 +32,51 @@ export const COMMISSION_TIERS = {
   },
   silver: {
     name: 'Silver',
-    spendThreshold: 250,
+    spendThreshold: 500,
     commissionSharePct: 35,
     description: 'Keep 35% of the commission on every purchase',
   },
   gold: {
     name: 'Gold',
-    spendThreshold: 750,
+    spendThreshold: 1500,
     commissionSharePct: 50,
     description: 'Keep 50% of the commission on every purchase',
   },
   platinum: {
     name: 'Platinum',
-    spendThreshold: 1500,
+    spendThreshold: 3000,
     commissionSharePct: 65,
     description: 'Keep 65% of the commission on every purchase',
   },
   diamond: {
     name: 'Diamond',
-    spendThreshold: 3000,
+    spendThreshold: 6000,
     commissionSharePct: 80,
     description: 'Keep 80% of the commission on every purchase',
+  },
+  emerald: {
+    name: 'Emerald',
+    spendThreshold: 12000,
+    commissionSharePct: 85,
+    description: 'Keep 85% of the commission on every purchase',
+  },
+  sapphire: {
+    name: 'Sapphire',
+    spendThreshold: 24000,
+    commissionSharePct: 90,
+    description: 'Keep 90% of the commission on every purchase',
+  },
+  ruby: {
+    name: 'Ruby',
+    spendThreshold: 48000,
+    commissionSharePct: 95,
+    description: 'Keep 95% of the commission on every purchase',
+  },
+  obsidian: {
+    name: 'Obsidian',
+    spendThreshold: 96000,
+    commissionSharePct: 100,
+    description: 'Keep 100% of the commission on every purchase',
   },
 } as const;
 
@@ -57,7 +85,17 @@ export type CommissionTier = keyof typeof COMMISSION_TIERS;
 /** Lowest tier — every new member starts here. */
 export const DEFAULT_TIER: CommissionTier = 'bronze';
 
-const TIER_ORDER: CommissionTier[] = ['bronze', 'silver', 'gold', 'platinum', 'diamond'];
+const TIER_ORDER: CommissionTier[] = [
+  'bronze',
+  'silver',
+  'gold',
+  'platinum',
+  'diamond',
+  'emerald',
+  'sapphire',
+  'ruby',
+  'obsidian',
+];
 
 /**
  * Lifetime spend is summed from CONFIRMED conversions only, so a member's tier

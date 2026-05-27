@@ -35,7 +35,7 @@ const TermsOfService = () => {
                 <li>Cashback rates are set by our merchant partners and are subject to change.</li>
                 <li>Cashback may be reversed if a purchase is returned, cancelled, or flagged as fraudulent.</li>
                 <li>We are not responsible for merchant errors or tracking failures beyond our control.</li>
-                <li>Cashback bonuses vary by membership tier (Free, Silver, Gold, Platinum).</li>
+                <li>Cashback bonuses vary by membership tier (Bronze, Silver, Gold, Platinum, Diamond, Emerald, Sapphire, Ruby, Obsidian).</li>
               </ul>
             </section>
 
@@ -53,7 +53,7 @@ const TermsOfService = () => {
               <h2 className="text-xl font-semibold text-gray-900 mb-3">7. Membership Tiers</h2>
               <ul className="list-disc pl-6 space-y-2">
                 <li>VPath Rewards is free for everyone — there are no paid membership plans.</li>
-                <li>Your tier (Bronze, Silver, Gold, Platinum, Diamond) sets the share of the affiliate commission you keep on each confirmed purchase.</li>
+                <li>Your tier (Bronze, Silver, Gold, Platinum, Diamond, Emerald, Sapphire, Ruby, Obsidian) sets the share of the affiliate commission you keep on each confirmed purchase.</li>
                 <li>Tiers are earned by accumulating lifetime confirmed spend; the higher your tier, the larger your share of every commission.</li>
                 <li>We may adjust tier thresholds or commission shares from time to time; changes will be communicated in advance.</li>
               </ul>
