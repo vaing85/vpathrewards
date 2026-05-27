@@ -5,6 +5,181 @@ import { validateMerchant, validateId } from '../../middleware/validation';
 
 const router = express.Router();
 
+// ─── Bulk CSV Import ──────────────────────────────────────────────────────────
+//
+// Mirrors the offer importer (routes/admin/offers.ts): a /preview endpoint that
+// validates rows without writing, then /import that inserts the valid ones.
+// Unlike offers — which require an existing merchant — this creates new
+// merchants. Rows may carry a cj_advertiser_id so the next CJ advertiser sync
+// enriches them with commission terms automatically.
+
+interface MerchantImportRow {
+  row: number;
+  name: string;
+  category?: string;
+  website_url?: string;
+  logo_url?: string;
+  cj_advertiser_id?: string;
+  description?: string;
+}
+
+interface MerchantImportResult {
+  row: number;
+  status: 'imported' | 'skipped' | 'error';
+  name: string;
+  reason?: string;
+}
+
+function parseMerchantCSV(text: string): MerchantImportRow[] {
+  const lines = text.trim().split(/\r?\n/);
+  if (lines.length < 2) return [];
+
+  const headers = lines[0].split(',').map((h) => h.trim().toLowerCase().replace(/\s+/g, '_'));
+  const rows: MerchantImportRow[] = [];
+
+  for (let i = 1; i < lines.length; i++) {
+    const cols: string[] = [];
+    let cur = '';
+    let inQuotes = false;
+    for (const ch of lines[i]) {
+      if (ch === '"') { inQuotes = !inQuotes; continue; }
+      if (ch === ',' && !inQuotes) { cols.push(cur.trim()); cur = ''; continue; }
+      cur += ch;
+    }
+    cols.push(cur.trim());
+
+    const obj: Record<string, string> = {};
+    headers.forEach((h, idx) => { obj[h] = cols[idx] ?? ''; });
+
+    rows.push({
+      row: i,
+      name: obj['name'] || obj['merchant_name'] || obj['merchant'] || '',
+      category: obj['category'] || undefined,
+      website_url: obj['website_url'] || obj['website'] || obj['url'] || undefined,
+      logo_url: obj['logo_url'] || obj['logo'] || undefined,
+      cj_advertiser_id: obj['cj_advertiser_id'] || obj['advertiser_id'] || undefined,
+      description: obj['description'] || undefined,
+    });
+  }
+  return rows;
+}
+
+const looksLikeUrl = (v: string): boolean => /^https?:\/\/\S+$/i.test(v);
+
+// POST /api/admin/merchants/preview — validate CSV rows (no DB writes)
+router.post('/preview', authenticateAdmin, async (req: AdminRequest, res) => {
+  try {
+    const { csv } = req.body as { csv: string };
+    if (!csv) return res.status(400).json({ error: 'csv field is required' });
+
+    const rows = parseMerchantCSV(csv);
+    if (rows.length === 0) return res.status(400).json({ error: 'No data rows found. Check your CSV format.' });
+
+    const existingNames = new Set(
+      (await dbAll<{ name: string }>('SELECT name FROM merchants')).map((m) => m.name.toLowerCase())
+    );
+
+    // Track names within this CSV so a name repeated in the file is flagged as
+    // a duplicate on its second occurrence rather than imported twice.
+    const seenInFile = new Set<string>();
+
+    const preview = rows.map((row) => {
+      const errors: string[] = [];
+      const name = row.name?.trim() ?? '';
+      const key = name.toLowerCase();
+
+      if (!name) errors.push('name missing');
+      else if (name.length < 2) errors.push('name too short (min 2 chars)');
+      if (row.website_url && !looksLikeUrl(row.website_url)) errors.push('website_url must start with http(s)://');
+      if (row.logo_url && !looksLikeUrl(row.logo_url)) errors.push('logo_url must start with http(s)://');
+      if (row.cj_advertiser_id && !/^\d+$/.test(row.cj_advertiser_id.trim())) errors.push('cj_advertiser_id must be numeric');
+
+      const duplicate = !!name && (existingNames.has(key) || seenInFile.has(key));
+      if (key) seenInFile.add(key);
+
+      return {
+        row: row.row,
+        name,
+        category: row.category,
+        website_url: row.website_url,
+        logo_url: row.logo_url,
+        cj_advertiser_id: row.cj_advertiser_id,
+        description: row.description,
+        status: errors.length > 0 ? 'error' : duplicate ? 'duplicate' : 'ready',
+        errors,
+      };
+    });
+
+    res.json({ preview, total: preview.length });
+  } catch (err) {
+    console.error('Merchant preview error:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// POST /api/admin/merchants/import — bulk insert validated rows
+router.post('/import', authenticateAdmin, async (req: AdminRequest, res) => {
+  try {
+    const { rows } = req.body as { rows: MerchantImportRow[] };
+
+    if (!Array.isArray(rows) || rows.length === 0)
+      return res.status(400).json({ error: 'rows array is required' });
+
+    const existingNames = new Set(
+      (await dbAll<{ name: string }>('SELECT name FROM merchants')).map((m) => m.name.toLowerCase())
+    );
+
+    const results: MerchantImportResult[] = [];
+
+    for (const row of rows) {
+      const name = row.name?.trim() ?? '';
+      const key = name.toLowerCase();
+
+      if (!name || name.length < 2) {
+        results.push({ row: row.row, status: 'error', name: name || '(blank)', reason: 'Invalid name' });
+        continue;
+      }
+      if (row.cj_advertiser_id && !/^\d+$/.test(row.cj_advertiser_id.trim())) {
+        results.push({ row: row.row, status: 'error', name, reason: 'cj_advertiser_id not numeric' });
+        continue;
+      }
+      if (existingNames.has(key)) {
+        results.push({ row: row.row, status: 'skipped', name, reason: 'Merchant name already exists' });
+        continue;
+      }
+
+      try {
+        await dbRun(
+          'INSERT INTO merchants (name, description, logo_url, website_url, category, cj_advertiser_id) VALUES (?, ?, ?, ?, ?, ?)',
+          [
+            name,
+            row.description?.trim() || null,
+            row.logo_url?.trim() || null,
+            row.website_url?.trim() || null,
+            row.category?.trim() || null,
+            row.cj_advertiser_id?.trim() || null,
+          ]
+        );
+        existingNames.add(key);
+        results.push({ row: row.row, status: 'imported', name });
+      } catch (err) {
+        results.push({ row: row.row, status: 'error', name, reason: 'Database error' });
+      }
+    }
+
+    const summary = {
+      imported: results.filter((r) => r.status === 'imported').length,
+      skipped: results.filter((r) => r.status === 'skipped').length,
+      errors: results.filter((r) => r.status === 'error').length,
+    };
+
+    res.json({ results, summary });
+  } catch (err) {
+    console.error('Merchant import error:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 // Get all merchants (admin view)
 //
 // Query params:

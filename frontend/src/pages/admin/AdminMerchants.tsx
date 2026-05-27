@@ -4,6 +4,7 @@ import { useAdmin } from '../../context/AdminContext';
 import apiClient from '../../api/client';
 import Pagination from '../../components/Pagination';
 import LazyImage from '../../components/LazyImage';
+import MerchantImportModal from '../../components/admin/MerchantImportModal';
 
 interface Merchant {
   id: number;
@@ -25,6 +26,7 @@ const AdminMerchants = () => {
   const [categories, setCategories] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
+  const [showImport, setShowImport] = useState(false);
   const [editingMerchant, setEditingMerchant] = useState<Merchant | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [pagination, setPagination] = useState<any>(null);
@@ -158,12 +160,23 @@ const AdminMerchants = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="flex justify-between items-center mb-8">
           <h1 className="text-3xl font-bold text-gray-800">Merchants</h1>
-          <button
-            onClick={() => handleOpenModal()}
-            className="bg-primary-600 hover:bg-primary-700 text-white px-4 py-2 rounded-lg"
-          >
-            + Add Merchant
-          </button>
+          <div className="flex gap-3">
+            <button
+              onClick={() => setShowImport(true)}
+              className="flex items-center gap-2 bg-white border border-gray-300 hover:border-blue-400 hover:bg-blue-50 text-gray-700 px-4 py-2 rounded-lg transition"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+              </svg>
+              Import CSV
+            </button>
+            <button
+              onClick={() => handleOpenModal()}
+              className="bg-primary-600 hover:bg-primary-700 text-white px-4 py-2 rounded-lg"
+            >
+              + Add Merchant
+            </button>
+          </div>
         </div>
 
         {/* Filters */}
@@ -335,6 +348,14 @@ const AdminMerchants = () => {
               </div>
             )}
           </div>
+        )}
+
+        {/* Import Modal */}
+        {showImport && (
+          <MerchantImportModal
+            onClose={() => setShowImport(false)}
+            onDone={() => { setShowImport(false); fetchMerchants(); }}
+          />
         )}
 
         {/* Modal */}
