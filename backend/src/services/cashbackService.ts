@@ -234,11 +234,14 @@ export async function trackCashback(userId: number, offerId: number, purchaseAmo
   // computePayout then takes the flat $5 platform fee off the top and splits
   // the remainder per the user's tier share. Sub-$5 commissions skip the fee.
   const fixedAmount = offer.cashback_fixed_usd ?? 0;
-  const commission = fixedAmount > 0
+  const isFlatRate = fixedAmount > 0;
+  const commission = isFlatRate
     ? fixedAmount
     : computeCashbackAmount(purchaseAmount, offer.cashback_rate);
   const share = await getUserCommissionShare(userId); // 0.20 - 0.80
-  const { userAmount, platformAmount, platformFee } = computePayout(commission, share);
+  // Flat-rate bounties skip the tier share — user keeps the whole remainder
+  // after the flat fee. Percentage offers split the remainder per tier.
+  const { userAmount, platformAmount, platformFee } = computePayout(commission, share, { flatRate: isFlatRate });
 
   const result = await dbRun(
     `INSERT INTO cashback_transactions (user_id, offer_id, amount, platform_amount, platform_fee_amount, user_amount, status)
