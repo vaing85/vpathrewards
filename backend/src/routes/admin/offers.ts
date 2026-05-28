@@ -3,20 +3,20 @@ import { authenticateAdmin, AdminRequest } from '../../middleware/adminAuth';
 import { dbAll, dbGet, dbRun } from '../../database';
 import { validateOffer, validateId } from '../../middleware/validation';
 import { sendNewOfferAlerts } from '../../utils/emailService';
+import { parseImportCsv, type ImportFormat, type NormalizedImportRow } from '../../services/offerImport';
 
 const router = express.Router();
 
 // ─── Bulk CSV Import ──────────────────────────────────────────────────────────
+//
+// Two input shapes are supported (auto-detected — see services/offerImport.ts):
+//   - "native":  merchant_name, title, cashback_rate, affiliate_link, ...
+//   - "cj-raw":  the Links CSV CJ Affiliate exports per advertiser. The CSV
+//                doesn't carry a cashback rate; we derive it from the merchant's
+//                cj_max_commission_rate / cj_max_fixed_usd (populated by the CJ
+//                advertiser sync). Merchants are auto-linked via ADV_CID.
 
-interface ImportRow {
-  row: number;
-  merchant_name: string;
-  title: string;
-  cashback_rate: string;
-  affiliate_link: string;
-  description?: string;
-  terms?: string;
-}
+interface ImportRow extends NormalizedImportRow {}
 
 interface ImportResult {
   row: number;
@@ -26,39 +26,33 @@ interface ImportResult {
   reason?: string;
 }
 
-function parseCSV(text: string): ImportRow[] {
-  const lines = text.trim().split(/\r?\n/);
-  if (lines.length < 2) return [];
+interface MerchantRow {
+  id: number;
+  name: string;
+  cj_advertiser_id: string | null;
+  cj_max_commission_rate: number | null;
+  cj_max_fixed_usd: number | null;
+}
 
-  const headers = lines[0].split(',').map((h) => h.trim().toLowerCase().replace(/\s+/g, '_'));
-  const rows: ImportRow[] = [];
-
-  for (let i = 1; i < lines.length; i++) {
-    // Handle quoted fields
-    const cols: string[] = [];
-    let cur = '';
-    let inQuotes = false;
-    for (const ch of lines[i]) {
-      if (ch === '"') { inQuotes = !inQuotes; continue; }
-      if (ch === ',' && !inQuotes) { cols.push(cur.trim()); cur = ''; continue; }
-      cur += ch;
+// Decide cashback_rate / cashback_fixed_usd for one row, given the format
+// and the merchant's current CJ data (which may be null if not synced yet).
+// Returns null for rate fields that should be left at zero/null.
+function deriveOfferRate(
+  format: ImportFormat,
+  row: ImportRow,
+  merchant: MerchantRow | null
+): { cashback_rate: number; cashback_fixed_usd: number | null; source: 'cj-fixed' | 'cj-rate' | 'csv' | 'none' } {
+  if (format === 'cj-raw') {
+    if (merchant?.cj_max_fixed_usd && merchant.cj_max_fixed_usd > 0) {
+      return { cashback_rate: 0, cashback_fixed_usd: merchant.cj_max_fixed_usd, source: 'cj-fixed' };
     }
-    cols.push(cur.trim());
-
-    const obj: Record<string, string> = {};
-    headers.forEach((h, idx) => { obj[h] = cols[idx] ?? ''; });
-
-    rows.push({
-      row: i,
-      merchant_name: obj['merchant_name'] || obj['merchant'] || '',
-      title: obj['title'] || obj['offer_title'] || '',
-      cashback_rate: obj['cashback_rate'] || obj['rate'] || '',
-      affiliate_link: obj['affiliate_link'] || obj['link'] || obj['url'] || '',
-      description: obj['description'] || undefined,
-      terms: obj['terms'] || undefined,
-    });
+    if (merchant?.cj_max_commission_rate && merchant.cj_max_commission_rate > 0) {
+      return { cashback_rate: merchant.cj_max_commission_rate, cashback_fixed_usd: null, source: 'cj-rate' };
+    }
+    return { cashback_rate: 0, cashback_fixed_usd: null, source: 'none' };
   }
-  return rows;
+  const r = parseFloat(row.cashback_rate);
+  return { cashback_rate: isNaN(r) ? 0 : r, cashback_fixed_usd: null, source: isNaN(r) ? 'none' : 'csv' };
 }
 
 // POST /api/admin/offers/preview — validate CSV rows (no DB writes)
@@ -67,11 +61,13 @@ router.post('/preview', authenticateAdmin, async (req: AdminRequest, res) => {
     const { csv } = req.body as { csv: string };
     if (!csv) return res.status(400).json({ error: 'csv field is required' });
 
-    const rows = parseCSV(csv);
+    const { format, rows } = parseImportCsv(csv);
     if (rows.length === 0) return res.status(400).json({ error: 'No data rows found. Check your CSV format.' });
 
-    const merchants = await dbAll<{ id: number; name: string }>('SELECT id, name FROM merchants');
-    const merchantMap = new Map(merchants.map((m) => [m.name.toLowerCase(), m.id]));
+    const merchants = await dbAll<MerchantRow>(
+      'SELECT id, name, cj_advertiser_id, cj_max_commission_rate, cj_max_fixed_usd FROM merchants'
+    );
+    const merchantByName = new Map(merchants.map((m) => [m.name.toLowerCase(), m]));
 
     const existingLinks = new Set(
       (await dbAll<{ affiliate_link: string }>('SELECT affiliate_link FROM offers')).map((o) => o.affiliate_link)
@@ -79,30 +75,48 @@ router.post('/preview', authenticateAdmin, async (req: AdminRequest, res) => {
 
     const preview = rows.map((row) => {
       const errors: string[] = [];
-      const merchantKnown = !!row.merchant_name && merchantMap.has(row.merchant_name.toLowerCase());
-      const willCreateMerchant = !!row.merchant_name && !merchantKnown;
-      if (!row.merchant_name) errors.push('merchant_name missing');
+      const warnings: string[] = [];
+      const name = (row.merchant_name ?? '').trim();
+      const merchant = name ? merchantByName.get(name.toLowerCase()) ?? null : null;
+      const willCreateMerchant = !!name && !merchant;
+
+      if (!name) errors.push('merchant_name missing');
       if (!row.title) errors.push('title missing');
-      if (!row.cashback_rate || isNaN(parseFloat(row.cashback_rate))) errors.push('invalid cashback_rate');
       if (!row.affiliate_link) errors.push('affiliate_link missing');
+
+      const { cashback_rate, cashback_fixed_usd, source } = deriveOfferRate(format, row, merchant);
+
+      if (format === 'native' && source === 'none') {
+        errors.push('invalid cashback_rate');
+      } else if (format === 'cj-raw' && source === 'none') {
+        warnings.push(
+          willCreateMerchant
+            ? 'Rate will populate after CJ advertiser sync runs on the new merchant'
+            : 'Merchant has no CJ rate yet — run CJ advertiser sync to populate'
+        );
+      }
 
       const duplicate = row.affiliate_link && existingLinks.has(row.affiliate_link);
 
       return {
-        row: row.row,
-        merchant_name: row.merchant_name,
+        row: row.csvRow,
+        merchant_name: name,
         title: row.title,
-        cashback_rate: row.cashback_rate,
+        cashback_rate: cashback_rate || '',
+        cashback_fixed_usd,
         affiliate_link: row.affiliate_link,
         description: row.description,
         terms: row.terms,
+        cj_advertiser_id: row.cj_advertiser_id,
         status: errors.length > 0 ? 'error' : duplicate ? 'duplicate' : 'ready',
         will_create_merchant: willCreateMerchant,
+        rate_source: source,
+        warnings,
         errors,
       };
     });
 
-    res.json({ preview, total: preview.length });
+    res.json({ format, preview, total: preview.length });
   } catch (err) {
     console.error('Preview error:', err);
     res.status(500).json({ error: 'Internal server error' });
@@ -112,64 +126,78 @@ router.post('/preview', authenticateAdmin, async (req: AdminRequest, res) => {
 // POST /api/admin/offers/import — bulk insert validated rows
 router.post('/import', authenticateAdmin, async (req: AdminRequest, res) => {
   try {
-    const { rows, skip_duplicates = true } = req.body as {
+    const { rows, format = 'native' } = req.body as {
       rows: ImportRow[];
-      skip_duplicates?: boolean;
+      format?: ImportFormat;
     };
 
     if (!Array.isArray(rows) || rows.length === 0)
       return res.status(400).json({ error: 'rows array is required' });
 
-    const merchants = await dbAll<{ id: number; name: string }>('SELECT id, name FROM merchants');
-    const merchantMap = new Map(merchants.map((m) => [m.name.toLowerCase(), m.id]));
+    const merchants = await dbAll<MerchantRow>(
+      'SELECT id, name, cj_advertiser_id, cj_max_commission_rate, cj_max_fixed_usd FROM merchants'
+    );
+    const merchantByName = new Map(merchants.map((m) => [m.name.toLowerCase(), m]));
 
     const existingLinks = new Set(
       (await dbAll<{ affiliate_link: string }>('SELECT affiliate_link FROM offers')).map((o) => o.affiliate_link)
     );
 
     const results: ImportResult[] = [];
-    const createdMerchants: string[] = []; // names of merchants auto-created in this batch
+    const createdMerchants: string[] = [];
 
     for (const row of rows) {
       const name = row.merchant_name?.trim() ?? '';
-      if (!name || !row.title || !row.affiliate_link || isNaN(parseFloat(row.cashback_rate))) {
-        results.push({ row: row.row, status: 'error', title: row.title || '(blank)', merchant_name: name, reason: 'Validation failed' });
+      const cjAdvId = row.cj_advertiser_id?.trim() || null;
+
+      if (!name || !row.title || !row.affiliate_link) {
+        results.push({ row: row.csvRow, status: 'error', title: row.title || '(blank)', merchant_name: name, reason: 'Validation failed' });
         continue;
       }
 
-      // Look up the merchant; if it doesn't exist, auto-create it with just the
-      // name (admins can fill category/logo/CJ ID later via the merchant edit
-      // form). Reuse the new id for subsequent rows of the same new merchant.
-      let merchantId = merchantMap.get(name.toLowerCase());
-      if (!merchantId) {
+      // Look up the merchant; if it doesn't exist, auto-create with cj_advertiser_id
+      // (when carried by the row, e.g. cj-raw imports). If it does exist but isn't
+      // CJ-linked, opportunistically link it from the row's ADV_CID.
+      let merchant = merchantByName.get(name.toLowerCase()) ?? null;
+      if (!merchant) {
         try {
           const ins = await dbRun(
-            'INSERT INTO merchants (name) VALUES (?)',
-            [name]
+            'INSERT INTO merchants (name, cj_advertiser_id) VALUES (?, ?)',
+            [name, cjAdvId]
           );
-          merchantId = (ins as { lastID: number }).lastID;
-          merchantMap.set(name.toLowerCase(), merchantId);
+          const newId = (ins as { lastID: number }).lastID;
+          merchant = { id: newId, name, cj_advertiser_id: cjAdvId, cj_max_commission_rate: null, cj_max_fixed_usd: null };
+          merchantByName.set(name.toLowerCase(), merchant);
           createdMerchants.push(name);
         } catch (err) {
-          results.push({ row: row.row, status: 'error', title: row.title, merchant_name: name, reason: 'Failed to create merchant' });
+          results.push({ row: row.csvRow, status: 'error', title: row.title, merchant_name: name, reason: 'Failed to create merchant' });
           continue;
         }
+      } else if (cjAdvId && !merchant.cj_advertiser_id) {
+        await dbRun('UPDATE merchants SET cj_advertiser_id = ? WHERE id = ?', [cjAdvId, merchant.id]);
+        merchant.cj_advertiser_id = cjAdvId;
+      }
+
+      const { cashback_rate, cashback_fixed_usd, source } = deriveOfferRate(format, row, merchant);
+      if (format === 'native' && source === 'none') {
+        results.push({ row: row.csvRow, status: 'error', title: row.title, merchant_name: name, reason: 'Invalid cashback_rate' });
+        continue;
       }
 
       if (existingLinks.has(row.affiliate_link)) {
-        results.push({ row: row.row, status: 'skipped', title: row.title, merchant_name: name, reason: 'Duplicate affiliate link' });
+        results.push({ row: row.csvRow, status: 'skipped', title: row.title, merchant_name: name, reason: 'Duplicate affiliate link' });
         continue;
       }
 
       try {
         await dbRun(
-          'INSERT INTO offers (merchant_id, title, description, cashback_rate, terms, affiliate_link, is_active) VALUES (?, ?, ?, ?, ?, ?, 1)',
-          [merchantId, row.title, row.description || null, parseFloat(row.cashback_rate), row.terms || null, row.affiliate_link]
+          'INSERT INTO offers (merchant_id, title, description, cashback_rate, cashback_fixed_usd, terms, affiliate_link, is_active) VALUES (?, ?, ?, ?, ?, ?, ?, 1)',
+          [merchant.id, row.title, row.description || null, cashback_rate, cashback_fixed_usd, row.terms || null, row.affiliate_link]
         );
         existingLinks.add(row.affiliate_link);
-        results.push({ row: row.row, status: 'imported', title: row.title, merchant_name: name });
+        results.push({ row: row.csvRow, status: 'imported', title: row.title, merchant_name: name });
       } catch (err) {
-        results.push({ row: row.row, status: 'error', title: row.title, merchant_name: name, reason: 'Database error' });
+        results.push({ row: row.csvRow, status: 'error', title: row.title, merchant_name: name, reason: 'Database error' });
       }
     }
 

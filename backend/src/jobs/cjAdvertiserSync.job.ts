@@ -122,6 +122,29 @@ async function enrichMerchant(adv: CjAdvertiserRecord, merchantId: number): Prom
      WHERE id = ?`,
     [maxRate, maxFixed, termsJson, merchantId]
   );
+
+  // Propagate freshly-discovered rates to this merchant's unset offers, so
+  // offers imported before the merchant was CJ-synced (or imported from a CJ
+  // raw export) pick up their rate without manual editing. We only touch
+  // offers that look like they were never set — cashback_rate = 0/NULL AND
+  // cashback_fixed_usd IS NULL — to avoid overwriting admin-edited rates.
+  if (maxFixed && maxFixed > 0) {
+    await dbRun(
+      `UPDATE offers SET cashback_fixed_usd = ?, cashback_rate = 0
+         WHERE merchant_id = ?
+           AND (cashback_rate IS NULL OR cashback_rate = 0)
+           AND cashback_fixed_usd IS NULL`,
+      [maxFixed, merchantId]
+    );
+  } else if (maxRate && maxRate > 0) {
+    await dbRun(
+      `UPDATE offers SET cashback_rate = ?
+         WHERE merchant_id = ?
+           AND (cashback_rate IS NULL OR cashback_rate = 0)
+           AND cashback_fixed_usd IS NULL`,
+      [maxRate, merchantId]
+    );
+  }
 }
 
 export default cjAdvertiserSyncJob;
