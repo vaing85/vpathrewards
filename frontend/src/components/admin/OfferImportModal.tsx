@@ -5,16 +5,23 @@ import apiClient from '../../api/client';
 
 type Step = 'upload' | 'preview' | 'processing' | 'results';
 
+type ImportFormat = 'native' | 'cj-raw';
+type RateSource = 'cj-fixed' | 'cj-rate' | 'csv' | 'none';
+
 interface PreviewRow {
   row: number;
   merchant_name: string;
   title: string;
-  cashback_rate: string;
+  cashback_rate: string | number;
+  cashback_fixed_usd?: number | null;
   affiliate_link: string;
   description?: string;
   terms?: string;
+  cj_advertiser_id?: string;
   status: 'ready' | 'duplicate' | 'error';
   will_create_merchant?: boolean;
+  rate_source?: RateSource;
+  warnings?: string[];
   errors: string[];
 }
 
@@ -87,6 +94,7 @@ export default function OfferImportModal({ onClose, onDone }: Props) {
   const [csvText, setCsvText]   = useState('');
   const [fileName, setFileName] = useState('');
   const [preview, setPreview]   = useState<PreviewRow[]>([]);
+  const [format, setFormat]     = useState<ImportFormat>('native');
   const [results, setResults]   = useState<ResultRow[]>([]);
   const [summary, setSummary]   = useState<Summary | null>(null);
   const [error, setError]       = useState('');
@@ -119,6 +127,7 @@ export default function OfferImportModal({ onClose, onDone }: Props) {
     try {
       const { data } = await apiClient.post('/admin/offers/preview', { csv: csvText });
       setPreview(data.preview);
+      setFormat(data.format ?? 'native');
       setStep('preview');
     } catch (err: any) {
       setError(err.response?.data?.error || 'Failed to parse CSV.');
@@ -138,7 +147,7 @@ export default function OfferImportModal({ onClose, onDone }: Props) {
     const tick = setInterval(() => setProgress((p) => Math.min(p + 8, 90)), 200);
 
     try {
-      const { data } = await apiClient.post('/admin/offers/import', { rows: readyRows });
+      const { data } = await apiClient.post('/admin/offers/import', { rows: readyRows, format });
       clearInterval(tick);
       setProgress(100);
       setResults(data.results);
@@ -215,10 +224,13 @@ export default function OfferImportModal({ onClose, onDone }: Props) {
 
               <details className="text-xs text-gray-500 bg-gray-50 rounded-xl p-3">
                 <summary className="cursor-pointer font-medium text-gray-600">CSV format</summary>
-                <p className="mt-2 font-mono">merchant_name, title, cashback_rate, affiliate_link, description, terms</p>
-                <p className="mt-1">• First row must be the header</p>
+                <p className="mt-2 font-medium text-gray-600">Native format</p>
+                <p className="font-mono">merchant_name, title, cashback_rate, affiliate_link, description, terms</p>
                 <p>• <code>merchant_name</code> — matched to an existing merchant by name, or auto-created on import if no match</p>
                 <p>• <code>cashback_rate</code> is a number (e.g. 4.5)</p>
+                <p className="mt-3 font-medium text-gray-600">CJ Links export (auto-detected by the ADVERTISER header)</p>
+                <p>• Drop the raw Links CSV from CJ — fields, dedupe and logo-skip are handled automatically.</p>
+                <p>• Merchants are auto-created and linked via ADV_CID; rates are taken from the merchant's CJ data set by the advertiser sync.</p>
               </details>
 
               <button
@@ -234,6 +246,14 @@ export default function OfferImportModal({ onClose, onDone }: Props) {
           {/* ── PREVIEW ── */}
           {step === 'preview' && (
             <div className="flex-1 flex flex-col gap-4 overflow-hidden">
+              {format === 'cj-raw' && (
+                <div className="px-3 py-2 bg-blue-50 border border-blue-200 rounded-xl text-sm text-blue-800">
+                  <span className="font-semibold">CJ Links export detected.</span>{' '}
+                  Each offer's rate is taken from its merchant's CJ data (set by the advertiser sync).
+                  New merchants are auto-created and linked via ADV_CID; if the rate isn't known yet,
+                  it'll fill in the next time you run the CJ advertiser sync.
+                </div>
+              )}
               {/* Summary chips */}
               <div className="flex gap-3 flex-wrap">
                 {[
@@ -272,7 +292,13 @@ export default function OfferImportModal({ onClose, onDone }: Props) {
                           )}
                         </td>
                         <td className="px-4 py-2.5 text-gray-600 max-w-[200px] truncate">{row.title || <span className="text-red-400 italic">missing</span>}</td>
-                        <td className="px-4 py-2.5 text-gray-600">{row.cashback_rate ? `${row.cashback_rate}%` : <span className="text-red-400 italic">—</span>}</td>
+                        <td className="px-4 py-2.5 text-gray-600">
+                          {row.cashback_fixed_usd != null && row.cashback_fixed_usd > 0
+                            ? <span title="Flat bounty from CJ">${row.cashback_fixed_usd}</span>
+                            : (row.cashback_rate && Number(row.cashback_rate) > 0
+                                ? `${row.cashback_rate}%`
+                                : <span className="text-amber-500 italic" title="No rate yet — run CJ advertiser sync">pending</span>)}
+                        </td>
                         <td className="px-4 py-2.5">
                           <div>
                             <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_STYLE[row.status]}`}>
@@ -280,6 +306,9 @@ export default function OfferImportModal({ onClose, onDone }: Props) {
                             </span>
                             {row.errors.length > 0 && (
                               <p className="text-xs text-red-500 mt-0.5">{row.errors.join(', ')}</p>
+                            )}
+                            {row.warnings && row.warnings.length > 0 && (
+                              <p className="text-xs text-amber-600 mt-0.5">{row.warnings.join(', ')}</p>
                             )}
                           </div>
                         </td>
