@@ -79,8 +79,9 @@ router.post('/preview', authenticateAdmin, async (req: AdminRequest, res) => {
 
     const preview = rows.map((row) => {
       const errors: string[] = [];
+      const merchantKnown = !!row.merchant_name && merchantMap.has(row.merchant_name.toLowerCase());
+      const willCreateMerchant = !!row.merchant_name && !merchantKnown;
       if (!row.merchant_name) errors.push('merchant_name missing');
-      else if (!merchantMap.has(row.merchant_name.toLowerCase())) errors.push(`merchant "${row.merchant_name}" not found`);
       if (!row.title) errors.push('title missing');
       if (!row.cashback_rate || isNaN(parseFloat(row.cashback_rate))) errors.push('invalid cashback_rate');
       if (!row.affiliate_link) errors.push('affiliate_link missing');
@@ -96,6 +97,7 @@ router.post('/preview', authenticateAdmin, async (req: AdminRequest, res) => {
         description: row.description,
         terms: row.terms,
         status: errors.length > 0 ? 'error' : duplicate ? 'duplicate' : 'ready',
+        will_create_merchant: willCreateMerchant,
         errors,
       };
     });
@@ -126,17 +128,36 @@ router.post('/import', authenticateAdmin, async (req: AdminRequest, res) => {
     );
 
     const results: ImportResult[] = [];
+    const createdMerchants: string[] = []; // names of merchants auto-created in this batch
 
     for (const row of rows) {
-      const merchantId = merchantMap.get(row.merchant_name?.toLowerCase());
-
-      if (!merchantId || !row.title || !row.affiliate_link || isNaN(parseFloat(row.cashback_rate))) {
-        results.push({ row: row.row, status: 'error', title: row.title || '(blank)', merchant_name: row.merchant_name, reason: 'Validation failed' });
+      const name = row.merchant_name?.trim() ?? '';
+      if (!name || !row.title || !row.affiliate_link || isNaN(parseFloat(row.cashback_rate))) {
+        results.push({ row: row.row, status: 'error', title: row.title || '(blank)', merchant_name: name, reason: 'Validation failed' });
         continue;
       }
 
+      // Look up the merchant; if it doesn't exist, auto-create it with just the
+      // name (admins can fill category/logo/CJ ID later via the merchant edit
+      // form). Reuse the new id for subsequent rows of the same new merchant.
+      let merchantId = merchantMap.get(name.toLowerCase());
+      if (!merchantId) {
+        try {
+          const ins = await dbRun(
+            'INSERT INTO merchants (name) VALUES (?)',
+            [name]
+          );
+          merchantId = (ins as { lastID: number }).lastID;
+          merchantMap.set(name.toLowerCase(), merchantId);
+          createdMerchants.push(name);
+        } catch (err) {
+          results.push({ row: row.row, status: 'error', title: row.title, merchant_name: name, reason: 'Failed to create merchant' });
+          continue;
+        }
+      }
+
       if (existingLinks.has(row.affiliate_link)) {
-        results.push({ row: row.row, status: 'skipped', title: row.title, merchant_name: row.merchant_name, reason: 'Duplicate affiliate link' });
+        results.push({ row: row.row, status: 'skipped', title: row.title, merchant_name: name, reason: 'Duplicate affiliate link' });
         continue;
       }
 
@@ -146,9 +167,9 @@ router.post('/import', authenticateAdmin, async (req: AdminRequest, res) => {
           [merchantId, row.title, row.description || null, parseFloat(row.cashback_rate), row.terms || null, row.affiliate_link]
         );
         existingLinks.add(row.affiliate_link);
-        results.push({ row: row.row, status: 'imported', title: row.title, merchant_name: row.merchant_name });
+        results.push({ row: row.row, status: 'imported', title: row.title, merchant_name: name });
       } catch (err) {
-        results.push({ row: row.row, status: 'error', title: row.title, merchant_name: row.merchant_name, reason: 'Database error' });
+        results.push({ row: row.row, status: 'error', title: row.title, merchant_name: name, reason: 'Database error' });
       }
     }
 
@@ -156,9 +177,10 @@ router.post('/import', authenticateAdmin, async (req: AdminRequest, res) => {
       imported: results.filter((r) => r.status === 'imported').length,
       skipped: results.filter((r) => r.status === 'skipped').length,
       errors: results.filter((r) => r.status === 'error').length,
+      merchants_created: createdMerchants.length,
     };
 
-    res.json({ results, summary });
+    res.json({ results, summary, created_merchants: createdMerchants });
   } catch (err) {
     console.error('Import error:', err);
     res.status(500).json({ error: 'Internal server error' });

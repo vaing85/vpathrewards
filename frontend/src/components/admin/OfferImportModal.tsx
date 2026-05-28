@@ -14,6 +14,7 @@ interface PreviewRow {
   description?: string;
   terms?: string;
   status: 'ready' | 'duplicate' | 'error';
+  will_create_merchant?: boolean;
   errors: string[];
 }
 
@@ -25,7 +26,7 @@ interface ResultRow {
   reason?: string;
 }
 
-interface Summary { imported: number; skipped: number; errors: number; }
+interface Summary { imported: number; skipped: number; errors: number; merchants_created?: number; }
 
 // ─── Step indicators ──────────────────────────────────────────────────────────
 
@@ -216,7 +217,7 @@ export default function OfferImportModal({ onClose, onDone }: Props) {
                 <summary className="cursor-pointer font-medium text-gray-600">CSV format</summary>
                 <p className="mt-2 font-mono">merchant_name, title, cashback_rate, affiliate_link, description, terms</p>
                 <p className="mt-1">• First row must be the header</p>
-                <p>• <code>merchant_name</code> must match an existing merchant exactly</p>
+                <p>• <code>merchant_name</code> — matched to an existing merchant by name, or auto-created on import if no match</p>
                 <p>• <code>cashback_rate</code> is a number (e.g. 4.5)</p>
               </details>
 
@@ -262,7 +263,14 @@ export default function OfferImportModal({ onClose, onDone }: Props) {
                     {preview.map((row) => (
                       <tr key={row.row} className={row.status === 'error' ? 'bg-red-50' : row.status === 'duplicate' ? 'bg-yellow-50' : ''}>
                         <td className="px-4 py-2.5 text-gray-400">{row.row}</td>
-                        <td className="px-4 py-2.5 font-medium text-gray-700">{row.merchant_name || <span className="text-red-400 italic">missing</span>}</td>
+                        <td className="px-4 py-2.5 font-medium text-gray-700">
+                          {row.merchant_name || <span className="text-red-400 italic">missing</span>}
+                          {row.will_create_merchant && (
+                            <span className="ml-2 px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-blue-100 text-blue-700" title="This merchant doesn't exist yet — it will be created on import">
+                              + new
+                            </span>
+                          )}
+                        </td>
                         <td className="px-4 py-2.5 text-gray-600 max-w-[200px] truncate">{row.title || <span className="text-red-400 italic">missing</span>}</td>
                         <td className="px-4 py-2.5 text-gray-600">{row.cashback_rate ? `${row.cashback_rate}%` : <span className="text-red-400 italic">—</span>}</td>
                         <td className="px-4 py-2.5">
@@ -323,6 +331,12 @@ export default function OfferImportModal({ onClose, onDone }: Props) {
           {/* ── RESULTS ── */}
           {step === 'results' && summary && (
             <div className="flex-1 flex flex-col gap-5 overflow-hidden">
+              {summary.merchants_created != null && summary.merchants_created > 0 && (
+                <div className="px-4 py-2 bg-blue-50 border border-blue-200 rounded-xl text-sm text-blue-800 flex items-center gap-2">
+                  <span aria-hidden>+</span>
+                  Also created {summary.merchants_created} new merchant{summary.merchants_created === 1 ? '' : 's'} along the way.
+                </div>
+              )}
               {/* Big summary */}
               <div className="grid grid-cols-3 gap-4">
                 <div className="bg-green-50 rounded-2xl p-4 text-center border border-green-100">
