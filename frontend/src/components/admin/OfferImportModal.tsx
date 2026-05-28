@@ -1,5 +1,6 @@
 import { useState, useRef, useCallback } from 'react';
 import apiClient from '../../api/client';
+import { effectiveFlatUsd, PLATFORM_FEE_USD } from '../../utils/cashback';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -294,7 +295,7 @@ export default function OfferImportModal({ onClose, onDone }: Props) {
                         <td className="px-4 py-2.5 text-gray-600 max-w-[200px] truncate">{row.title || <span className="text-red-400 italic">missing</span>}</td>
                         <td className="px-4 py-2.5 text-gray-600">
                           {row.cashback_fixed_usd != null && row.cashback_fixed_usd > 0
-                            ? <span title="Flat bounty from CJ">${row.cashback_fixed_usd}</span>
+                            ? <span title={`User receives $${effectiveFlatUsd(row.cashback_fixed_usd)} (CJ gross $${row.cashback_fixed_usd} − $${PLATFORM_FEE_USD} platform fee)`}>${effectiveFlatUsd(row.cashback_fixed_usd)}</span>
                             : (row.cashback_rate && Number(row.cashback_rate) > 0
                                 ? `${row.cashback_rate}%`
                                 : <span className="text-amber-500 italic" title="No rate yet — run CJ advertiser sync">pending</span>)}
