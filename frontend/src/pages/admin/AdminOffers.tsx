@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAdmin } from '../../context/AdminContext';
 import apiClient from '../../api/client';
 import OfferImportModal from '../../components/admin/OfferImportModal';
+import { effectiveFlatUsd, PLATFORM_FEE_USD } from '../../utils/cashback';
 
 interface Offer {
   id: number;
@@ -335,9 +336,9 @@ const AdminOffers = () => {
                                     <th className="px-3 py-2 text-left font-medium">Title</th>
                                     <th
                                       className="px-3 py-2 text-left font-medium"
-                                      title="Commission stored on this offer (cashback_rate or cashback_fixed_usd). What CJ pays VPathRewards on conversion — actual user payout is (commission − $5 fee) × tier share."
+                                      title="What the user actually receives per conversion. Flat-rate: gross bounty − $5 platform fee (or full gross if ≤ $5). Percentage: gross %, ceiling — actual depends on tier share."
                                     >
-                                      Commission
+                                      User cashback
                                     </th>
                                     <th
                                       className="px-3 py-2 text-left font-medium"
@@ -357,6 +358,10 @@ const AdminOffers = () => {
                                     const cjPct = offer.merchant_cj_max_commission_rate;
                                     const cjFixed = offer.merchant_cj_max_fixed_usd;
                                     const cjLinked = offer.merchant_cj_advertiser_id != null;
+                                    // For flat-rate offers the user receives gross − $5 fee (or the
+                                    // full gross if it's ≤ $5). Display & pass-through are computed
+                                    // against this net amount so admins see what users actually get.
+                                    const userNetFixed = userIsFixed ? effectiveFlatUsd(userFixed as number) : null;
 
                                     const overpaying =
                                       (userIsFixed && cjFixed != null && (userFixed as number) > cjFixed) ||
@@ -364,16 +369,23 @@ const AdminOffers = () => {
                                     const passThroughPct = !userIsFixed && cjPct != null && cjPct > 0
                                       ? (userRate / cjPct) * 100
                                       : userIsFixed && cjFixed != null && cjFixed > 0
-                                        ? ((userFixed as number) / cjFixed) * 100
+                                        ? ((userNetFixed as number) / cjFixed) * 100
                                         : null;
 
                                     return (
                                       <tr key={offer.id} className="bg-white">
                                         <td className="px-3 py-2 text-gray-700">{offer.title}</td>
                                         <td className="px-3 py-2 whitespace-nowrap">
-                                          <span className={`font-semibold ${overpaying ? 'text-red-600' : 'text-primary-600'}`}>
+                                          <span
+                                            className={`font-semibold ${overpaying ? 'text-red-600' : 'text-primary-600'}`}
+                                            title={
+                                              userIsFixed
+                                                ? `User receives $${userNetFixed} per conversion (gross $${userFixed} − $${PLATFORM_FEE_USD} platform fee)`
+                                                : undefined
+                                            }
+                                          >
                                             {userIsFixed
-                                              ? `$${Number.isInteger(userFixed) ? userFixed : (userFixed as number).toFixed(2)}`
+                                              ? `$${Number.isInteger(userNetFixed) ? userNetFixed : (userNetFixed as number).toFixed(2)}`
                                               : `${userRate}%`}
                                           </span>
                                           {overpaying && (

@@ -7,17 +7,41 @@
  * offers) and cashback_fixed_usd is nullable. If both are > 0 we prefer
  * the flat amount in the headline display — admins are advised in the
  * admin UI not to mix them.
+ *
+ * IMPORTANT — flat-rate offers:
+ *   The stored cashback_fixed_usd is the *gross* bounty CJ pays us. The
+ *   user actually receives gross − $5 (the platform fee), or the full
+ *   gross if it's ≤ $5 (fee waived). All display helpers here subtract
+ *   the fee so customers and admins see what the user really gets, not
+ *   the gross. Conversion math (computePayout) still consumes the gross
+ *   value — never display the gross directly except in admin diagnostics.
  */
+
+/** Mirrors backend's rewards-core PLATFORM_FEE_USD constant. */
+export const PLATFORM_FEE_USD = 5;
+
 export interface CashbackFields {
   cashback_rate?: number | null;
   cashback_fixed_usd?: number | null;
 }
 
+/**
+ * For a flat-rate offer, the dollar amount the user actually receives:
+ * the gross bounty minus the $5 platform fee, or the full gross when the
+ * gross is ≤ $5 (fee waived per computePayout).
+ */
+export function effectiveFlatUsd(grossFixed: number): number {
+  if (grossFixed <= 0) return 0;
+  return grossFixed <= PLATFORM_FEE_USD ? grossFixed : grossFixed - PLATFORM_FEE_USD;
+}
+
+function fmtMoney(n: number): string {
+  return `$${Number.isInteger(n) ? n : n.toFixed(2)}`;
+}
+
 export function formatCashback(o: CashbackFields): string {
   const fixed = o.cashback_fixed_usd ?? 0;
-  if (fixed > 0) {
-    return `$${Number.isInteger(fixed) ? fixed : fixed.toFixed(2)}`;
-  }
+  if (fixed > 0) return fmtMoney(effectiveFlatUsd(fixed));
   const rate = o.cashback_rate ?? 0;
   return `${Number.isInteger(rate) ? rate : rate.toFixed(1)}%`;
 }
@@ -28,22 +52,18 @@ export function formatCashbackLabel(o: CashbackFields): string {
 }
 
 /**
- * User-facing headline form: "Up to 5%" or "Up to $10".
+ * User-facing headline form.
  *
- * The raw cashback_rate / cashback_fixed_usd on an offer is the *commission*
- * VPathRewards earns from CJ. Users keep a tier-based share of (commission −
- * $5 platform fee), so the actual user payout varies from 20% (Bronze) to
- * 100% (Obsidian) of the remainder. We frame this as "Up to" to set expectation:
+ * For flat-rate offers, the user receives an exact amount (gross − $5, or
+ * the full gross if ≤ $5), so the headline is "$X" with no hedge.
  *
- *   Diecast 10% offer  → "Up to 10%"  (Obsidian on a small/medium order)
- *   Sucuri $15 flat    → "Up to $15"  (sub-$5-fee-waiver case for small comms,
- *                                       Obsidian approaches it for large comms)
- *
- * For sub-$5 commissions the fee is waived entirely so the headline IS what
- * the user gets. For larger commissions the headline is an aspirational
- * ceiling — exactly how mainstream cashback sites label.
+ * For percentage offers the actual cashback depends on purchase size and
+ * tier (Bronze 20% share → Obsidian 100% share of remainder after the $5
+ * fee), so we frame it as "Up to X%" — the gross rate is the ceiling that
+ * top-tier users approach on small purchases (where the fee is waived).
  */
 export function formatHeadlineCashback(o: CashbackFields): string {
+  if ((o.cashback_fixed_usd ?? 0) > 0) return formatCashback(o);
   return `Up to ${formatCashback(o)}`;
 }
 
